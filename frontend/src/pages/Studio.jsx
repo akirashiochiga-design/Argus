@@ -146,10 +146,17 @@ export default function Studio() {
 
 /* ============ créateur d'agent depuis un prompt (assisté IA) ============ */
 
+// Rôles qui correspondent à une étape réelle du pipeline P5 : un agent créé
+// dans l'un de ces rôles peut être publié PUIS branché, et remplace alors
+// vraiment l'agent de cette étape à la prochaine exécution. "assistant" n'a
+// aucune étape correspondante — volontairement hors pipeline (voir CLAUDE.md
+// §3 : pas de nouvelle étape métier improvisée depuis un prompt).
+const ROLES_BRANCHABLES = new Set(['fnol', 'extraction', 'vision', 'courrier'])
+
 function CreateurPrompt({ categories, onCree }) {
   const [brief, setBrief] = useState('')
   const [nom, setNom] = useState('')
-  const [categorie, setCategorie] = useState('assistant')
+  const [categorie, setCategorie] = useState('vision')
   const [instructions, setInstructions] = useState('')
   const [mode, setMode] = useState(null) // 'llm' | 'simulation'
   const [genere, setGenere] = useState(false)
@@ -244,6 +251,17 @@ function CreateurPrompt({ categories, onCree }) {
               {envoi ? 'Création…' : "Créer l'agent (draft)"}
             </button>
           </div>
+          {ROLES_BRANCHABLES.has(categorie) ? (
+            <p className="text-xs text-encre/50">
+              ✓ Une fois publié, ce rôle peut être <b>branché au pipeline</b> — il remplacera alors
+              vraiment l'agent de cette étape à la prochaine exécution.
+            </p>
+          ) : (
+            <p className="text-xs text-encre/50">
+              ℹ️ Rôle libre, <b>hors pipeline P5</b> : cet agent sera créé et visible ici, mais n'aura
+              pas de bouton « Brancher » et ne s'exécutera jamais dans le parcours du dossier.
+            </p>
+          )}
           <div className="rounded-md bg-ok-tint px-3 py-2 text-xs text-ok">
             🔒 Garde-fou imposé : cet agent ne peut ni décider d'un montant, ni contourner la validation
             humaine — quelle que soit la consigne saisie. Les rôles « garanties », « indemnité » et la porte
