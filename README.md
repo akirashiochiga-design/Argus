@@ -19,9 +19,20 @@ npm run dev
 ```
 
 Clé API : copier `backend/.env.example` vers `backend/.env` et renseigner
-`ANTHROPIC_API_KEY`. **Sans clé, l'app fonctionne intégralement** : les 4 agents
+`ANTHROPIC_API_KEY`. **Sans clé, l'app fonctionne intégralement** : les agents
 LLM basculent en mode simulation (badge « simulé » dans l'UI) ; avec la clé, ils
-font de vrais appels Claude (texte + vision, badge « LLM »).
+font de vrais appels Claude (texte + vision, badge « IA »).
+
+**Modèle : `claude-haiku-4-5` par défaut** — le moins cher de l'API Anthropic,
+vision comprise, ~1-2 cents par dossier. Les crédits offerts à l'inscription sur
+console.anthropic.com couvrent tout le hackathon. Pour plus de qualité
+rédactionnelle : `ARGUS_MODEL=claude-sonnet-5` ou `claude-opus-4-8` dans `.env`.
+
+## Direction artistique
+
+Interface alignée sur le brand book (`docs/Argus-Brand-Book.pdf`) : palette
+encre `#17150F` / crème `#F4F1EA` / terracotta `#D97757` (accent unique), typo
+Space Grotesk, signe « huit yeux » (favicon + header). Voix courte et chiffrée.
 
 ## Démo
 

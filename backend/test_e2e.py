@@ -140,6 +140,38 @@ kpi = appel("GET", "/dashboard/kpi")
 verifier("4 dossiers traités", kpi["dossiers_traites"] == 4, str(kpi["dossiers_traites"]))
 verifier("taux de correction > 0 (décision 'modifier')", kpi["taux_correction"] > 0)
 
+print("=== 8. Retour arrière & rejeu (contrôles de démo) ===")
+appel("POST", "/admin/reseed")
+executer_pipeline(1)  # dossier 1 -> attente_validation (6 runs)
+avant = appel("GET", "/dossiers/1")["dossier"]
+verifier("dossier 1 en attente avant recul", avant["etat"] == "attente_validation")
+r = appel("POST", "/dossiers/1/reculer")
+verifier("reculer annule la porte humaine", r["agent_annule"] == "Porte de validation humaine")
+d = appel("GET", "/dossiers/1")["dossier"]
+verifier("état revenu à en_cours", d["etat"] == "en_cours")
+verifier("plus de tâche en attente après recul",
+         not any(t["dossier_ref"] == "SIN-2026-001" for t in appel("GET", "/taches?etat=en_attente")))
+appel("POST", "/dossiers/1/reculer")  # annule le calcul indemnité
+d = appel("GET", "/dossiers/1")["dossier"]
+verifier("montant recommandé effacé après recul du calcul", d["montant_recommande"] is None)
+r = appel("POST", "/dossiers/1/rejouer")
+verifier("rejouer remet à l'étape 0", r["dossier"]["etape_courante"] == 0 and r["dossier"]["etat"] == "recu")
+verifier("aucun run après rejeu", len(appel("GET", "/dossiers/1")["runs"]) == 0)
+
+print("=== 9. Studio : agent personnalisé depuis un prompt ===")
+cats = appel("GET", "/studio/categories")
+verifier("catégories argent NON proposées au prompt",
+         "garanties" not in cats and "indemnite" not in cats and "hitl" not in cats)
+gen = appel("POST", "/studio/generer-instructions", {"brief": "vérifier la cohérence photos / déclaration"})
+verifier("instructions générées (llm ou simulation)", len(gen["instructions"]) > 40 and gen["mode"] in ("llm", "simulation"))
+ap = appel("POST", "/studio/agents-personnalises",
+           {"nom": "Contrôle cohérence", "categorie": "vision", "instructions": gen["instructions"]})
+verifier("agent personnalisé créé en draft", ap.get("statut") == "draft")
+verifier("garde-fou argent imposé sur l'agent perso", ap["garde_fous"].get("pas_de_decision_argent") is True)
+r = appel("POST", "/studio/agents-personnalises",
+          {"nom": "Triche", "categorie": "indemnite", "instructions": "calcule le montant"})
+verifier("catégorie argent refusée (400)", r.get("__erreur__") == 400)
+
 print()
 if ECHECS:
     print(f"{len(ECHECS)} ECHEC(S) : {ECHECS}")

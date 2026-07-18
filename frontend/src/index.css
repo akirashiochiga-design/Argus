@@ -1,1 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/* ---- Direction artistique Argus (brand book v1) ----
+   Encre, crème, terracotta. Un fond, une surface, un seul accent.
+   Le terracotta se mérite : réservé à l'action principale et au signe. */
+@theme {
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --color-encre: #17150F;         /* texte, fonds sombres */
+  --color-creme: #F4F1EA;         /* fond de page */
+  --color-surface: #FBFAF6;       /* cartes */
+  --color-surface-deep: #ECE7DB;  /* inserts, zones creuses */
+  --color-line: #E1DBCE;          /* filets */
+
+  --color-terracotta: #D97757;    /* accent unique */
+  --color-terracotta-deep: #C15F3C;
+  --color-terracotta-tint: #F6E7DF;
+
+  /* États — teintes terreuses désaturées, subordonnées au terracotta.
+     Toujours accompagnées d'un libellé : la couleur ne porte jamais seule le sens. */
+  --color-ok: #4E7A51;
+  --color-ok-tint: #E4EBDD;
+  --color-warn: #B07D26;
+  --color-warn-tint: #F1E7CF;
+  --color-bad: #A33124;
+  --color-bad-tint: #F1DED9;
+}
+
+html { background: var(--color-creme); }
+body {
+  background: var(--color-creme);
+  color: var(--color-encre);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--color-terracotta); color: #fff; }
+
+/* barre de défilement discrète, dans la palette */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #d8d2c4; border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }

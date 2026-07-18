@@ -5,11 +5,24 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from .. import llm
 from ..audit import tracer
 from ..db import get_session
 from ..models import Agent, Template, Workflow
 
 router = APIRouter(tags=["studio"])
+
+# Catégories que le studio autorise pour un agent personnalisé.
+# Les catégories "argent" (garanties, indemnite) et la porte (hitl) NE sont
+# PAS proposées : on ne laisse pas créer par prompt un agent qui décide d'un
+# montant ou contourne la validation humaine — c'est la gouvernance du produit.
+CATEGORIES_PERSONNALISEES = {
+    "fnol": "Compréhension d'une déclaration (texte)",
+    "extraction": "Lecture de documents (OCR / vision)",
+    "vision": "Analyse d'images (gravité, dégâts)",
+    "courrier": "Rédaction d'un message à l'assuré",
+    "assistant": "Assistant métier (usage libre, hors pipeline)",
+}
 
 
 class CreationAgent(BaseModel):
@@ -135,3 +148,76 @@ def affecter_agent(workflow_id: int, corps: Affectation, session: Session = Depe
 @router.get("/workflows")
 def lister_workflows(session: Session = Depends(get_session)) -> list[Workflow]:
     return session.exec(select(Workflow)).all()
+
+
+# ---------------- Agent personnalisé depuis un prompt libre ----------------
+
+class BriefAgent(BaseModel):
+    brief: str  # description courte de l'agent voulu, en langage naturel
+
+
+class AgentPersonnalise(BaseModel):
+    nom: str
+    categorie: str
+    instructions: str
+    seuils: dict = {}
+
+
+@router.get("/studio/categories")
+def categories_personnalisees() -> dict:
+    return CATEGORIES_PERSONNALISEES
+
+
+@router.post("/studio/generer-instructions")
+def generer_instructions(corps: BriefAgent) -> dict:
+    """Transforme un brief en langage naturel en instructions d'agent complètes.
+
+    Effet 'no-code assisté par IA' : le métier décrit ce qu'il veut, l'IA rédige
+    la consigne. Repli déterministe si pas de clé API (la démo ne casse pas).
+    """
+    system = (
+        "Tu es l'assistant du studio Argus, une plateforme d'agents d'IA pour "
+        "l'assurance. À partir d'un brief court, rédige les instructions système "
+        "d'un agent : rôle, entrées attendues, sorties attendues, ton. 6 à 10 "
+        "lignes, en français, concis et opérationnel. Rappelle en dernière ligne "
+        "le garde-fou : l'agent ne décide jamais d'un montant ni d'un paiement, "
+        "l'humain valide toute décision d'argent. Ne réponds QUE par les instructions."
+    )
+    try:
+        r = llm.generer_texte(system, f"Brief : {corps.brief}", max_tokens=600)
+        return {"instructions": r["texte"].strip(), "mode": "llm", "cout": r["cout"]}
+    except llm.LLMIndisponible:
+        instructions = (
+            f"Rôle : {corps.brief.strip().rstrip('.')}.\n"
+            "Entrées : les éléments du dossier sinistre pertinents pour cette tâche.\n"
+            "Sorties : un résultat structuré, avec un indice de confiance.\n"
+            "Ton : factuel, en français, sans jargon.\n"
+            "Signale explicitement toute information manquante plutôt que de l'inventer.\n"
+            "Garde-fou : cet agent ne décide jamais d'un montant ni d'un paiement ; "
+            "toute décision engageant de l'argent est validée par un humain."
+        )
+        return {"instructions": instructions, "mode": "simulation", "cout": 0.0}
+
+
+@router.post("/studio/agents-personnalises", status_code=201)
+def creer_agent_personnalise(corps: AgentPersonnalise, session: Session = Depends(get_session)) -> Agent:
+    """Crée un agent depuis un prompt libre (pas de template). Draft, garde-fous imposés."""
+    if corps.categorie not in CATEGORIES_PERSONNALISEES:
+        raise HTTPException(400, f"Catégorie non autorisée depuis le studio : {corps.categorie}")
+    agent = Agent(
+        nom=corps.nom,
+        categorie=corps.categorie,
+        template_id=None,
+        instructions=corps.instructions,
+        seuils=corps.seuils,
+        # garde-fous non négociables, quelle que soit la consigne saisie
+        garde_fous={"pas_de_decision_argent": True, "origine": "prompt_studio"},
+        statut="draft",
+    )
+    session.add(agent)
+    session.flush()
+    tracer(session, "humain:superviseur", "humain", "creation_agent", f"agent:{agent.id}",
+           apres={"nom": agent.nom, "categorie": agent.categorie, "origine": "prompt personnalisé"})
+    session.commit()
+    session.refresh(agent)
+    return agent

@@ -54,6 +54,75 @@ def _document(titre: str, entete: list[str], lignes: list[tuple[str, str]],
     print(f"  {chemin.name}")
 
 
+def _croquis_degats(titre: str, zones: list[tuple], annotations: list[str],
+                    chemin: Path, fissure: bool = False) -> None:
+    """Croquis d'expertise : vue de dessus du véhicule, zones endommagées hachurées.
+
+    zones : liste de polygones [(x,y), ...] à hachurer en rouge sombre.
+    """
+    img = Image.new("RGB", (900, 1100), "#fdfcf8")
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 900, 90], fill="#17150F")
+    d.text((40, 26), titre, font=_police(28, True), fill="#F4F1EA")
+
+    # Carrosserie vue de dessus (avant du véhicule en haut)
+    encre = "#17150F"
+    cx, haut, larg, longu = 450, 190, 300, 680
+    d.rounded_rectangle([cx - larg // 2, haut, cx + larg // 2, haut + longu],
+                        radius=90, outline=encre, width=5)
+    # Roues
+    for dx in (-1, 1):
+        for dy in (150, 520):
+            x = cx + dx * (larg // 2)
+            d.rounded_rectangle([x - 14, haut + dy, x + 14, haut + dy + 110],
+                                radius=12, fill=encre)
+    # Pare-brise et lunette
+    d.line([cx - 105, haut + 205, cx + 105, haut + 205], fill=encre, width=4)
+    d.line([cx - 118, haut + 275, cx - 105, haut + 205], fill=encre, width=4)
+    d.line([cx + 118, haut + 275, cx + 105, haut + 205], fill=encre, width=4)
+    d.line([cx - 100, haut + 500, cx + 100, haut + 500], fill=encre, width=4)
+    # Capot
+    d.line([cx - 110, haut + 90, cx + 110, haut + 90], fill=encre, width=3)
+
+    # Zones endommagées : hachures rouges
+    rouge = "#B3402A"
+    for poly in zones:
+        d.polygon(poly, outline=rouge, width=4)
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+        masque = Image.new("L", img.size, 0)
+        ImageDraw.Draw(masque).polygon(poly, fill=255)
+        hachures = Image.new("RGB", img.size, "#fdfcf8")
+        dh = ImageDraw.Draw(hachures)
+        for off in range(-(y1 - y0), x1 - x0 + (y1 - y0), 14):
+            dh.line([x0 + off, y1, x0 + off + (y1 - y0), y0], fill=rouge, width=3)
+        img.paste(hachures, (0, 0), masque)
+        d.polygon(poly, outline=rouge, width=4)
+
+    if fissure:  # fissure de pare-brise : ligne brisée dans la zone vitrée
+        pts = [(cx - 80, haut + 250), (cx - 30, haut + 232), (cx + 5, haut + 248),
+               (cx + 48, haut + 228), (cx + 88, haut + 240)]
+        d.line(pts, fill=rouge, width=5)
+        for p in pts[1:4]:
+            d.line([p, (p[0] + 12, p[1] + 16)], fill=rouge, width=3)
+
+    # Légende
+    y = haut + longu + 50
+    d.line([40, y - 18, 860, y - 18], fill="#d8d2c4", width=2)
+    d.rectangle([40, y, 70, y + 20], outline=rouge, width=3)
+    d.line([44, y + 18, 62, y + 2], fill=rouge, width=3)
+    d.text((80, y), "zone endommagée constatée", font=_police(19), fill="#333333")
+    y += 40
+    for a in annotations:
+        d.text((40, y), f"• {a}", font=_police(19), fill="#333333")
+        y += 30
+    d.text((40, 1050), "Croquis d'expertise établi sur constatations — démo (photos réelles à substituer)",
+           font=_police(15), fill="#999999")
+    img.save(chemin, quality=90)
+    print(f"  {chemin.name}")
+
+
 def generer() -> None:
     DOSSIER.mkdir(parents=True, exist_ok=True)
     print("Génération des documents d'exemple :")
@@ -106,6 +175,40 @@ def generer() -> None:
         DOSSIER / "devis-parebrise.jpg",
     )
 
+    # --- Croquis d'expertise (substituts des photos de dégâts, à remplacer si possible) ---
+    # SIN-2026-001 : choc avant droit (pare-chocs + phare, puis aile)
+    _croquis_degats(
+        "SIN-2026-001 — dégâts avant droit (1/2)",
+        [[(566, 196), (600, 214), (600, 268), (566, 262)]],
+        ["Pare-chocs avant droit : enfoncé", "Optique avant droit : brisé",
+         "Choc latéral, véhicule sortant d'un stationnement"],
+        DOSSIER / "degats-1.jpg",
+    )
+    _croquis_degats(
+        "SIN-2026-001 — dégâts avant droit (2/2)",
+        [[(586, 300), (600, 300), (600, 380), (586, 380)]],
+        ["Aile avant droite : tôle enfoncée", "Peinture à reprendre (aile + pare-chocs)",
+         "Cohérent avec le constat amiable"],
+        DOSSIER / "degats-2.jpg",
+    )
+    # SIN-2026-002 : choc frontal (capot + pare-chocs), gravité plus marquée
+    _croquis_degats(
+        "SIN-2026-002 — choc frontal",
+        [[(330, 195), (570, 195), (560, 250), (340, 250)]],
+        ["Capot : plié", "Pare-chocs avant : enfoncé sur toute la largeur",
+         "Pas de tiers identifié, pas de constat"],
+        DOSSIER / "degats-3.jpg",
+    )
+    # SIN-2026-003 : fissure de pare-brise
+    _croquis_degats(
+        "SIN-2026-003 — bris de glace",
+        [],
+        ["Fissure pare-brise côté conducteur (~30 cm)", "Impact d'un gravier projeté",
+         "Remplacement préconisé"],
+        DOSSIER / "parebrise.jpg",
+        fissure=True,
+    )
+
     # Constat simplifié (texte) pour SIN-2026-001
     _document(
         "CONSTAT AMIABLE D'ACCIDENT (extrait)",
@@ -121,7 +224,7 @@ def generer() -> None:
         "Document reconstitué pour démo — remplacer par un vrai constat scanné si possible",
         DOSSIER / "constat.jpg",
     )
-    print("OK — photos de dégâts à ajouter manuellement (degats-1.jpg, degats-2.jpg, degats-3.jpg, parebrise.jpg)")
+    print("OK — 4 croquis de dégâts générés (substituts, à remplacer par de vraies photos si possible)")
 
 
 if __name__ == "__main__":

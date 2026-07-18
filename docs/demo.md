@@ -10,13 +10,15 @@
 ## AVANT la démo (checklist J-1 et H-1)
 
 **J-1 :**
-- [ ] Déposer de **vraies photos de dégâts auto** dans `docs/samples/` :
-      `degats-1.jpg`, `degats-2.jpg` (avant droit endommagé), `degats-3.jpg` (capot),
-      `parebrise.jpg` (fissure). Les documents (facture, devis, constat) sont déjà
-      générés — les remplacer par de vrais scans si possible.
-- [ ] Mettre la clé dans `backend/.env` : `ANTHROPIC_API_KEY=sk-ant-...`
-      → les agents FNOL/extraction/gravité/courrier passent en vrais appels Claude
-      (badge violet **LLM** dans l'UI au lieu de **simulé**).
+- [ ] **Photos de dégâts** : des **croquis d'expertise** sont générés
+      automatiquement (`degats-1/2/3.jpg`, `parebrise.jpg` — vue de dessus, zone
+      endommagée hachurée). Ça suffit pour la démo. Les remplacer par de vraies
+      photos si vous en trouvez (regénérer les croquis : `python -m app.samples`).
+- [ ] Mettre la clé dans `backend/.env` : `ANTHROPIC_API_KEY=sk-ant-...`.
+      **Modèle par défaut : Haiku 4.5** (le moins cher, ~1-2 cents/dossier, vision
+      comprise) — les crédits offerts à l'inscription suffisent. Les agents passent
+      alors en vrais appels Claude (badge **IA** au lieu de **simulé**), y compris
+      la génération d'instructions dans le Studio.
 - [ ] Répétition générale : `cd backend && .venv/Scripts/python test_e2e.py`
       → doit afficher `TOUS LES TESTS PASSENT`.
 - [ ] Faire relire les déclarations darija du seed par un locuteur (fichier `backend/app/seed.py`).
@@ -28,6 +30,13 @@
 - [ ] **Reset démo** : `curl -X POST http://localhost:8000/admin/reseed`
       (à refaire entre chaque répétition — remet les 3 dossiers à zéro).
 - [ ] Zoom navigateur 110-125 % pour le projecteur.
+
+**Contrôles de démo (dans l'app) :**
+- **↻ Reset démo** (en haut à droite) : remet les 3 dossiers calibrés à zéro entre
+  deux passages, sans toucher au terminal.
+- **◀ Reculer** (Pipeline) : annule la dernière étape — pratique si vous cliquez
+  trop vite ou voulez remontrer un agent.
+- **↺ Rejouer** (Pipeline) : remet le dossier courant au début pour le rejouer en direct.
 
 **Plan B intégré (à connaître, pas à dire) :** si le Wi-Fi tombe ou la clé API expire,
 les agents LLM basculent automatiquement en mode simulation (badge gris « simulé »),
@@ -71,14 +80,20 @@ est indisponible. »
 - Cliquer **✓ Approuver 1 850 DT** → message vert → « Voir le dossier » :
   la lettre à l'assuré est générée, clauses citées, dossier **réglé**.
 
-### 4. Le studio — créer un agent en live (60 s)
-> « Tout ce que vous venez de voir a été assemblé sans code. La preuve. »
-- Studio → template « Recommandation de règlement » → **Créer un agent** :
-  nom « Règlement auto — bris de glace », seuil 300 DT → Créer.
-- Montrer les 🔒 : « les garde-fous du template sont hérités, non désactivables —
-  un métier ne peut pas se créer un agent qui contourne la gouvernance. »
-- **Publier**, puis **Brancher au pipeline** → montrer le pipeline live mis à jour.
-- Sur « Porte de validation humaine » → **Seuils** → passer 1000 → 300 → Enregistrer :
+### 4. Le studio — créer un agent en live (75 s) — le moment waouh
+> « Tout ce que vous venez de voir a été assemblé sans code. La preuve, en direct. »
+- **Créer un agent personnalisé** (encadré terracotta en haut) : taper une phrase,
+  ex. *« un agent qui vérifie la cohérence entre les photos et la déclaration »*,
+  puis **✦ Générer les instructions**.
+  > « Je décris ce que je veux, l'IA rédige la consigne de l'agent. » (Avec la clé,
+  > badge **IA** = vraie génération Claude ; sans clé, badge **simulé**.)
+- Choisir le rôle « Analyse d'images », **Créer l'agent** → il apparaît avec le
+  badge **✦ perso**. Montrer l'encadré 🔒 :
+  > « Même en écrivant ce que je veux, impossible de créer un agent qui décide d'un
+  > montant ou saute la validation humaine. La gouvernance n'est pas contournable. »
+- (Optionnel) template « Recommandation de règlement » → **Créer**, **Publier**,
+  **Brancher au pipeline** → le pipeline live se met à jour.
+- Sur « Porte de validation humaine » → **Seuils** → 1000 → 300 → Enregistrer :
   > « Je viens de durcir la gouvernance de toute la compagnie en un clic — versionné, audité. »
 
 ### 5. La preuve par l'audit (45 s) — Dashboard & Audit

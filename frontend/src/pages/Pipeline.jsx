@@ -8,7 +8,7 @@ export default function Pipeline({ onNavigate }) {
   const [dossiers, setDossiers] = useState([])
   const [selection, setSelection] = useState(null) // {dossier, police, workflow, runs}
   const [agents, setAgents] = useState({})
-  const [enExecution, setEnExecution] = useState(false)
+  const [occupe, setOccupe] = useState(false)
   const [formulaire, setFormulaire] = useState(false)
   const [erreur, setErreur] = useState(null)
   const stopRef = useRef(false)
@@ -30,8 +30,8 @@ export default function Pipeline({ onNavigate }) {
   }, [dossiers]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const executer = async () => {
-    if (!selection || enExecution) return
-    setEnExecution(true)
+    if (!selection || occupe) return
+    setOccupe(true)
     setErreur(null)
     stopRef.current = false
     try {
@@ -41,14 +41,42 @@ export default function Pipeline({ onNavigate }) {
         resultat = r.resultat
         await chargerDetail(selection.dossier.id)
         await chargerListe()
-        if (resultat === 'etape_executee') {
-          await new Promise((ok) => setTimeout(ok, DELAI_ANIMATION_MS))
-        }
+        if (resultat === 'etape_executee') await new Promise((ok) => setTimeout(ok, DELAI_ANIMATION_MS))
       }
     } catch (e) {
       setErreur(e.message)
     } finally {
-      setEnExecution(false)
+      setOccupe(false)
+    }
+  }
+
+  const reculer = async () => {
+    if (!selection || occupe) return
+    setOccupe(true)
+    setErreur(null)
+    try {
+      await api.reculerEtape(selection.dossier.id)
+      await chargerDetail(selection.dossier.id)
+      await chargerListe()
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setOccupe(false)
+    }
+  }
+
+  const rejouer = async () => {
+    if (!selection || occupe) return
+    setOccupe(true)
+    setErreur(null)
+    try {
+      await api.rejouerDossier(selection.dossier.id)
+      await chargerDetail(selection.dossier.id)
+      await chargerListe()
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setOccupe(false)
     }
   }
 
@@ -62,9 +90,9 @@ export default function Pipeline({ onNavigate }) {
           <h2 className="text-lg font-semibold">Dossiers</h2>
           <button
             onClick={() => setFormulaire(true)}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700"
+            className="rounded-md bg-encre px-3 py-1.5 text-sm font-medium text-creme transition hover:bg-encre/85"
           >
-            + Déclarer un sinistre
+            + Déclarer
           </button>
         </div>
         <div className="grid gap-2">
@@ -72,21 +100,21 @@ export default function Pipeline({ onNavigate }) {
             <button
               key={x.id}
               onClick={() => chargerDetail(x.id)}
-              className={`rounded-xl border bg-white p-3 text-left transition hover:border-sky-400 ${
-                d?.id === x.id ? 'border-sky-500 ring-2 ring-sky-100' : 'border-slate-200'
+              className={`rounded-lg border bg-surface p-3 text-left transition hover:border-terracotta/50 ${
+                d?.id === x.id ? 'border-terracotta ring-2 ring-terracotta-tint' : 'border-line'
               }`}
             >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm font-semibold">{x.ref}</span>
                 <span className="ml-auto"><BadgeEtat etat={x.etat} /></span>
               </div>
-              <div className="mt-1 text-sm text-slate-600">
+              <div className="mt-1 text-sm text-encre/60">
                 {x.assure_nom} · {x.formule?.replace('_', ' ')}
               </div>
               {x.montant_recommande != null && (
-                <div className="mt-1 text-xs text-slate-500">
-                  recommandé : <b>{dt(x.montant_recommande)}</b>
-                  {x.montant_valide != null && <> · validé : <b className="text-emerald-700">{dt(x.montant_valide)}</b></>}
+                <div className="mt-1 text-xs text-encre/50">
+                  recommandé : <b className="text-encre/70">{dt(x.montant_recommande)}</b>
+                  {x.montant_valide != null && <> · validé : <b className="text-ok">{dt(x.montant_valide)}</b></>}
                 </div>
               )}
             </button>
@@ -97,7 +125,7 @@ export default function Pipeline({ onNavigate }) {
       {/* ---- détail + frise ---- */}
       <div className="min-w-0">
         {erreur && (
-          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          <div className="mb-3 rounded-lg border border-bad/30 bg-bad-tint px-4 py-2 text-sm text-bad">
             {erreur}
           </div>
         )}
@@ -105,12 +133,14 @@ export default function Pipeline({ onNavigate }) {
           <DetailDossier
             selection={selection}
             agents={agents}
-            enExecution={enExecution}
+            occupe={occupe}
             onExecuter={executer}
+            onReculer={reculer}
+            onRejouer={rejouer}
             onNavigate={onNavigate}
           />
         ) : (
-          <p className="text-sm text-slate-500">Sélectionnez un dossier.</p>
+          <p className="text-sm text-encre/50">Sélectionnez un dossier.</p>
         )}
       </div>
 
@@ -130,71 +160,91 @@ export default function Pipeline({ onNavigate }) {
 
 /* ================= détail d'un dossier ================= */
 
-function DetailDossier({ selection, agents, enExecution, onExecuter, onNavigate }) {
+function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRejouer, onNavigate }) {
   const { dossier: d, police, workflow, runs } = selection
   const etapes = workflow?.etapes ?? []
   const dernierRun = runs[runs.length - 1]
   const termine = ['regle', 'refuse', 'cloture'].includes(d.etat)
+  const debut = d.etape_courante === 0 && runs.length === 0
+  const peutReculer = runs.length > 0
 
   return (
     <div className="grid gap-4">
       {/* entête */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="rounded-lg border border-line bg-surface p-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-mono text-lg font-bold">{d.ref}</span>
           <BadgeEtat etat={d.etat} />
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-encre/60">
             {police?.assure_nom} — {police?.numero} ({police?.formule?.replace('_', ' ')})
           </span>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-encre/45">
             {police?.vehicule?.marque} {police?.vehicule?.modele} · {police?.vehicule?.annee}
           </span>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-5">
             {d.montant_recommande != null && (
               <div className="text-right">
-                <div className="text-[11px] uppercase tracking-wide text-slate-400">recommandé (calcul)</div>
-                <div className="text-xl font-bold text-slate-800">{dt(d.montant_recommande)}</div>
+                <div className="text-[11px] uppercase tracking-wide text-encre/40">recommandé · calcul</div>
+                <div className="text-xl font-bold">{dt(d.montant_recommande)}</div>
               </div>
             )}
             {d.montant_valide != null && (
               <div className="text-right">
-                <div className="text-[11px] uppercase tracking-wide text-emerald-600">validé (humain)</div>
-                <div className="text-xl font-bold text-emerald-700">{dt(d.montant_valide)}</div>
+                <div className="text-[11px] uppercase tracking-wide text-ok">validé · humain</div>
+                <div className="text-xl font-bold text-ok">{dt(d.montant_valide)}</div>
               </div>
             )}
           </div>
         </div>
-        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm italic text-slate-600">
+        <p className="mt-3 rounded-md bg-surface-deep p-3 text-sm italic text-encre/70">
           « {d.declaration_texte} »
         </p>
       </div>
 
       {/* frise du pipeline */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="rounded-lg border border-line bg-surface p-4">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <h3 className="font-semibold">{workflow?.nom ?? 'Pipeline'}</h3>
-          {!termine && d.etat !== 'attente_validation' && (
+          <div className="ml-auto flex items-center gap-2">
             <button
-              onClick={onExecuter}
-              disabled={enExecution}
-              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500 disabled:opacity-50"
+              onClick={onReculer}
+              disabled={occupe || !peutReculer}
+              title="Annuler la dernière étape"
+              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-40"
             >
-              {enExecution ? '⏳ Exécution en cours…' : '▶ Exécuter le pipeline'}
+              ◀ Reculer
             </button>
-          )}
+            <button
+              onClick={onRejouer}
+              disabled={occupe || debut}
+              title="Remettre ce dossier au début"
+              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-40"
+            >
+              ↺ Rejouer
+            </button>
+            {!termine && d.etat !== 'attente_validation' && (
+              <button
+                onClick={onExecuter}
+                disabled={occupe}
+                className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
+              >
+                {occupe ? '⏳ Exécution…' : '▶ Exécuter le pipeline'}
+              </button>
+            )}
+          </div>
         </div>
-        <Frise etapes={etapes} agents={agents} dossier={d} runs={runs} enExecution={enExecution} />
+        <Frise etapes={etapes} agents={agents} dossier={d} runs={runs} occupe={occupe} />
 
         {d.etat === 'attente_validation' && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-warn/40 bg-warn-tint px-4 py-3">
             <span className="text-xl">🛡️</span>
-            <div className="text-sm text-amber-900">
+            <div className="text-sm text-encre/80">
               <b>Pipeline suspendu — validation humaine requise.</b> Aucun règlement ne part sans
               décision explicite d'un gestionnaire.
             </div>
             <button
               onClick={() => onNavigate('approbations')}
-              className="ml-auto whitespace-nowrap rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-400"
+              className="ml-auto whitespace-nowrap rounded-md bg-terracotta px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep"
             >
               Ouvrir la file d'approbation →
             </button>
@@ -202,17 +252,14 @@ function DetailDossier({ selection, agents, enExecution, onExecuter, onNavigate 
         )}
       </div>
 
-      {/* sortie du dernier agent exécuté */}
       {dernierRun && !termine && (
         <SortieRun run={dernierRun} agents={agents} titre="Dernière sortie d'agent" />
       )}
 
-      {/* courrier final */}
       {termine && d.courrier?.corps && <Courrier courrier={d.courrier} etat={d.etat} />}
 
-      {/* historique des runs */}
       {runs.length > 0 && (
-        <details className="rounded-xl border border-slate-200 bg-white p-4" open={termine}>
+        <details className="rounded-lg border border-line bg-surface p-4" open={termine}>
           <summary className="cursor-pointer font-semibold">
             Trace d'exécution — {runs.length} run{runs.length > 1 ? 's' : ''} d'agents
           </summary>
@@ -227,7 +274,7 @@ function DetailDossier({ selection, agents, enExecution, onExecuter, onNavigate 
   )
 }
 
-function Frise({ etapes, agents, dossier, runs, enExecution }) {
+function Frise({ etapes, agents, dossier, runs, occupe }) {
   const agentsAyantTourne = new Set(runs.filter((r) => r.statut === 'succes').map((r) => r.agent_id))
   return (
     <div className="flex items-stretch gap-1 overflow-x-auto pb-2">
@@ -240,26 +287,24 @@ function Frise({ etapes, agents, dossier, runs, enExecution }) {
         return (
           <div key={i} className="flex items-center">
             <div
-              className={`flex w-[108px] flex-col items-center gap-1 rounded-lg border-2 p-2 text-center transition-all ${
+              className={`flex w-[108px] flex-col items-center gap-1 rounded-md border-2 p-2 text-center transition-all ${
                 enAttente
-                  ? 'border-amber-400 bg-amber-50'
+                  ? 'border-warn bg-warn-tint'
                   : faite
-                    ? 'border-emerald-300 bg-emerald-50'
+                    ? 'border-ok/40 bg-ok-tint'
                     : courante
-                      ? `border-sky-400 bg-sky-50 ${enExecution ? 'animate-pulse' : ''}`
-                      : 'border-slate-200 bg-slate-50 opacity-60'
+                      ? `border-terracotta bg-terracotta-tint ${occupe ? 'animate-pulse' : ''}`
+                      : 'border-line bg-surface-deep opacity-55'
               }`}
             >
               <span className="text-xl">{porte ? '🛡️' : AGENT_ICONE[agent?.categorie] ?? '⚙️'}</span>
-              <span className="text-[11px] font-medium leading-tight text-slate-700">
-                {agent?.nom ?? '—'}
-              </span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[11px] font-medium leading-tight">{agent?.nom ?? '—'}</span>
+              <span className="text-[10px] text-encre/40">
                 {enAttente ? 'attente humain' : faite ? '✓ terminé' : courante ? 'prochain' : 'à venir'}
               </span>
             </div>
             {i < etapes.length - 1 && (
-              <span className={`px-0.5 text-lg ${faite ? 'text-emerald-400' : 'text-slate-300'}`}>→</span>
+              <span className={`px-0.5 text-lg ${faite ? 'text-ok' : 'text-encre/20'}`}>→</span>
             )}
           </div>
         )
@@ -274,16 +319,16 @@ function SortieRun({ run, agents, titre, compact }) {
   const agent = agents[run.agent_id]
   const s = run.sorties ?? {}
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white p-4 ${compact ? 'shadow-none' : ''}`}>
+    <div className={`rounded-lg border border-line bg-surface p-4 ${compact ? '' : ''}`}>
       <div className="mb-2 flex items-center gap-2">
         <span>{AGENT_ICONE[agent?.categorie] ?? '⚙️'}</span>
         <span className="text-sm font-semibold">{titre ?? agent?.nom ?? `agent ${run.agent_id}`}</span>
-        {titre && <span className="text-xs text-slate-400">({agent?.nom})</span>}
+        {titre && <span className="text-xs text-encre/40">({agent?.nom})</span>}
         <BadgeMode mode={s.mode} />
         {run.confiance != null && (
-          <span className="text-xs text-slate-400">confiance {(run.confiance * 100).toFixed(0)} %</span>
+          <span className="text-xs text-encre/40">confiance {(run.confiance * 100).toFixed(0)} %</span>
         )}
-        <span className="ml-auto text-xs text-slate-400">
+        <span className="ml-auto text-xs text-encre/40">
           {run.duree_ms} ms{run.cout > 0 && ` · $${run.cout.toFixed(4)}`}
         </span>
       </div>
@@ -311,18 +356,18 @@ function CorpsSortie({ categorie, s }) {
     return (
       <div className="grid gap-2">
         {s.pieces.filter((p) => p.extraction).map((p, i) => (
-          <div key={i} className="rounded-lg bg-slate-50 p-2 text-sm">
+          <div key={i} className="rounded-md bg-surface-deep p-2 text-sm">
             <div className="flex items-center gap-2">
               <b>{p.type}</b>
-              <span className="text-xs text-slate-500">{p.extraction.emetteur}</span>
+              <span className="text-xs text-encre/50">{p.extraction.emetteur}</span>
               {p.extraction.total != null && (
                 <span className="ml-auto font-semibold">{dt(p.extraction.total)}</span>
               )}
             </div>
             {p.extraction.postes?.length > 0 && (
-              <ul className="mt-1 text-xs text-slate-600">
+              <ul className="mt-1 text-xs text-encre/60">
                 {p.extraction.postes.map((poste, j) => (
-                  <li key={j} className="flex justify-between border-t border-slate-200 py-0.5">
+                  <li key={j} className="flex justify-between border-t border-line py-0.5">
                     <span>{poste.libelle}</span><span>{dt(poste.montant)}</span>
                   </li>
                 ))}
@@ -331,23 +376,19 @@ function CorpsSortie({ categorie, s }) {
           </div>
         ))}
         {s.montant_estime != null && (
-          <div className="text-sm">
-            Montant de référence retenu : <b>{dt(s.montant_estime)}</b>
-          </div>
+          <div className="text-sm">Montant de référence retenu : <b>{dt(s.montant_estime)}</b></div>
         )}
       </div>
     )
   }
   if (categorie === 'vision' && s.analyse_gravite) {
     const g = s.analyse_gravite
-    const couleurs = { leger: 'bg-emerald-100 text-emerald-800', moyen: 'bg-amber-100 text-amber-800', lourd: 'bg-red-100 text-red-800' }
+    const couleurs = { leger: 'bg-ok-tint text-ok', moyen: 'bg-warn-tint text-warn', lourd: 'bg-bad-tint text-bad' }
     return (
       <div className="text-sm">
-        <span className={`rounded-full px-2.5 py-0.5 font-semibold ${couleurs[g.classe]}`}>
-          gravité : {g.classe}
-        </span>
-        <span className="ml-3 text-slate-600">zones : {g.zones?.join(', ') || '—'}</span>
-        <p className="mt-1 text-slate-500">{g.commentaire}</p>
+        <span className={`rounded-full px-2.5 py-0.5 font-semibold ${couleurs[g.classe]}`}>gravité : {g.classe}</span>
+        <span className="ml-3 text-encre/60">zones : {g.zones?.join(', ') || '—'}</span>
+        <p className="mt-1 text-encre/50">{g.commentaire}</p>
       </div>
     )
   }
@@ -356,15 +397,15 @@ function CorpsSortie({ categorie, s }) {
     return (
       <div className="text-sm">
         <div className={`mb-2 inline-block rounded-full px-2.5 py-0.5 font-semibold ${
-          p.couvert ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+          p.couvert ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
         }`}>
           {p.couvert ? `✓ couvert — garantie ${p.garantie}` : `✗ non couvert (${p.motif_refus})`}
         </div>
         <ul className="grid gap-1">
           {p.motivation?.map((m, i) => (
-            <li key={i} className="rounded bg-slate-50 px-2 py-1">
-              <span className="text-slate-700">{m.conclusion}</span>
-              <span className="ml-2 text-xs italic text-slate-400">{m.clause}</span>
+            <li key={i} className="rounded bg-surface-deep px-2 py-1">
+              <span className="text-encre/80">{m.conclusion}</span>
+              <span className="ml-2 text-xs italic text-encre/40">{m.clause}</span>
             </li>
           ))}
         </ul>
@@ -378,12 +419,12 @@ function CorpsSortie({ categorie, s }) {
           {s.detail_calcul.map((l, i) => {
             const total = l.etape.startsWith('MONTANT')
             return (
-              <tr key={i} className={total ? 'border-t-2 border-slate-300 font-bold' : 'border-t border-slate-100'}>
+              <tr key={i} className={total ? 'border-t-2 border-encre/25 font-bold' : 'border-t border-line'}>
                 <td className="py-1.5 pr-2">{l.etape}</td>
-                <td className={`py-1.5 pr-2 text-right tabular-nums ${l.valeur < 0 ? 'text-red-600' : ''}`}>
+                <td className={`py-1.5 pr-2 text-right tabular-nums ${l.valeur < 0 ? 'text-bad' : ''}`}>
                   {l.valeur != null ? dt(l.valeur) : '—'}
                 </td>
-                <td className="py-1.5 text-xs text-slate-400">{l.source}</td>
+                <td className="py-1.5 text-xs text-encre/40">{l.source}</td>
               </tr>
             )
           })}
@@ -391,37 +432,34 @@ function CorpsSortie({ categorie, s }) {
       </table>
     )
   }
-  if (categorie === 'hitl') {
-    return <p className="text-sm text-slate-700">🛡️ {s.routage}</p>
-  }
-  if (categorie === 'courrier' && s.courrier) {
-    return <p className="text-sm text-slate-600">Courrier généré : « {s.courrier.objet} »</p>
-  }
-  return <pre className="max-h-40 overflow-auto rounded bg-slate-50 p-2 text-xs">{JSON.stringify(s, null, 2)}</pre>
+  if (categorie === 'hitl') return <p className="text-sm text-encre/80">🛡️ {s.routage}</p>
+  if (categorie === 'courrier' && s.courrier)
+    return <p className="text-sm text-encre/60">Courrier généré : « {s.courrier.objet} »</p>
+  return <pre className="max-h-40 overflow-auto rounded bg-surface-deep p-2 text-xs">{JSON.stringify(s, null, 2)}</pre>
 }
 
 const Champ = ({ nom, valeur, fort }) => (
   <div>
-    <span className="text-xs uppercase tracking-wide text-slate-400">{nom}</span>
+    <span className="text-xs uppercase tracking-wide text-encre/40">{nom}</span>
     <div className={fort ? 'font-semibold' : ''}>{String(valeur ?? '—')}</div>
   </div>
 )
 
 function Courrier({ courrier, etat }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-lg border border-line bg-surface p-4">
       <div className="mb-2 flex items-center gap-2">
         <span>✉️</span>
         <span className="font-semibold">Email envoyé à l'assuré</span>
-        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+        <span className="rounded bg-surface-deep px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/50">
           envoi simulé
         </span>
         <BadgeMode mode={courrier.mode} />
         <span className="ml-auto"><BadgeEtat etat={etat} /></span>
       </div>
-      <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-        <div className="border-b border-slate-200 pb-2 text-sm font-semibold">{courrier.objet}</div>
-        <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-slate-700">{courrier.corps}</pre>
+      <div className="rounded-md border border-line bg-surface-deep p-4">
+        <div className="border-b border-line pb-2 text-sm font-semibold">{courrier.objet}</div>
+        <pre className="mt-2 whitespace-pre-wrap font-sans text-sm text-encre/75">{courrier.corps}</pre>
       </div>
     </div>
   )
@@ -459,10 +497,10 @@ function FormulaireDeclaration({ onFermer, onCree }) {
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 p-4" onClick={onFermer}>
-      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-encre/50 p-4" onClick={onFermer}>
+      <div className="w-full max-w-xl rounded-xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold">Déclarer un sinistre</h3>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-encre/50">
           Texte libre, français ou darija — l'agent FNOL structure la déclaration.
         </p>
         <textarea
@@ -470,36 +508,31 @@ function FormulaireDeclaration({ onFermer, onCree }) {
           onChange={(e) => setTexte(e.target.value)}
           placeholder={EXEMPLE_DECLARATION}
           rows={5}
-          className="mt-3 w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-sky-500 focus:outline-none"
+          className="mt-3 w-full rounded-md border border-line bg-creme p-3 text-sm focus:border-terracotta focus:outline-none"
         />
         <div className="mt-3 flex gap-3">
           <label className="flex-1 text-sm">
-            <span className="text-xs uppercase tracking-wide text-slate-400">N° de police</span>
+            <span className="text-xs uppercase tracking-wide text-encre/40">N° de police</span>
             <input value={police} onChange={(e) => setPolice(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-mono text-sm" />
+              className="mt-1 w-full rounded-md border border-line bg-creme p-2 font-mono text-sm" />
           </label>
           <label className="flex-1 text-sm">
-            <span className="text-xs uppercase tracking-wide text-slate-400">Montant devis joint (DT)</span>
+            <span className="text-xs uppercase tracking-wide text-encre/40">Montant devis joint (DT)</span>
             <input value={montant} onChange={(e) => setMontant(e.target.value)} type="number"
-              className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" />
+              className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm" />
           </label>
         </div>
-        {erreur && <p className="mt-2 text-sm text-red-600">{erreur}</p>}
+        {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onFermer} className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
+          <button onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60 hover:bg-surface-deep">
             Annuler
           </button>
-          <button
-            onClick={() => setTexte(EXEMPLE_DECLARATION)}
-            className="rounded-lg px-4 py-2 text-sm text-sky-700 hover:bg-sky-50"
-          >
+          <button onClick={() => setTexte(EXEMPLE_DECLARATION)}
+            className="rounded-md px-4 py-2 text-sm text-terracotta-deep hover:bg-terracotta-tint">
             Remplir l'exemple
           </button>
-          <button
-            onClick={soumettre}
-            disabled={!texte || !police || envoi}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
-          >
+          <button onClick={soumettre} disabled={!texte || !police || envoi}
+            className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
             {envoi ? 'Création…' : 'Créer le dossier'}
           </button>
         </div>

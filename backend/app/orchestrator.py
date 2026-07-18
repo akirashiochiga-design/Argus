@@ -25,6 +25,13 @@ CHAMPS_DOSSIER = (
     "position_couverture", "montant_recommande", "courrier",
 )
 
+# Valeurs par défaut pour rejouer proprement l'état lors d'un retour arrière.
+# montant_valide en est ABSENT : c'est une donnée humaine, pas une sortie d'agent.
+CHAMPS_DEFAUT = {
+    "donnees_fnol": {}, "gravite": None, "position_couverture": {},
+    "montant_estime": None, "montant_recommande": None, "courrier": {},
+}
+
 ETATS_TERMINES = ("regle", "refuse", "cloture")
 
 
@@ -137,6 +144,59 @@ def _etat_final(session: Session, dossier: Dossier) -> str:
     if tache.type == "validation_refus":
         return "regle" if tache.decision == "modifier" else "refuse"
     return "regle" if tache.decision in ("approuver", "modifier") else "refuse"
+
+
+def reculer(session: Session, dossier: Dossier) -> dict:
+    """Annule la dernière étape exécutée — utile pour rejouer un dossier en démo.
+
+    Retire le dernier Run, rejoue l'état des champs depuis les runs restants
+    (reconstruction déterministe, pas d'undo champ par champ fragile), et
+    supprime la tâche + le montant validé si l'étape annulée était la porte
+    humaine. Tracé dans l'audit comme tout le reste.
+    """
+    from sqlmodel import select
+
+    runs = session.exec(
+        select(Run).where(Run.dossier_id == dossier.id).order_by(Run.id)
+    ).all()
+    if not runs:
+        raise OrchestrationErreur(409, "Rien à annuler — le dossier est au début du pipeline")
+
+    dernier = runs[-1]
+    agent = session.get(Agent, dernier.agent_id)
+    avant = {"etat": dossier.etat, "etape": dossier.etape_courante, "agent": agent.nom if agent else None}
+
+    # Si on annule la porte humaine, on efface sa tâche et la décision associée
+    if agent and agent.categorie == "hitl":
+        for t in session.exec(select(Tache).where(Tache.dossier_id == dossier.id)).all():
+            session.delete(t)
+        dossier.montant_valide = None
+
+    session.delete(dernier)
+    restants = runs[:-1]
+
+    # Reconstruire l'état des champs à partir des runs conservés
+    for champ, defaut in CHAMPS_DEFAUT.items():
+        setattr(dossier, champ, defaut)
+    for r in restants:
+        if r.statut != "succes":
+            continue
+        for champ in CHAMPS_DOSSIER:
+            if champ in r.sorties and r.sorties[champ] is not None:
+                setattr(dossier, champ, r.sorties[champ])
+
+    dossier.etape_courante = max(0, dossier.etape_courante - 1)
+    dossier.etat = "recu" if dossier.etape_courante == 0 else "en_cours"
+
+    tracer(
+        session, acteur="humain:superviseur", acteur_type="humain",
+        type="retour_arriere", objet=f"dossier:{dossier.ref}",
+        avant=avant, apres={"etat": dossier.etat, "etape": dossier.etape_courante},
+        motif=f"annulation de l'étape « {agent.nom if agent else '?'} »",
+    )
+    session.commit()
+    session.refresh(dossier)
+    return {"resultat": "recule", "dossier": dossier.model_dump(), "agent_annule": agent.nom if agent else None}
 
 
 def decider(session: Session, tache: Tache, decision: str, validateur: str,

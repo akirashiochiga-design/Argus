@@ -17,11 +17,19 @@ import time
 from pathlib import Path
 from typing import Optional
 
-MODELE = os.environ.get("ARGUS_MODEL", "claude-opus-4-8")
+# Haiku 4.5 par défaut : le moins cher de l'API Anthropic (~1-2 cents/dossier,
+# vision comprise). Monter en gamme via ARGUS_MODEL=claude-sonnet-5 ou claude-opus-4-8.
+MODELE = os.environ.get("ARGUS_MODEL", "claude-haiku-4-5")
 
-# Prix $/MTok (claude-opus-4-8) pour le coût affiché au dashboard
-PRIX_INPUT = 5.00 / 1_000_000
-PRIX_OUTPUT = 25.00 / 1_000_000
+# Prix $/MTok (input, output) pour le coût affiché au dashboard
+PRIX_PAR_MODELE = {
+    "claude-haiku-4-5": (1.00, 5.00),
+    "claude-sonnet-5": (3.00, 15.00),
+    "claude-opus-4-8": (5.00, 25.00),
+}
+_prix = next((p for m, p in PRIX_PAR_MODELE.items() if MODELE.startswith(m)), (5.00, 25.00))
+PRIX_INPUT = _prix[0] / 1_000_000
+PRIX_OUTPUT = _prix[1] / 1_000_000
 
 # Racine du repo pour résoudre les chemins de pièces ("docs/samples/...")
 RACINE = Path(__file__).resolve().parent.parent.parent

@@ -1,18 +1,52 @@
-// Petits composants partagés : badges d'état, icônes d'agents, formatage.
+// Composants et tokens partagés, alignés sur le brand book Argus.
+// Encre / crème / terracotta ; états en teintes terreuses désaturées.
+
+// Le signe : « huit yeux, un seul regard ». Une lentille — pupille terracotta.
+// Trait unique, hérite de la couleur du texte (currentColor).
+export function Logo({ size = 28, className = '' }) {
+  const ticks = Array.from({ length: 8 }, (_, i) => {
+    const a = (i * Math.PI) / 4
+    const cx = 16, cy = 16
+    return (
+      <line key={i}
+        x1={cx + 11 * Math.cos(a)} y1={cy + 11 * Math.sin(a)}
+        x2={cx + 8.4 * Math.cos(a)} y2={cy + 8.4 * Math.sin(a)} />
+    )
+  })
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <circle cx="16" cy="16" r="12" />
+        <circle cx="16" cy="16" r="6" />
+        {ticks}
+      </g>
+      <circle cx="16" cy="16" r="3.1" fill="#D97757" />
+    </svg>
+  )
+}
+
+// Le wordmark : « argus. » bas de casse, point terracotta.
+export function Wordmark({ className = '' }) {
+  return (
+    <span className={`font-semibold tracking-tight ${className}`}>
+      argus<span className="text-terracotta">.</span>
+    </span>
+  )
+}
 
 export const ETAT_STYLE = {
-  recu: { classe: 'bg-slate-200 text-slate-700', libelle: 'reçu' },
-  en_cours: { classe: 'bg-blue-100 text-blue-800', libelle: 'en cours' },
-  attente_validation: { classe: 'bg-amber-100 text-amber-800', libelle: 'attente validation' },
-  regle: { classe: 'bg-emerald-100 text-emerald-800', libelle: 'réglé' },
-  refuse: { classe: 'bg-red-100 text-red-800', libelle: 'refusé' },
-  cloture: { classe: 'bg-slate-300 text-slate-600', libelle: 'clôturé' },
+  recu: { chip: 'bg-surface-deep text-encre/70', barre: 'bg-[#B8AF9E]', libelle: 'reçu' },
+  en_cours: { chip: 'bg-[#E4DCCB] text-encre', barre: 'bg-[#8A8072]', libelle: 'en cours' },
+  attente_validation: { chip: 'bg-warn-tint text-warn', barre: 'bg-warn', libelle: 'attente validation' },
+  regle: { chip: 'bg-ok-tint text-ok', barre: 'bg-ok', libelle: 'réglé' },
+  refuse: { chip: 'bg-bad-tint text-bad', barre: 'bg-bad', libelle: 'refusé' },
+  cloture: { chip: 'bg-encre text-creme', barre: 'bg-encre', libelle: 'clôturé' },
 }
 
 export function BadgeEtat({ etat }) {
   const s = ETAT_STYLE[etat] ?? ETAT_STYLE.recu
   return (
-    <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${s.classe}`}>
+    <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${s.chip}`}>
       {s.libelle}
     </span>
   )
@@ -20,18 +54,18 @@ export function BadgeEtat({ etat }) {
 
 export const AGENT_ICONE = {
   fnol: '📝', extraction: '📄', vision: '📷',
-  garanties: '📐', indemnite: '🧮', hitl: '🛡️', courrier: '✉️',
+  garanties: '📐', indemnite: '🧮', hitl: '🛡️', courrier: '✉️', assistant: '✦',
 }
 
 export function BadgeMode({ mode }) {
   if (!mode) return null
   const styles = {
-    llm: 'bg-violet-100 text-violet-700',
-    simulation: 'bg-slate-200 text-slate-600',
-    mixte: 'bg-violet-50 text-violet-600',
-    deterministe: 'bg-teal-100 text-teal-700',
+    llm: 'bg-terracotta-tint text-terracotta-deep',
+    mixte: 'bg-terracotta-tint text-terracotta-deep',
+    simulation: 'bg-surface-deep text-encre/50',
+    deterministe: 'bg-ok-tint text-ok',
   }
-  const libelles = { llm: 'LLM', simulation: 'simulé', mixte: 'LLM partiel', deterministe: 'déterministe' }
+  const libelles = { llm: 'IA', simulation: 'simulé', mixte: 'IA partiel', deterministe: 'déterministe' }
   return (
     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[mode] ?? ''}`}>
       {libelles[mode] ?? mode}

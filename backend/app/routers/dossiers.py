@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from ..audit import tracer
 from ..db import get_session
 from ..models import Dossier, Police, Run, Workflow
-from ..orchestrator import OrchestrationErreur, avancer
+from ..orchestrator import OrchestrationErreur, avancer, reculer
 
 router = APIRouter(tags=["dossiers"])
 
@@ -89,3 +89,30 @@ def executer_etape(dossier_id: int, session: Session = Depends(get_session)) -> 
         return avancer(session, dossier)
     except OrchestrationErreur as e:
         raise HTTPException(e.code, e.detail)
+
+
+@router.post("/dossiers/{dossier_id}/reculer")
+def reculer_etape(dossier_id: int, session: Session = Depends(get_session)) -> dict:
+    """Annule la dernière étape (retour arrière). Rejoue proprement l'état."""
+    dossier = session.get(Dossier, dossier_id)
+    if not dossier:
+        raise HTTPException(404, "Dossier introuvable")
+    try:
+        return reculer(session, dossier)
+    except OrchestrationErreur as e:
+        raise HTTPException(e.code, e.detail)
+
+
+@router.post("/dossiers/{dossier_id}/rejouer")
+def rejouer(dossier_id: int, session: Session = Depends(get_session)) -> dict:
+    """Remet un dossier à l'état initial (reçu, étape 0) — rejeu complet en démo."""
+    dossier = session.get(Dossier, dossier_id)
+    if not dossier:
+        raise HTTPException(404, "Dossier introuvable")
+    # On recule jusqu'au début
+    while True:
+        try:
+            reculer(session, dossier)
+        except OrchestrationErreur:
+            break
+    return {"resultat": "rejoue", "dossier": dossier.model_dump()}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { AGENT_ICONE } from '../ui'
+import { AGENT_ICONE, BadgeMode } from '../ui'
 
 export default function Studio() {
   const [templates, setTemplates] = useState([])
   const [agents, setAgents] = useState([])
   const [workflow, setWorkflow] = useState(null)
-  const [creation, setCreation] = useState(null) // template sélectionné pour le formulaire
+  const [categories, setCategories] = useState({})
+  const [creation, setCreation] = useState(null) // template pour le formulaire modal
   const [message, setMessage] = useState(null)
 
   const charger = async () => {
@@ -18,7 +19,10 @@ export default function Studio() {
     setWorkflow(w[0] ?? null)
   }
 
-  useEffect(() => { charger() }, [])
+  useEffect(() => {
+    charger()
+    api.categoriesStudio().then(setCategories).catch(() => {})
+  }, [])
 
   const agentsDuPipeline = new Set((workflow?.etapes ?? []).map((e) => e.agent_id))
 
@@ -35,49 +39,50 @@ export default function Studio() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold">Studio d'agents</h2>
-        <span className="text-sm text-slate-500">
-          créer depuis un template métier — sans code, gouvernance incluse
-        </span>
+        <span className="text-sm text-encre/50">décris un agent, il se construit — sans code, gouvernance incluse</span>
       </div>
 
       {message && (
-        <div className={`mb-4 rounded-lg px-4 py-2 text-sm ${
-          message.ton === 'succes'
-            ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border border-red-200 bg-red-50 text-red-700'
+        <div className={`mb-4 rounded-md px-4 py-2 text-sm ${
+          message.ton === 'succes' ? 'border border-ok/30 bg-ok-tint text-ok' : 'border border-bad/30 bg-bad-tint text-bad'
         }`}>
           {message.texte}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,1fr)_minmax(0,1.6fr)]">
+      {/* ---- création depuis un prompt (la vedette) ---- */}
+      <CreateurPrompt
+        categories={categories}
+        onCree={async (nom) => {
+          await charger()
+          setMessage({ ton: 'succes', texte: `Agent « ${nom} » créé depuis votre description — publiez-le pour l'utiliser.` })
+        }}
+      />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,1fr)_minmax(0,1.6fr)]">
         {/* templates */}
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            Templates métier
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">
+            Ou partez d'un template métier
           </h3>
           <div className="grid gap-3">
             {templates.map((t) => (
-              <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div key={t.id} className="rounded-lg border border-line bg-surface p-4">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{AGENT_ICONE[t.categorie] ?? '⚙️'}</span>
                   <span className="font-medium">{t.nom}</span>
-                  <button
-                    onClick={() => setCreation(t)}
-                    className="ml-auto rounded-lg bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700"
-                  >
-                    Créer un agent
+                  <button onClick={() => setCreation(t)}
+                    className="ml-auto rounded-md bg-encre px-3 py-1 text-xs font-semibold text-creme hover:bg-encre/85">
+                    Créer
                   </button>
                 </div>
-                <p className="mt-2 line-clamp-3 text-xs text-slate-500">{t.instructions_defaut}</p>
+                <p className="mt-2 line-clamp-3 text-xs text-encre/50">{t.instructions_defaut}</p>
                 {Object.keys(t.garde_fous_defaut ?? {}).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {Object.keys(t.garde_fous_defaut).map((g) => (
-                      <span key={g} className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-medium text-teal-700">
-                        🔒 {g}
-                      </span>
+                      <span key={g} className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-medium text-ok">🔒 {g}</span>
                     ))}
                   </div>
                 )}
@@ -87,22 +92,20 @@ export default function Studio() {
 
           {workflow && (
             <div className="mt-6">
-              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
+              <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">
                 Pipeline live — {workflow.nom}
               </h3>
-              <ol className="grid gap-1 rounded-xl border border-slate-200 bg-white p-3">
+              <ol className="grid gap-1 rounded-lg border border-line bg-surface p-3">
                 {workflow.etapes.map((e, i) => {
                   const a = agents.find((x) => x.id === e.agent_id)
                   return (
                     <li key={i} className="flex items-center gap-2 text-sm">
-                      <span className="w-5 text-right text-xs text-slate-400">{i + 1}.</span>
+                      <span className="w-5 text-right text-xs text-encre/40">{i + 1}.</span>
                       <span>{e.type === 'porte_humaine' ? '🛡️' : AGENT_ICONE[a?.categorie] ?? '⚙️'}</span>
                       <span>{a?.nom}</span>
-                      <span className="text-xs text-slate-400">v{a?.version}</span>
+                      <span className="text-xs text-encre/40">v{a?.version}</span>
                       {e.type === 'porte_humaine' && (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
-                          porte humaine
-                        </span>
+                        <span className="rounded bg-warn-tint px-1.5 py-0.5 text-[10px] font-semibold text-warn">porte humaine</span>
                       )}
                     </li>
                   )
@@ -114,28 +117,15 @@ export default function Studio() {
 
         {/* agents déployés */}
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">
-            Agents ({agents.length})
-          </h3>
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">Agents ({agents.length})</h3>
           <div className="grid gap-2">
             {agents.map((a) => (
-              <CarteAgent
-                key={a.id}
-                agent={a}
-                dansPipeline={agentsDuPipeline.has(a.id)}
+              <CarteAgent key={a.id} agent={a} dansPipeline={agentsDuPipeline.has(a.id)}
                 onPublier={() => agir(() => api.publierAgent(a.id), `« ${a.nom} » est maintenant live (tracé dans l'audit).`)}
-                onBrancher={() =>
-                  agir(
-                    () => api.affecterAgent(workflow.id, a.id),
-                    `« ${a.nom} » est branché dans le pipeline P5 — effectif immédiatement.`,
-                  )
-                }
-                onSeuils={(seuils) =>
-                  agir(
-                    () => api.modifierAgent(a.id, { seuils }),
-                    `Seuils de « ${a.nom} » mis à jour → nouvelle version, tracée dans l'audit.`,
-                  )
-                }
+                onBrancher={() => agir(() => api.affecterAgent(workflow.id, a.id),
+                  `« ${a.nom} » est branché dans le pipeline P5 — effectif immédiatement.`)}
+                onSeuils={(seuils) => agir(() => api.modifierAgent(a.id, { seuils }),
+                  `Seuils de « ${a.nom} » mis à jour → nouvelle version, tracée dans l'audit.`)}
               />
             ))}
           </div>
@@ -143,101 +133,200 @@ export default function Studio() {
       </div>
 
       {creation && (
-        <FormulaireCreation
-          template={creation}
-          onFermer={() => setCreation(null)}
+        <FormulaireTemplate template={creation} onFermer={() => setCreation(null)}
           onCree={async (nom) => {
             setCreation(null)
             await charger()
             setMessage({ ton: 'succes', texte: `Agent « ${nom} » créé en brouillon — publiez-le pour l'utiliser.` })
-          }}
-        />
+          }} />
       )}
     </div>
   )
 }
 
+/* ============ créateur d'agent depuis un prompt (assisté IA) ============ */
+
+function CreateurPrompt({ categories, onCree }) {
+  const [brief, setBrief] = useState('')
+  const [nom, setNom] = useState('')
+  const [categorie, setCategorie] = useState('assistant')
+  const [instructions, setInstructions] = useState('')
+  const [mode, setMode] = useState(null) // 'llm' | 'simulation'
+  const [genere, setGenere] = useState(false)
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState(null)
+
+  const generer = async () => {
+    if (!brief.trim()) return
+    setGenere(true)
+    setErreur(null)
+    try {
+      const r = await api.genererInstructions(brief)
+      setInstructions(r.instructions)
+      setMode(r.mode)
+      if (!nom) setNom(brief.trim().charAt(0).toUpperCase() + brief.trim().slice(1, 40))
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setGenere(false)
+    }
+  }
+
+  const creer = async () => {
+    setEnvoi(true)
+    setErreur(null)
+    try {
+      const a = await api.creerAgentPersonnalise({ nom, categorie, instructions })
+      onCree(a.nom)
+      setBrief(''); setNom(''); setInstructions(''); setMode(null)
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-terracotta/30 bg-terracotta-tint/40 p-5">
+      <div className="flex items-center gap-2">
+        <span className="text-lg text-terracotta">✦</span>
+        <h3 className="font-semibold">Créer un agent personnalisé</h3>
+        <span className="text-xs text-encre/50">décrivez ce que l'agent doit faire, l'IA rédige la consigne</span>
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2 md:flex-row">
+        <input
+          value={brief}
+          onChange={(e) => setBrief(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && generer()}
+          placeholder="ex. un agent qui détecte les incohérences entre la déclaration et les photos"
+          className="flex-1 rounded-md border border-line bg-surface p-2.5 text-sm focus:border-terracotta focus:outline-none"
+        />
+        <button
+          onClick={generer}
+          disabled={!brief.trim() || genere}
+          className="whitespace-nowrap rounded-md bg-terracotta px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
+        >
+          {genere ? '✦ Génération…' : '✦ Générer les instructions'}
+        </button>
+      </div>
+
+      {instructions && (
+        <div className="mt-3 grid gap-3 rounded-lg border border-line bg-surface p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-encre/40">Instructions proposées</span>
+            <BadgeMode mode={mode} />
+            <span className="text-[11px] text-encre/40">modifiables avant création</span>
+          </div>
+          <textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={7}
+            className="w-full rounded-md border border-line bg-creme p-3 text-sm leading-relaxed focus:border-terracotta focus:outline-none"
+          />
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex-1 text-sm">
+              <span className="text-xs uppercase tracking-wide text-encre/40">Nom de l'agent</span>
+              <input value={nom} onChange={(e) => setNom(e.target.value)}
+                className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm" />
+            </label>
+            <label className="text-sm">
+              <span className="text-xs uppercase tracking-wide text-encre/40">Rôle dans la plateforme</span>
+              <select value={categorie} onChange={(e) => setCategorie(e.target.value)}
+                className="mt-1 block w-64 rounded-md border border-line bg-creme p-2 text-sm">
+                {Object.entries(categories).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </label>
+            <button onClick={creer} disabled={!nom || !instructions || envoi}
+              className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
+              {envoi ? 'Création…' : "Créer l'agent (draft)"}
+            </button>
+          </div>
+          <div className="rounded-md bg-ok-tint px-3 py-2 text-xs text-ok">
+            🔒 Garde-fou imposé : cet agent ne peut ni décider d'un montant, ni contourner la validation
+            humaine — quelle que soit la consigne saisie. Les rôles « garanties », « indemnité » et la porte
+            de validation ne sont pas créables depuis un prompt.
+          </div>
+        </div>
+      )}
+      {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}
+    </div>
+  )
+}
+
+/* ============ carte d'un agent déployé ============ */
+
 function CarteAgent({ agent: a, dansPipeline, onPublier, onBrancher, onSeuils }) {
   const [editionSeuil, setEditionSeuil] = useState(false)
   const [seuil, setSeuil] = useState(a.seuils?.seuil_validation ?? '')
   const aDesSeuils = a.seuils && Object.keys(a.seuils).length > 0
+  const perso = a.garde_fous?.origine === 'prompt_studio'
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+    <div className={`rounded-lg border bg-surface px-4 py-3 ${perso ? 'border-terracotta/40' : 'border-line'}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span>{AGENT_ICONE[a.categorie] ?? '⚙️'}</span>
         <span className="text-sm font-semibold">{a.nom}</span>
-        <span className="text-xs text-slate-400">v{a.version}</span>
+        <span className="text-xs text-encre/40">v{a.version}</span>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-          a.statut === 'live' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-        }`}>
-          {a.statut}
-        </span>
-        {dansPipeline && (
-          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-800">
-            dans le pipeline
-          </span>
-        )}
+          a.statut === 'live' ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/60'
+        }`}>{a.statut}</span>
+        {perso && <span className="rounded-full bg-terracotta-tint px-2 py-0.5 text-xs font-medium text-terracotta-deep">✦ perso</span>}
+        {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">dans le pipeline</span>}
         {a.garde_fous?.deterministe && (
-          <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700">
-            déterministe — pas de LLM
-          </span>
+          <span className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-semibold text-ok">déterministe — pas de LLM</span>
         )}
         {a.garde_fous?.non_desactivable && (
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-            🔒 non désactivable
-          </span>
+          <span className="rounded bg-bad-tint px-1.5 py-0.5 text-[10px] font-semibold text-bad">🔒 non désactivable</span>
         )}
         <div className="ml-auto flex gap-2">
           {a.statut === 'draft' && (
-            <button onClick={onPublier}
-              className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-500">
+            <button onClick={onPublier} className="rounded-md bg-terracotta px-3 py-1 text-xs font-semibold text-white hover:bg-terracotta-deep">
               Publier
             </button>
           )}
-          {a.statut === 'live' && !dansPipeline && (
-            <button onClick={onBrancher}
-              className="rounded-lg border border-sky-400 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50">
+          {a.statut === 'live' && !dansPipeline && ['fnol', 'extraction', 'vision', 'garanties', 'indemnite', 'courrier'].includes(a.categorie) && (
+            <button onClick={onBrancher} className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/70 hover:bg-surface-deep">
               Brancher au pipeline
             </button>
           )}
           {aDesSeuils && (
             <button onClick={() => setEditionSeuil(!editionSeuil)}
-              className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+              className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/60 hover:bg-surface-deep">
               Seuils
             </button>
           )}
         </div>
       </div>
       {aDesSeuils && !editionSeuil && (
-        <div className="mt-1.5 text-xs text-slate-500">
+        <div className="mt-1.5 text-xs text-encre/50">
           seuil de validation obligatoire : <b>{a.seuils.seuil_validation} DT</b>
           {a.seuils.plafond_auto != null && <> · plafond auto : <b>{a.seuils.plafond_auto} DT</b></>}
         </div>
       )}
       {editionSeuil && (
-        <div className="mt-2 flex items-end gap-2 rounded-lg bg-slate-50 p-2">
+        <div className="mt-2 flex flex-wrap items-end gap-2 rounded-md bg-surface-deep p-2">
           <label className="text-xs">
-            <span className="uppercase tracking-wide text-slate-400">Seuil de validation (DT)</span>
+            <span className="uppercase tracking-wide text-encre/40">Seuil de validation (DT)</span>
             <input type="number" value={seuil} onChange={(e) => setSeuil(e.target.value)}
-              className="mt-1 block w-32 rounded border border-slate-300 p-1.5 text-sm" />
+              className="mt-1 block w-32 rounded border border-line bg-creme p-1.5 text-sm" />
           </label>
-          <button
-            onClick={() => { onSeuils({ ...a.seuils, seuil_validation: Number(seuil) }); setEditionSeuil(false) }}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
-          >
+          <button onClick={() => { onSeuils({ ...a.seuils, seuil_validation: Number(seuil) }); setEditionSeuil(false) }}
+            className="rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme">
             Enregistrer (v{a.version + 1})
           </button>
-          <span className="pb-1 text-[10px] text-slate-400">
-            changement de gouvernance → versionné + audité
-          </span>
+          <span className="pb-1 text-[10px] text-encre/40">changement de gouvernance → versionné + audité</span>
         </div>
       )}
     </div>
   )
 }
 
-function FormulaireCreation({ template, onFermer, onCree }) {
+/* ============ création depuis un template (modal) ============ */
+
+function FormulaireTemplate({ template, onFermer, onCree }) {
   const [nom, setNom] = useState('')
   const [instructions, setInstructions] = useState(template.instructions_defaut)
   const [seuil, setSeuil] = useState('1000')
@@ -250,9 +339,7 @@ function FormulaireCreation({ template, onFermer, onCree }) {
     setErreur(null)
     try {
       await api.creerAgent({
-        nom,
-        template_id: template.id,
-        instructions,
+        nom, template_id: template.id, instructions,
         seuils: estIndemnite && seuil ? { seuil_validation: Number(seuil) } : {},
       })
       onCree(nom)
@@ -263,38 +350,35 @@ function FormulaireCreation({ template, onFermer, onCree }) {
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/50 p-4" onClick={onFermer}>
-      <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-encre/50 p-4" onClick={onFermer}>
+      <div className="w-full max-w-xl rounded-xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold">Nouvel agent — {template.nom}</h3>
         <label className="mt-4 block text-sm">
-          <span className="text-xs uppercase tracking-wide text-slate-400">Nom de l'agent</span>
-          <input value={nom} onChange={(e) => setNom(e.target.value)}
-            placeholder="ex. Règlement auto — bris de glace"
-            className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" />
+          <span className="text-xs uppercase tracking-wide text-encre/40">Nom de l'agent</span>
+          <input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="ex. Règlement auto — bris de glace"
+            className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm" />
         </label>
         <label className="mt-3 block text-sm">
-          <span className="text-xs uppercase tracking-wide text-slate-400">Instructions</span>
+          <span className="text-xs uppercase tracking-wide text-encre/40">Instructions</span>
           <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4}
-            className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" />
+            className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm" />
         </label>
         {estIndemnite && (
           <label className="mt-3 block text-sm">
-            <span className="text-xs uppercase tracking-wide text-slate-400">Seuil de validation humaine (DT)</span>
+            <span className="text-xs uppercase tracking-wide text-encre/40">Seuil de validation humaine (DT)</span>
             <input type="number" value={seuil} onChange={(e) => setSeuil(e.target.value)}
-              className="mt-1 w-40 rounded-lg border border-slate-300 p-2 text-sm" />
+              className="mt-1 w-40 rounded-md border border-line bg-creme p-2 text-sm" />
           </label>
         )}
-        <div className="mt-3 rounded-lg bg-teal-50 p-2 text-xs text-teal-800">
+        <div className="mt-3 rounded-md bg-ok-tint p-2 text-xs text-ok">
           🔒 Garde-fous hérités du template (non désactivables) :{' '}
           {Object.keys(template.garde_fous_defaut ?? {}).join(', ') || 'aucun'}
         </div>
-        {erreur && <p className="mt-2 text-sm text-red-600">{erreur}</p>}
+        {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onFermer} className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">
-            Annuler
-          </button>
+          <button onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60 hover:bg-surface-deep">Annuler</button>
           <button onClick={soumettre} disabled={!nom || envoi}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
+            className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
             {envoi ? 'Création…' : "Créer l'agent (draft)"}
           </button>
         </div>

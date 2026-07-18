@@ -30,11 +30,17 @@ export const api = {
   listerWorkflows: () => request('/workflows'),
   affecterAgent: (workflowId, agentId) =>
     post(`/workflows/${workflowId}/affecter`, { agent_id: agentId }),
+  // Studio — agent personnalisé depuis un prompt
+  categoriesStudio: () => request('/studio/categories'),
+  genererInstructions: (brief) => post('/studio/generer-instructions', { brief }),
+  creerAgentPersonnalise: (corps) => post('/studio/agents-personnalises', corps),
   // Pipeline
   listerDossiers: () => request('/dossiers'),
   lireDossier: (id) => request(`/dossiers/${id}`),
   declarerSinistre: (corps) => post('/dossiers', corps),
   executerEtape: (id) => post(`/dossiers/${id}/executer`),
+  reculerEtape: (id) => post(`/dossiers/${id}/reculer`),
+  rejouerDossier: (id) => post(`/dossiers/${id}/rejouer`),
   // Approbations
   listerTaches: (etat) => request(`/taches${etat ? `?etat=${etat}` : ''}`),
   deciderTache: (id, corps) => post(`/taches/${id}/decider`, corps),
