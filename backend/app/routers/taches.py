@@ -10,16 +10,20 @@ from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models import Dossier, Police, Tache
-from ..orchestrator import OrchestrationErreur, decider
+from ..orchestrator import OrchestrationErreur, decider, relancer
 
 router = APIRouter(tags=["approbations"])
 
 
 class Decision(BaseModel):
-    decision: str  # approuver | modifier | refuser
+    decision: str  # approuver | modifier | refuser | sans_suite
     validateur: str
     montant: Optional[float] = None
     motif: Optional[str] = None
+
+
+class Relance(BaseModel):
+    validateur: str
 
 
 @router.get("/taches")
@@ -49,5 +53,17 @@ def decider_tache(tache_id: int, corps: Decision, session: Session = Depends(get
     try:
         return decider(session, tache, corps.decision, corps.validateur,
                        montant=corps.montant, motif=corps.motif)
+    except OrchestrationErreur as e:
+        raise HTTPException(e.code, e.detail)
+
+
+@router.post("/taches/{tache_id}/relancer")
+def relancer_tache(tache_id: int, corps: Relance, session: Session = Depends(get_session)) -> dict:
+    """Envoie une relance (email simulé) à l'assuré sur une tâche 'pièce manquante'."""
+    tache = session.get(Tache, tache_id)
+    if not tache:
+        raise HTTPException(404, "Tâche introuvable")
+    try:
+        return relancer(session, tache, corps.validateur)
     except OrchestrationErreur as e:
         raise HTTPException(e.code, e.detail)

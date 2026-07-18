@@ -165,13 +165,29 @@ trouve aucune pièce chiffrée (`dossier.montant_estime is None`), il retourne
 `recommandation: "demande_piece"` au lieu d'un montant à 0. L'agent 6 (hitl)
 détecte ça via `_derniere_recommandation()` et crée une `Tache` de type
 `demande_piece` — la file d'approbation affiche alors une carte dédiée avec
-deux issues réelles : **« Pièce reçue »** (décision `modifier`, montant saisi
-manuellement → `réglé`) ou **« Clôturer sans suite »** (décision
-`sans_suite`, motif obligatoire → dossier `cloture`, lettre de clôture
-dédiée générée par `courrier.py`). Le dossier seed `SIN-2026-004` (police
-couverte, aucune pièce chiffrée jointe) est laissé à l'état `recu` pour
-démontrer cette porte en direct pendant la démo — ne pas l'exécuter dans le
-seed lui-même, ça casserait la mise en scène.
+trois actions réelles :
+- **📧 Relancer l'assuré** (`POST /taches/{id}/relancer`, `orchestrator.relancer()`)
+  — envoie un email de relance (LLM ou repli déterministe, même pattern que
+  `courrier.py`), l'ajoute à l'historique `Tache.relances` (append, jamais
+  écrasé), trace un événement `relance_assure`. Ne décide rien : la tâche
+  reste `en_attente`, on peut relancer plusieurs fois.
+- **✎ Pièce reçue** (décision `modifier`, montant saisi manuellement → `réglé`).
+- **🚫 Clôturer sans suite** (décision `sans_suite`, motif obligatoire →
+  dossier `cloture`, lettre de clôture dédiée générée par `courrier.py`).
+  Le motif se pré-remplit automatiquement avec la date de la dernière
+  relance envoyée (`ouvrirClotureSansSuite()` dans `Approbations.jsx`),
+  pour que la clôture référence toujours la tentative de relance.
+
+C'est la traduction "hackathon-démontrable" de *"relance email au bout d'un
+certain temps sans réponse"* : comme un vrai délai ne peut pas s'écouler en
+direct pendant une démo, le geste (relancer, puis constater l'absence de
+réponse, puis clôturer en le citant) reste manuel mais réel — rien n'est
+préfabriqué, l'email est vraiment généré et vraiment tracé.
+
+Le dossier seed `SIN-2026-004` (police couverte, aucune pièce chiffrée
+jointe) est laissé à l'état `recu` pour démontrer cette porte en direct
+pendant la démo — ne pas l'exécuter dans le seed lui-même, ça casserait la
+mise en scène.
 
 ## 8. LLM — modèle, clé API, mode simulation
 
@@ -186,12 +202,13 @@ sa sortie (badge gris "simulé" dans l'UI vs badge terracotta "IA" avec une
 vraie clé). C'est un choix de robustesse assumé, pas un bug : la démo ne
 peut pas planter si le Wi-Fi tombe.
 
-**Pour obtenir et brancher une vraie clé (crédits hackathon)** :
-1. Aller sur **console.anthropic.com**, créer/rejoindre l'organisation.
-2. Si les organisateurs ont donné un code/lien de crédits hackathon,
-   le réclamer via Settings → Billing (le libellé exact dépend de l'offre —
-   suivre les instructions précises données par les organisateurs, ce
-   handoff ne peut pas connaître leur process spécifique).
+**Pour obtenir et brancher une vraie clé** — pas de "crédits hackathon"
+spécifiques, juste le crédit d'essai standard qu'Anthropic offre à toute
+nouvelle inscription (aucun code organisateur à chercher) :
+1. Aller sur **console.anthropic.com**, créer un compte/organisation.
+2. Le crédit d'essai offert à l'inscription est appliqué automatiquement.
+   Avec Haiku (~1-2 centimes par dossier complet), il couvre largement
+   toute la durée du hackathon.
 3. Créer une clé API (section "API Keys" de la console).
 4. `cp backend/.env.example backend/.env`, coller la clé dans
    `ANTHROPIC_API_KEY=sk-ant-...`.

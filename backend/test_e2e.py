@@ -203,6 +203,28 @@ verifier("état final = cloture (ni réglé ni refusé)", d["etat"] == "cloture"
 verifier("montant validé reste vide", d["montant_valide"] is None)
 verifier("courrier de clôture généré", "clôturé" in d["courrier"].get("objet", "").lower(), d["courrier"])
 
+print("=== 11. Relance de l'assuré avant clôture sans suite ===")
+appel("POST", "/admin/reseed")
+d4b = next(x for x in appel("GET", "/dossiers") if x["ref"] == "SIN-2026-004")
+executer_pipeline(d4b["id"])
+t6 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-004")
+r = appel("POST", f"/taches/{t6['id']}/relancer", {"validateur": "Selma (superviseure)"})
+verifier("relance envoyée, message généré (email simulé ou IA)",
+         len(r["tache"]["relances"]) == 1 and bool(r["tache"]["relances"][0].get("objet")))
+r2 = appel("POST", f"/taches/{t6['id']}/relancer", {"validateur": "Selma (superviseure)"})
+verifier("une deuxième relance s'ajoute à l'historique (pas de remplacement)",
+         len(r2["tache"]["relances"]) == 2)
+r_apres_decision = appel("POST", f"/taches/{t6['id']}/decider",
+                          {"decision": "sans_suite", "validateur": "Selma (superviseure)",
+                           "motif": "Relance envoyée le 20/07, aucune réponse sous 15 jours"})
+r3 = appel("POST", f"/taches/{t6['id']}/relancer", {"validateur": "Selma (superviseure)"})
+verifier("relancer une tâche déjà décidée est refusé (409)", r3.get("__erreur__") == 409)
+executer_pipeline(d4b["id"])
+d = appel("GET", f"/dossiers/{d4b['id']}")["dossier"]
+verifier("état final = cloture", d["etat"] == "cloture", d["etat"])
+audit = appel("GET", "/audit?limit=500")
+verifier("relance tracée dans l'audit", any(e["type"] == "relance_assure" for e in audit))
+
 print()
 if ECHECS:
     print(f"{len(ECHECS)} ECHEC(S) : {ECHECS}")

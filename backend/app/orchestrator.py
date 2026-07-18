@@ -15,9 +15,9 @@ from typing import Optional
 
 from sqlmodel import Session
 
-from . import agents
+from . import agents, llm
 from .audit import tracer
-from .models import Agent, Dossier, Run, Tache, Workflow
+from .models import Agent, Dossier, Police, Run, Tache, Workflow
 
 # Champs de sortie d'agent que l'orchestrateur reporte sur le dossier
 CHAMPS_DOSSIER = (
@@ -204,6 +204,69 @@ def reculer(session: Session, dossier: Dossier) -> dict:
     session.commit()
     session.refresh(dossier)
     return {"resultat": "recule", "dossier": dossier.model_dump(), "agent_annule": agent.nom if agent else None}
+
+
+def relancer(session: Session, tache: Tache, validateur: str) -> dict:
+    """Envoie une relance à l'assuré sur une tâche 'demande_piece' (email simulé).
+
+    N'est PAS une décision : la tâche reste 'en_attente'. C'est l'étape
+    intermédiaire de la capacité d'adaptation — avant de clôturer un dossier
+    sans suite, on a d'abord tenté de relancer l'assuré. L'historique des
+    relances est conservé sur la tâche et sert de justification quand le
+    gestionnaire clôture ensuite (décision 'sans_suite').
+    """
+    if tache.etat == "decidee":
+        raise OrchestrationErreur(409, "Tâche déjà décidée — plus de relance possible")
+    if tache.type != "demande_piece":
+        raise OrchestrationErreur(409, "La relance ne s'applique qu'aux tâches 'demande_piece'")
+
+    dossier = session.get(Dossier, tache.dossier_id)
+    police = session.get(Police, dossier.police_id)
+    system = (
+        "Tu rédiges un court email de relance pour un assuré qui n'a pas encore "
+        "transmis la facture ou le devis chiffré nécessaire au traitement de son "
+        "sinistre. Ton courtois, rappelle la référence du dossier, précise ce qui "
+        "manque, donne un délai de réponse de 15 jours avant clôture sans suite. "
+        "Réponds au format : première ligne = objet, ligne vide, puis le corps."
+    )
+    prompt = (
+        f"Assuré : {police.assure_nom} — Dossier {dossier.ref}. "
+        f"Pièce manquante : facture ou devis chiffré des réparations."
+    )
+    try:
+        r = llm.generer_texte(system, prompt, max_tokens=400)
+        lignes = r["texte"].split("\n", 1)
+        message = {
+            "objet": lignes[0].removeprefix("Objet :").strip(),
+            "corps": lignes[1].strip() if len(lignes) > 1 else r["texte"],
+            "mode": "llm",
+        }
+    except llm.LLMIndisponible:
+        message = {
+            "objet": f"Sinistre {dossier.ref} — pièce manquante",
+            "corps": (
+                f"Madame, Monsieur {police.assure_nom},\n\n"
+                f"Nous n'avons pas encore reçu la facture ou le devis chiffré nécessaire au "
+                f"traitement de votre dossier {dossier.ref}.\n\n"
+                "Merci de nous la transmettre sous 15 jours ; passé ce délai, nous serons "
+                "contraints de clôturer le dossier sans suite.\n\nCordialement,\nService Sinistres"
+            ),
+            "mode": "simulation",
+        }
+
+    relance = {"horodatage": datetime.now(timezone.utc).isoformat(), **message}
+    tache.relances = [*tache.relances, relance]
+    session.add(tache)
+
+    tracer(
+        session, acteur=f"humain:{validateur}", acteur_type="humain",
+        type="relance_assure", objet=f"tache:{tache.id}",
+        avant={"nb_relances": len(tache.relances) - 1},
+        apres={"nb_relances": len(tache.relances), "objet_email": message["objet"]},
+    )
+    session.commit()
+    session.refresh(tache)
+    return {"tache": tache.model_dump()}
 
 
 def decider(session: Session, tache: Tache, decision: str, validateur: str,

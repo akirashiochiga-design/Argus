@@ -49,6 +49,16 @@ export default function Approbations({ onNavigate }) {
     }
   }
 
+  const relancerAssure = async (tache) => {
+    setMessage(null)
+    try {
+      await api.relancerTache(tache.id, validateur)
+      await charger()
+    } catch (e) {
+      setMessage({ ton: 'erreur', texte: e.message })
+    }
+  }
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -80,7 +90,7 @@ export default function Approbations({ onNavigate }) {
 
       <div className="grid gap-4">
         {enAttente.map((t) => (
-          <CarteTache key={t.id} tache={t} onDecision={decider} />
+          <CarteTache key={t.id} tache={t} onDecision={decider} onRelancer={relancerAssure} />
         ))}
       </div>
 
@@ -111,19 +121,40 @@ export default function Approbations({ onNavigate }) {
   )
 }
 
-function CarteTache({ tache: t, onDecision }) {
+const dateCourte = (iso) =>
+  new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+function CarteTache({ tache: t, onDecision, onRelancer }) {
   const [mode, setMode] = useState(null) // null | 'modifier' | 'refuser' | 'sans_suite'
   const [montant, setMontant] = useState(t.montant)
   const [motif, setMotif] = useState('')
   const [envoi, setEnvoi] = useState(false)
+  const [envoiRelance, setEnvoiRelance] = useState(false)
+  const [voirRelances, setVoirRelances] = useState(false)
   const p = t.proposition ?? {}
   const refus = t.type === 'validation_refus'
   const demandePiece = t.type === 'demande_piece'
+  const relances = t.relances ?? []
 
   const lancer = async (decision, m, mo) => {
     setEnvoi(true)
     await onDecision(t, decision, m, mo)
     setEnvoi(false)
+  }
+
+  const relancer = async () => {
+    setEnvoiRelance(true)
+    await onRelancer(t)
+    setEnvoiRelance(false)
+  }
+
+  const ouvrirClotureSansSuite = () => {
+    setMotif(
+      relances.length > 0
+        ? `Relance envoyée le ${dateCourte(relances[relances.length - 1].horodatage)}, aucune réponse sous 15 jours.`
+        : ''
+    )
+    setMode('sans_suite')
   }
 
   return (
@@ -150,10 +181,32 @@ function CarteTache({ tache: t, onDecision }) {
       </div>
       <p className="mt-1 text-xs text-encre/50">🛡️ {p.routage}</p>
       {demandePiece && (
-        <p className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">
-          Aucune facture ni devis chiffré n'a pu être extrait du dossier. Deux issues : la pièce
-          finit par arriver (saisissez le montant reçu) ou l'assuré ne répond pas (clôturez sans suite).
-        </p>
+        <div className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">
+          <p>
+            Aucune facture ni devis chiffré n'a pu être extrait du dossier. Relancez l'assuré ; s'il ne
+            répond pas, la pièce arrive plus tard (saisissez le montant) ou clôturez sans suite.
+          </p>
+          {relances.length > 0 && (
+            <button onClick={() => setVoirRelances(!voirRelances)} className="mt-1.5 font-semibold underline">
+              📧 {relances.length} relance{relances.length > 1 ? 's' : ''} envoyée{relances.length > 1 ? 's' : ''}
+              {' '}— dernière le {dateCourte(relances[relances.length - 1].horodatage)} ({voirRelances ? 'masquer' : 'voir'})
+            </button>
+          )}
+          {voirRelances && (
+            <div className="mt-2 grid gap-2">
+              {relances.map((r, i) => (
+                <div key={i} className="rounded border border-line bg-surface p-2">
+                  <div className="flex items-center gap-2 text-[11px] text-encre/40">
+                    <span>{dateCourte(r.horodatage)}</span>
+                    <span className="rounded bg-surface-deep px-1 py-0.5 uppercase">{r.mode === 'llm' ? 'IA' : 'simulé'}</span>
+                  </div>
+                  <div className="mt-0.5 font-semibold text-encre/80">{r.objet}</div>
+                  <p className="mt-0.5 whitespace-pre-wrap text-encre/60">{r.corps}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -211,7 +264,13 @@ function CarteTache({ tache: t, onDecision }) {
             </button>
           )}
           {demandePiece && (
-            <button onClick={() => setMode('sans_suite')} disabled={envoi}
+            <button onClick={relancer} disabled={envoiRelance || envoi}
+              className="rounded-md border border-terracotta/40 px-4 py-2 text-sm font-semibold text-terracotta-deep transition hover:bg-terracotta-tint">
+              {envoiRelance ? '…' : '📧 Relancer l\'assuré'}
+            </button>
+          )}
+          {demandePiece && (
+            <button onClick={ouvrirClotureSansSuite} disabled={envoi}
               className="rounded-md border border-encre/30 px-4 py-2 text-sm font-semibold text-encre/70 transition hover:bg-surface-deep">
               🚫 Clôturer sans suite (assuré non-répondant)
             </button>

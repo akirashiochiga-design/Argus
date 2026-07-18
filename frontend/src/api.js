@@ -44,6 +44,7 @@ export const api = {
   // Approbations
   listerTaches: (etat) => request(`/taches${etat ? `?etat=${etat}` : ''}`),
   deciderTache: (id, corps) => post(`/taches/${id}/decider`, corps),
+  relancerTache: (id, validateur) => post(`/taches/${id}/relancer`, { validateur }),
   // Audit & dashboard
   lireAudit: (params = {}) => request(`/audit?${new URLSearchParams(params)}`),
   lireKpi: () => request('/dashboard/kpi'),

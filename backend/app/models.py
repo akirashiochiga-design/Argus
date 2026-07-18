@@ -100,11 +100,13 @@ class Tache(SQLModel, table=True):
     montant: float
     # synthèse présentée au gestionnaire : faits, garanties, gravité, calcul détaillé
     proposition: dict = Field(default_factory=dict, sa_column=Column(JSON))
-    decision: Optional[str] = None  # approuver | modifier | refuser
+    decision: Optional[str] = None  # approuver | modifier | refuser | sans_suite
     motif: Optional[str] = None
     validateur: Optional[str] = None
     cree_le: datetime = Field(default_factory=now)
     decide_le: Optional[datetime] = None
+    # historique des relances envoyées à l'assuré : [{"horodatage", "objet", "corps", "mode"}, ...]
+    relances: list = Field(default_factory=list, sa_column=Column(JSON))
 
 
 class EvenementAudit(SQLModel, table=True):
