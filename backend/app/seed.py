@@ -20,7 +20,8 @@ BAREME_VETUSTE = [
     {"age_max": 99, "taux": 0.30},
 ]
 
-TEMPLATES = [
+def build_templates() -> list[Template]:
+  return [
     Template(
         nom="Agent FNOL bilingue",
         categorie="fnol",
@@ -56,7 +57,8 @@ TEMPLATES = [
     ),
 ]
 
-POLICES = [
+def build_polices() -> list[Police]:
+  return [
     Police(
         numero="PA-2024-1183",
         assure_nom="Ahmed Ben Salah",
@@ -131,15 +133,15 @@ POLICES = [
 ]
 
 
-def build_agents() -> list[Agent]:
+def build_agents(templates: list[Template]) -> list[Agent]:
     """Les 7 agents du pipeline P5, instanciés depuis les templates quand il y en a un."""
     return [
         Agent(
             nom="FNOL auto",
             categorie="fnol",
             template_id=1,
-            instructions=TEMPLATES[0].instructions_defaut,
-            garde_fous=TEMPLATES[0].garde_fous_defaut,
+            instructions=templates[0].instructions_defaut,
+            garde_fous=templates[0].garde_fous_defaut,
             statut="live",
         ),
         Agent(
@@ -167,16 +169,16 @@ def build_agents() -> list[Agent]:
             nom="Moteur de garanties auto",
             categorie="garanties",
             template_id=2,
-            instructions=TEMPLATES[1].instructions_defaut,
-            garde_fous=TEMPLATES[1].garde_fous_defaut,
+            instructions=templates[1].instructions_defaut,
+            garde_fous=templates[1].garde_fous_defaut,
             statut="live",
         ),
         Agent(
             nom="Calcul indemnité auto",
             categorie="indemnite",
             template_id=3,
-            instructions=TEMPLATES[2].instructions_defaut,
-            garde_fous={**TEMPLATES[2].garde_fous_defaut, "bareme_vetuste": BAREME_VETUSTE},
+            instructions=templates[2].instructions_defaut,
+            garde_fous={**templates[2].garde_fous_defaut, "bareme_vetuste": BAREME_VETUSTE},
             statut="live",
         ),
         Agent(
@@ -275,14 +277,15 @@ def seed() -> None:
         DB_PATH.unlink()
     create_db_and_tables()
 
+    templates = build_templates()
     with Session(engine) as session:
-        for t in TEMPLATES:
+        for t in templates:
             session.add(t)
-        for p in POLICES:
+        for p in build_polices():
             session.add(p)
         session.commit()
 
-        agents = build_agents()
+        agents = build_agents(templates)
         for a in agents:
             session.add(a)
         session.commit()

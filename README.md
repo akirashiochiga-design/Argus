@@ -19,18 +19,32 @@ npm run dev
 ```
 
 Clé API : copier `backend/.env.example` vers `backend/.env` et renseigner
-`ANTHROPIC_API_KEY` (nécessaire à partir de l'étape 3 — agents LLM).
+`ANTHROPIC_API_KEY`. **Sans clé, l'app fonctionne intégralement** : les 4 agents
+LLM basculent en mode simulation (badge « simulé » dans l'UI) ; avec la clé, ils
+font de vrais appels Claude (texte + vision, badge « LLM »).
 
-## Reset démo
+## Démo
 
-`python -m app.seed` supprime et recrée `backend/argus.db` avec le dataset
-calibré : 6 polices, 7 agents, le workflow P5, 3 dossiers dont **SIN-2026-001**
-(2 300 − vétusté 10 % − franchise 220 = **1 850 DT**).
+Le script minuté, la checklist et le plan B sont dans **[docs/demo.md](docs/demo.md)**.
+
+```sh
+# Reset démo (entre deux répétitions) — remet les 3 dossiers calibrés à zéro
+curl -X POST http://localhost:8000/admin/reseed
+
+# Test de bout en bout (backend démarré) — 34 vérifications, doit tout passer
+cd backend && .venv/Scripts/python test_e2e.py
+```
+
+Dossier vedette **SIN-2026-001** : facture 2 300 − vétusté 10 % − franchise 220
+= **1 850 DT**, calculés en déterministe, validés par un humain, tracés dans l'audit.
 
 ## État d'avancement (plan CLAUDE.md §8)
 
-- [x] 1. Squelette : FastAPI + SQLite + seed, React/Vite/Tailwind, 4 écrans en coquille
-- [ ] 2. Pipeline backend : orchestrateur + 7 agents (montant déterministe)
-- [ ] 3. File d'approbation + audit
-- [ ] 4. Studio + vue pipeline animée
-- [ ] 5. Dashboard + polish
+- [x] 1. Squelette : FastAPI + SQLite + seed, React/Vite/Tailwind
+- [x] 2. Pipeline backend : orchestrateur + 7 agents (montant 100 % déterministe)
+- [x] 3. File d'approbation + audit append-only
+- [x] 4. Studio (créer/publier/brancher/versionner) + vue pipeline animée
+- [x] 5. Dashboard + journal d'audit + script de démo
+
+Reste à faire par l'équipe : déposer de vraies photos de dégâts dans
+`docs/samples/`, renseigner la clé API, et répéter avec `docs/demo.md`.

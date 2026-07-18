@@ -6,25 +6,43 @@ async function request(path, options = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
+  const corps = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const detail = await res.text()
-    throw new Error(`${res.status} ${path} — ${detail}`)
+    const err = new Error(corps.detail || `${res.status} ${path}`)
+    err.status = res.status
+    throw err
   }
-  return res.json()
+  return corps
 }
+
+const post = (path, body) =>
+  request(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 
 export const api = {
   health: () => request('/health'),
   // Studio
   listerTemplates: () => request('/templates'),
   listerAgents: () => request('/agents'),
+  creerAgent: (corps) => post('/agents', corps),
+  publierAgent: (id) => post(`/agents/${id}/publier`),
+  modifierAgent: (id, corps) =>
+    request(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(corps) }),
+  listerWorkflows: () => request('/workflows'),
+  affecterAgent: (workflowId, agentId) =>
+    post(`/workflows/${workflowId}/affecter`, { agent_id: agentId }),
   // Pipeline
   listerDossiers: () => request('/dossiers'),
   lireDossier: (id) => request(`/dossiers/${id}`),
-  // À venir (étapes 2-3 du plan) :
-  // executerEtape: (id) => request(`/dossiers/${id}/executer`, { method: 'POST' }),
-  // listerTaches: () => request('/taches?etat=en_attente'),
-  // deciderTache: (id, corps) => request(`/taches/${id}/decider`, { method: 'POST', body: JSON.stringify(corps) }),
-  // lireAudit: (params) => request(`/audit?${new URLSearchParams(params)}`),
-  // lireKpi: () => request('/dashboard/kpi'),
+  declarerSinistre: (corps) => post('/dossiers', corps),
+  executerEtape: (id) => post(`/dossiers/${id}/executer`),
+  // Approbations
+  listerTaches: (etat) => request(`/taches${etat ? `?etat=${etat}` : ''}`),
+  deciderTache: (id, corps) => post(`/taches/${id}/decider`, corps),
+  // Audit & dashboard
+  lireAudit: (params = {}) => request(`/audit?${new URLSearchParams(params)}`),
+  lireKpi: () => request('/dashboard/kpi'),
+  // Démo
+  reseed: () => post('/admin/reseed'),
 }
+
+export const VALIDATEUR = 'Selma Gharbi (superviseure)'
