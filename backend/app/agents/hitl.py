@@ -3,6 +3,13 @@
 Routage par seuil : sous le seuil, le règlement est "proposé" ; au-dessus,
 validation obligatoire. Dans TOUS les cas une tâche humaine est créée :
 aucun paiement ne part sans action humaine explicite (principe M1.6).
+
+Capacité d'adaptation : quand l'agent 5 (indemnité) n'a pas pu chiffrer le
+dossier — pièce manquante, ou tout autre cas où `base` est indisponible —
+la porte route vers une tâche "demande_piece" au lieu de proposer un
+règlement à 0 DT. Le gestionnaire choisit alors : la pièce arrive (il saisit
+le montant via "modifier", le pipeline se termine normalement) ou l'assuré
+ne répond pas (il clôture "sans_suite" — voir orchestrator.decider).
 """
 from sqlmodel import Session, select
 
@@ -19,12 +26,26 @@ def _dernier_detail_calcul(session: Session, dossier_id: int) -> list:
     return []
 
 
+def _derniere_recommandation(session: Session, dossier_id: int) -> str | None:
+    runs = session.exec(
+        select(Run).where(Run.dossier_id == dossier_id).order_by(Run.id.desc())
+    ).all()
+    for run in runs:
+        if run.sorties and "recommandation" in run.sorties:
+            return run.sorties["recommandation"]
+    return None
+
+
 def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     seuil = float(agent.seuils.get("seuil_validation", 1000))
     montant = dossier.montant_recommande
     couvert = bool((dossier.position_couverture or {}).get("couvert"))
+    recommandation = _derniere_recommandation(session, dossier.id)
 
-    if not couvert:
+    if recommandation == "demande_piece":
+        type_tache = "demande_piece"
+        routage = "aucune pièce chiffrée exploitable — relancer l'assuré ou clôturer sans suite"
+    elif not couvert:
         type_tache, routage = "validation_refus", "refus à confirmer par un humain"
     elif montant is not None and montant >= seuil:
         type_tache, routage = "validation_reglement", f"montant {montant} DT ≥ seuil {seuil} DT — validation obligatoire"

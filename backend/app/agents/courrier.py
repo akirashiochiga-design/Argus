@@ -30,6 +30,17 @@ def _contexte(dossier: Dossier, session: Session) -> dict:
 
 
 def _fallback(ctx: dict, dossier: Dossier) -> dict:
+    if ctx["decision"] == "sans_suite":
+        objet = f"Sinistre {dossier.ref} — dossier clôturé sans suite"
+        corps = (
+            f"Madame, Monsieur {ctx['assure']},\n\n"
+            f"Malgré notre relance concernant les pièces nécessaires au traitement de votre "
+            f"déclaration (police {ctx['police']}), nous restons sans réponse de votre part.\n\n"
+            + (f"Précision du gestionnaire : {ctx['motif_humain']}\n\n" if ctx["motif_humain"] else "") +
+            "Nous clôturons donc ce dossier sans suite. Vous pouvez le rouvrir à tout moment en "
+            "nous transmettant les pièces manquantes.\n\nCordialement,\nService Sinistres"
+        )
+        return {"objet": objet, "corps": corps}
     if ctx["decision"] == "refuser" or not ctx["couvert"]:
         objet = f"Sinistre {dossier.ref} — décision de refus"
         corps = (
@@ -61,9 +72,21 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         f"Assuré : {ctx['assure']} — Police : {ctx['police']} — Dossier : {dossier.ref}\n"
         f"Décision humaine : {ctx['decision']}"
         + (f" (motif : {ctx['motif_humain']})" if ctx['motif_humain'] else "") + "\n"
-        f"Couvert : {ctx['couvert']}\n"
-        f"Montant validé : {ctx['montant']} DT\n"
-        f"Motivation ligne à ligne : {ctx['motivation']}\n"
+    )
+    if ctx["decision"] == "sans_suite":
+        prompt += (
+            "Ce dossier est clôturé SANS SUITE : l'assuré n'a pas fourni les pièces demandées "
+            "malgré relance. Rédige un courrier de clôture courtois qui explique la raison et "
+            "précise que le dossier peut être rouvert en transmettant les pièces manquantes. "
+            "N'invente et ne mentionne aucun montant.\n"
+        )
+    else:
+        prompt += (
+            f"Couvert : {ctx['couvert']}\n"
+            f"Montant validé : {ctx['montant']} DT\n"
+            f"Motivation ligne à ligne : {ctx['motivation']}\n"
+        )
+    prompt += (
         f"Langue de l'assuré : {ctx['langue']} (écris la lettre en français, ton courtois et clair, "
         "et si la langue est 'darija', ajoute une phrase de synthèse finale en arabe tunisien translittéré).\n\n"
         "Réponds au format : première ligne = objet, puis une ligne vide, puis le corps."

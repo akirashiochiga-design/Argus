@@ -471,24 +471,56 @@ const EXEMPLE_DECLARATION =
   "Bonjour, ce matin sur la GP1 un camion a projeté un gravier qui a fissuré mon pare-brise. " +
   'Je joins le devis du poseur (380 DT). Mohamed Gharbi, police PA-2025-0212.'
 
+// Connecteur e-constat FTUSA — SIMULÉ. Aucun appel réseau réel : FTUSA
+// (Fédération Tunisienne des Sociétés d'Assurances) n'a pas d'API publique
+// documentée accessible pour ce hackathon. Ce bouton mime ce que serait
+// l'expérience une fois le vrai connecteur branché (hors scope, cf. CLAUDE.md
+// §3) — un constat électronique importé structuré au lieu d'un texte libre.
+// Volontairement SANS facture jointe : un vrai constat FTUSA ne contient
+// jamais le montant des réparations, ce qui illustre la porte d'adaptation
+// "pièce manquante" sur ce même dossier.
+const CONSTAT_FTUSA_SIMULE = {
+  texte:
+    "Constat électronique reçu via e-constat (FTUSA), référence CE-2026-88213 : collision entre 2 " +
+    "véhicules le 17/07/2026 à 18h20, avenue Mohamed V, Tunis. Véhicule A (assuré) : Volkswagen Golf 8, " +
+    "immatriculation 225 TU 4817. Le véhicule B a heurté l'arrière du véhicule A à l'arrêt à un feu rouge ; " +
+    "torts reconnus par B (case 8 cochée). Police PA-2024-1183, Ahmed Ben Salah. Le devis de réparation " +
+    "sera transmis séparément par le garage.",
+  police: 'PA-2024-1183',
+  piece: { type: 'constat', chemin: 'docs/samples/constat.jpg', montant: null },
+}
+
 function FormulaireDeclaration({ onFermer, onCree }) {
   const [texte, setTexte] = useState('')
   const [police, setPolice] = useState('PA-2025-0212')
   const [montant, setMontant] = useState('380')
+  const [pieceFtusa, setPieceFtusa] = useState(null)
+  const [recuperation, setRecuperation] = useState(false)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(null)
+
+  const recupererFtusa = () => {
+    setRecuperation(true)
+    setErreur(null)
+    setTimeout(() => {
+      setTexte(CONSTAT_FTUSA_SIMULE.texte)
+      setPolice(CONSTAT_FTUSA_SIMULE.police)
+      setPieceFtusa(CONSTAT_FTUSA_SIMULE.piece)
+      setMontant('')
+      setRecuperation(false)
+    }, 900)
+  }
 
   const soumettre = async () => {
     setEnvoi(true)
     setErreur(null)
     try {
-      const nouveau = await api.declarerSinistre({
-        declaration_texte: texte,
-        police_numero: police,
-        pieces: montant
+      const pieces = pieceFtusa
+        ? [pieceFtusa]
+        : montant
           ? [{ type: 'devis', chemin: 'docs/samples/devis-parebrise.jpg', montant: Number(montant) }]
-          : [],
-      })
+          : []
+      const nouveau = await api.declarerSinistre({ declaration_texte: texte, police_numero: police, pieces })
       onCree(nouveau)
     } catch (e) {
       setErreur(e.message)
@@ -503,13 +535,32 @@ function FormulaireDeclaration({ onFermer, onCree }) {
         <p className="mt-1 text-sm text-encre/50">
           Texte libre, français ou darija — l'agent FNOL structure la déclaration.
         </p>
+
+        <button
+          onClick={recupererFtusa}
+          disabled={recuperation}
+          className="mt-3 flex w-full items-center gap-2 rounded-md border border-dashed border-terracotta/40 bg-terracotta-tint/40 px-3 py-2 text-sm font-medium text-terracotta-deep transition hover:bg-terracotta-tint disabled:opacity-60"
+        >
+          <span>📡</span>
+          {recuperation ? 'Récupération en cours…' : 'Récupérer via e-constat FTUSA'}
+          <span className="ml-auto rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/40">
+            connecteur simulé
+          </span>
+        </button>
+
         <textarea
           value={texte}
-          onChange={(e) => setTexte(e.target.value)}
+          onChange={(e) => { setTexte(e.target.value); setPieceFtusa(null) }}
           placeholder={EXEMPLE_DECLARATION}
           rows={5}
           className="mt-3 w-full rounded-md border border-line bg-creme p-3 text-sm focus:border-terracotta focus:outline-none"
         />
+        {pieceFtusa && (
+          <p className="mt-1.5 text-xs text-encre/50">
+            📎 Constat importé (e-constat, simulé) — aucun devis chiffré joint : ce dossier ira à la
+            porte « pièce manquante » lors du calcul de l'indemnité.
+          </p>
+        )}
         <div className="mt-3 flex gap-3">
           <label className="flex-1 text-sm">
             <span className="text-xs uppercase tracking-wide text-encre/40">N° de police</span>
@@ -518,8 +569,9 @@ function FormulaireDeclaration({ onFermer, onCree }) {
           </label>
           <label className="flex-1 text-sm">
             <span className="text-xs uppercase tracking-wide text-encre/40">Montant devis joint (DT)</span>
-            <input value={montant} onChange={(e) => setMontant(e.target.value)} type="number"
-              className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm" />
+            <input value={montant} onChange={(e) => { setMontant(e.target.value); setPieceFtusa(null) }} type="number"
+              disabled={!!pieceFtusa}
+              className="mt-1 w-full rounded-md border border-line bg-creme p-2 text-sm disabled:opacity-50" />
           </label>
         </div>
         {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}
@@ -527,7 +579,7 @@ function FormulaireDeclaration({ onFermer, onCree }) {
           <button onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60 hover:bg-surface-deep">
             Annuler
           </button>
-          <button onClick={() => setTexte(EXEMPLE_DECLARATION)}
+          <button onClick={() => { setTexte(EXEMPLE_DECLARATION); setPieceFtusa(null) }}
             className="rounded-md px-4 py-2 text-sm text-terracotta-deep hover:bg-terracotta-tint">
             Remplir l'exemple
           </button>

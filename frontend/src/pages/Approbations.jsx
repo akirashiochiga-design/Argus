@@ -34,12 +34,15 @@ export default function Approbations({ onNavigate }) {
         resultat = etape.resultat
       }
       const refus = decision === 'refuser' || (tache.type === 'validation_refus' && decision === 'approuver')
-      setMessage({
-        ton: refus ? 'neutre' : 'succes',
-        texte: refus
-          ? `Dossier ${tache.dossier_ref} refusé — courrier de refus généré et tracé.`
-          : `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier envoyé (simulé).`,
-      })
+      let texte
+      if (decision === 'sans_suite') {
+        texte = `Dossier ${tache.dossier_ref} clôturé sans suite — courrier de clôture généré et tracé.`
+      } else if (refus) {
+        texte = `Dossier ${tache.dossier_ref} refusé — courrier de refus généré et tracé.`
+      } else {
+        texte = `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier envoyé (simulé).`
+      }
+      setMessage({ ton: decision === 'sans_suite' ? 'neutre' : refus ? 'neutre' : 'succes', texte })
       await charger()
     } catch (e) {
       setMessage({ ton: 'erreur', texte: e.message })
@@ -109,12 +112,13 @@ export default function Approbations({ onNavigate }) {
 }
 
 function CarteTache({ tache: t, onDecision }) {
-  const [mode, setMode] = useState(null) // null | 'modifier' | 'refuser'
+  const [mode, setMode] = useState(null) // null | 'modifier' | 'refuser' | 'sans_suite'
   const [montant, setMontant] = useState(t.montant)
   const [motif, setMotif] = useState('')
   const [envoi, setEnvoi] = useState(false)
   const p = t.proposition ?? {}
   const refus = t.type === 'validation_refus'
+  const demandePiece = t.type === 'demande_piece'
 
   const lancer = async (decision, m, mo) => {
     setEnvoi(true)
@@ -123,24 +127,34 @@ function CarteTache({ tache: t, onDecision }) {
   }
 
   return (
-    <div className={`rounded-lg border-2 bg-surface p-5 ${refus ? 'border-bad/30' : 'border-warn/40'}`}>
+    <div className={`rounded-lg border-2 bg-surface p-5 ${
+      refus ? 'border-bad/30' : demandePiece ? 'border-encre/25' : 'border-warn/40'
+    }`}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-mono text-lg font-bold">{t.dossier_ref}</span>
         <span className="text-sm text-encre/60">{t.assure_nom} · {t.police_numero}</span>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-          refus ? 'bg-bad-tint text-bad' : p.sous_seuil ? 'bg-surface-deep text-encre/70' : 'bg-warn-tint text-warn'
+          demandePiece ? 'bg-surface-deep text-encre/70'
+          : refus ? 'bg-bad-tint text-bad'
+          : p.sous_seuil ? 'bg-surface-deep text-encre/70' : 'bg-warn-tint text-warn'
         }`}>
-          {refus ? 'refus à confirmer' : p.sous_seuil ? 'sous le seuil — proposé' : 'validation obligatoire'}
+          {demandePiece ? '📎 pièce manquante' : refus ? 'refus à confirmer' : p.sous_seuil ? 'sous le seuil — proposé' : 'validation obligatoire'}
         </span>
         {p.gravite && <span className="text-xs text-encre/50">gravité : {p.gravite}</span>}
         <div className="ml-auto text-right">
           <div className="text-[11px] uppercase tracking-wide text-encre/40">
-            {refus ? 'indemnité proposée' : 'montant recommandé'}
+            {demandePiece ? 'montant' : refus ? 'indemnité proposée' : 'montant recommandé'}
           </div>
-          <div className="text-2xl font-bold tabular-nums">{dt(t.montant)}</div>
+          <div className="text-2xl font-bold tabular-nums">{demandePiece ? '— à déterminer' : dt(t.montant)}</div>
         </div>
       </div>
       <p className="mt-1 text-xs text-encre/50">🛡️ {p.routage}</p>
+      {demandePiece && (
+        <p className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">
+          Aucune facture ni devis chiffré n'a pu être extrait du dossier. Deux issues : la pièce
+          finit par arriver (saisissez le montant reçu) ou l'assuré ne répond pas (clôturez sans suite).
+        </p>
+      )}
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-md bg-surface-deep p-3">
@@ -177,21 +191,29 @@ function CarteTache({ tache: t, onDecision }) {
 
       {mode === null ? (
         <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => lancer('approuver', null, refus ? 'Refus conforme à la position de couverture' : null)}
-            disabled={envoi}
-            className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
-          >
-            {envoi ? '…' : refus ? '✓ Confirmer le refus' : `✓ Approuver ${dt(t.montant)}`}
-          </button>
+          {!demandePiece && (
+            <button
+              onClick={() => lancer('approuver', null, refus ? 'Refus conforme à la position de couverture' : null)}
+              disabled={envoi}
+              className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
+            >
+              {envoi ? '…' : refus ? '✓ Confirmer le refus' : `✓ Approuver ${dt(t.montant)}`}
+            </button>
+          )}
           <button onClick={() => setMode('modifier')} disabled={envoi}
             className="rounded-md border border-warn/50 px-4 py-2 text-sm font-semibold text-warn transition hover:bg-warn-tint">
-            ✎ Modifier le montant
+            {demandePiece ? '✎ Pièce reçue — saisir le montant' : '✎ Modifier le montant'}
           </button>
-          {!refus && (
+          {!refus && !demandePiece && (
             <button onClick={() => setMode('refuser')} disabled={envoi}
               className="rounded-md border border-bad/40 px-4 py-2 text-sm font-semibold text-bad transition hover:bg-bad-tint">
               ✗ Refuser
+            </button>
+          )}
+          {demandePiece && (
+            <button onClick={() => setMode('sans_suite')} disabled={envoi}
+              className="rounded-md border border-encre/30 px-4 py-2 text-sm font-semibold text-encre/70 transition hover:bg-surface-deep">
+              🚫 Clôturer sans suite (assuré non-répondant)
             </button>
           )}
         </div>
@@ -199,22 +221,28 @@ function CarteTache({ tache: t, onDecision }) {
         <div className="mt-4 flex flex-wrap items-end gap-3 rounded-md border border-line bg-surface-deep p-3">
           {mode === 'modifier' && (
             <label className="text-sm">
-              <span className="text-xs uppercase tracking-wide text-encre/40">Nouveau montant (DT)</span>
+              <span className="text-xs uppercase tracking-wide text-encre/40">
+                {demandePiece ? 'Montant de la pièce reçue (DT)' : 'Nouveau montant (DT)'}
+              </span>
               <input type="number" value={montant} onChange={(e) => setMontant(e.target.value)}
                 className="mt-1 block w-36 rounded-md border border-line bg-creme p-2 text-sm" />
             </label>
           )}
           <label className="flex-1 text-sm">
             <span className="text-xs uppercase tracking-wide text-encre/40">
-              Motif {mode === 'refuser' ? '(obligatoire)' : '(recommandé)'}
+              Motif {mode === 'refuser' || mode === 'sans_suite' ? '(obligatoire)' : '(recommandé)'}
             </span>
             <input value={motif} onChange={(e) => setMotif(e.target.value)}
-              placeholder={mode === 'refuser' ? 'ex. incohérence photos / déclaration' : 'ex. vétusté du joint non indemnisable'}
+              placeholder={
+                mode === 'refuser' ? 'ex. incohérence photos / déclaration'
+                : mode === 'sans_suite' ? 'ex. relance envoyée le 12/07, aucune réponse sous 15 jours'
+                : 'ex. vétusté du joint non indemnisable'
+              }
               className="mt-1 block w-full rounded-md border border-line bg-creme p-2 text-sm" />
           </label>
           <button
             onClick={() => lancer(mode, mode === 'modifier' ? montant : null, motif)}
-            disabled={envoi || (mode === 'refuser' && !motif)}
+            disabled={envoi || ((mode === 'refuser' || mode === 'sans_suite') && !motif)}
             className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50"
           >
             {envoi ? '…' : 'Confirmer la décision'}

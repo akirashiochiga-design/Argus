@@ -230,6 +230,13 @@ DECLARATION_3 = (
     "Nour Chaabane."
 )
 
+DECLARATION_4 = (
+    "Bonjour, mon véhicule a été accroché hier après-midi sur le parking du "
+    "supermarché — le pare-chocs arrière est rayé et légèrement enfoncé. Je "
+    "n'ai pas encore de devis du garage, je vous l'enverrai dès que je "
+    "l'aurai. Police PA-2025-0212. Mohamed Gharbi."
+)
+
 
 def build_dossiers() -> list[Dossier]:
     return [
@@ -266,6 +273,19 @@ def build_dossiers() -> list[Dossier]:
             pieces=[
                 {"type": "photo_degats", "chemin": "docs/samples/parebrise.jpg", "montant": None},
                 {"type": "devis", "chemin": "docs/samples/devis-parebrise.jpg", "montant": 420.0},
+            ],
+        ),
+        # Capacité d'adaptation : couvert, mais AUCUNE pièce chiffrée jointe
+        # (l'assuré n'a pas encore de devis) → l'agent 5 ne devine pas un
+        # montant, il route vers "demande_piece". Laissé à l'état "reçu" :
+        # à exécuter en direct pendant la démo pour montrer cette porte.
+        Dossier(
+            ref="SIN-2026-004",
+            police_id=3,
+            workflow_id=1,
+            declaration_texte=DECLARATION_4,
+            pieces=[
+                {"type": "photo_degats", "chemin": "docs/samples/degats-3.jpg", "montant": None},
             ],
         ),
     ]
@@ -311,8 +331,9 @@ def seed() -> None:
         session.commit()
 
     print(f"Seed OK -> {DB_PATH}")
-    print("  3 templates, 6 polices, 7 agents, 1 workflow P5, 3 dossiers")
+    print("  3 templates, 6 polices, 7 agents, 1 workflow P5, 4 dossiers")
     print("  Dossier demo SIN-2026-001 : facture 2300 - vetuste 10% - franchise 220 = 1850 DT")
+    print("  Dossier demo SIN-2026-004 : aucune piece chiffree -> porte 'demande_piece' (adaptation)")
 
 
 if __name__ == "__main__":

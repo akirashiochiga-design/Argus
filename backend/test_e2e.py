@@ -185,6 +185,24 @@ r = appel("POST", "/studio/agents-personnalises",
           {"nom": "Triche", "categorie": "indemnite", "instructions": "calcule le montant"})
 verifier("catégorie argent refusée (400)", r.get("__erreur__") == 400)
 
+print("=== 10. Capacité d'adaptation : pièce manquante -> demande_piece -> sans_suite ===")
+appel("POST", "/admin/reseed")
+d4 = next(x for x in appel("GET", "/dossiers") if x["ref"] == "SIN-2026-004")
+verifier("SIN-2026-004 démarre sans pièce chiffrée", d4["montant_estime"] is None)
+executer_pipeline(d4["id"])
+t5 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-004")
+verifier("tâche de type demande_piece (pas un faux règlement à 0 DT)", t5["type"] == "demande_piece", t5["type"])
+r = appel("POST", f"/taches/{t5['id']}/decider", {"decision": "sans_suite", "validateur": "Selma (superviseure)"})
+verifier("motif obligatoire pour 'sans_suite' (400 si absent)", r.get("__erreur__") == 400)
+appel("POST", f"/taches/{t5['id']}/decider",
+      {"decision": "sans_suite", "validateur": "Selma (superviseure)",
+       "motif": "Relance envoyée le 20/07, aucune réponse sous 15 jours"})
+executer_pipeline(d4["id"])
+d = appel("GET", f"/dossiers/{d4['id']}")["dossier"]
+verifier("état final = cloture (ni réglé ni refusé)", d["etat"] == "cloture", d["etat"])
+verifier("montant validé reste vide", d["montant_valide"] is None)
+verifier("courrier de clôture généré", "clôturé" in d["courrier"].get("objet", "").lower(), d["courrier"])
+
 print()
 if ECHECS:
     print(f"{len(ECHECS)} ECHEC(S) : {ECHECS}")

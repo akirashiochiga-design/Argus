@@ -111,6 +111,7 @@ def avancer(session: Session, dossier: Dossier) -> dict:
         dossier.etape_courante += 1  # la reprise post-décision part de l'étape suivante
         session.commit()
         session.refresh(dossier)
+        session.refresh(run)
         return {"resultat": "porte_humaine", "run": run.model_dump(), "dossier": dossier.model_dump(),
                 "tache_id": sorties.get("tache_id"), "agent": agent.nom}
 
@@ -124,6 +125,7 @@ def avancer(session: Session, dossier: Dossier) -> dict:
 
     session.commit()
     session.refresh(dossier)
+    session.refresh(run)
     return {"resultat": "termine" if terminee else "etape_executee",
             "run": run.model_dump(), "dossier": dossier.model_dump(), "agent": agent.nom}
 
@@ -134,6 +136,9 @@ def _etat_final(session: Session, dossier: Dossier) -> str:
     validation_reglement : approuver/modifier → réglé ; refuser → refusé.
     validation_refus     : approuver = confirmer le refus → refusé ;
                            modifier (dérogation avec montant) → réglé.
+    demande_piece        : modifier (pièce reçue, montant saisi) → réglé ;
+                           sans_suite (assuré non-répondant) → clôturé, quel
+                           que soit le type de tâche à l'origine.
     """
     from sqlmodel import select
     tache = session.exec(
@@ -141,6 +146,8 @@ def _etat_final(session: Session, dossier: Dossier) -> str:
     ).first()
     if not tache or tache.etat != "decidee":
         return "refuse"
+    if tache.decision == "sans_suite":
+        return "cloture"
     if tache.type == "validation_refus":
         return "regle" if tache.decision == "modifier" else "refuse"
     return "regle" if tache.decision in ("approuver", "modifier") else "refuse"
@@ -201,19 +208,25 @@ def reculer(session: Session, dossier: Dossier) -> dict:
 
 def decider(session: Session, tache: Tache, decision: str, validateur: str,
             montant: Optional[float] = None, motif: Optional[str] = None) -> dict:
-    """Décision humaine sur une tâche : approuver / modifier / refuser.
+    """Décision humaine sur une tâche : approuver / modifier / refuser / sans_suite.
 
     C'est LE seul chemin vers un règlement. L'écart montant validé vs
     recommandé alimente le taux de correction du dashboard.
+
+    'sans_suite' est la capacité d'adaptation pour le cas "l'assuré ne
+    répond pas" (ou toute impasse similaire) : le dossier est clôturé sans
+    règlement ni refus formel, motivé, tracé, et un courrier de clôture est
+    quand même généré. Distinct de 'refuser' : ce n'est pas un rejet de la
+    garantie, c'est une impossibilité de conclure faute de réponse.
     """
     if tache.etat == "decidee":
         raise OrchestrationErreur(409, "Tâche déjà décidée")
-    if decision not in ("approuver", "modifier", "refuser"):
-        raise OrchestrationErreur(400, "Décision invalide (approuver|modifier|refuser)")
+    if decision not in ("approuver", "modifier", "refuser", "sans_suite"):
+        raise OrchestrationErreur(400, "Décision invalide (approuver|modifier|refuser|sans_suite)")
     if decision == "modifier" and montant is None:
         raise OrchestrationErreur(400, "Un montant est requis pour 'modifier'")
-    if decision == "refuser" and not motif:
-        raise OrchestrationErreur(400, "Un motif est requis pour 'refuser'")
+    if decision in ("refuser", "sans_suite") and not motif:
+        raise OrchestrationErreur(400, "Un motif est requis pour cette décision")
 
     dossier = session.get(Dossier, tache.dossier_id)
 
