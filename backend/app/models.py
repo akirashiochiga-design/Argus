@@ -18,7 +18,7 @@ def now() -> datetime:
 class Template(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str
-    categorie: str  # fnol | garanties | reglement (les 3 du scope)
+    categorie: str  # fnol | garanties | indemnite (les 3 templates du scope)
     instructions_defaut: str
     garde_fous_defaut: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
@@ -69,8 +69,11 @@ class Dossier(SQLModel, table=True):
     donnees_fnol: dict = Field(default_factory=dict, sa_column=Column(JSON))
     gravite: Optional[str] = None  # leger | moyen | lourd
     position_couverture: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    montant_estime: Optional[float] = None  # montant lu sur facture/devis (extraction)
     montant_recommande: Optional[float] = None
     montant_valide: Optional[float] = None  # écrit UNIQUEMENT par une décision humaine
+    # {"objet": ..., "corps": ..., "mode": "llm"|"simulation"} — l'email simulé
+    courrier: dict = Field(default_factory=dict, sa_column=Column(JSON))
     # [{"type": "constat", "chemin": "docs/samples/constat.jpg", "extraction": {...}}]
     pieces: list = Field(default_factory=list, sa_column=Column(JSON))
     cree_le: datetime = Field(default_factory=now)

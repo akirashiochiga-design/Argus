@@ -45,7 +45,7 @@ TEMPLATES = [
     ),
     Template(
         nom="Recommandation de règlement",
-        categorie="reglement",
+        categorie="indemnite",
         instructions_defaut=(
             "Calcule le montant d'indemnité : base facture − vétusté (barème) − "
             "franchise, plafonné. Chaque ligne du calcul est sourcée. "
@@ -270,6 +270,7 @@ def build_dossiers() -> list[Dossier]:
 
 
 def seed() -> None:
+    engine.dispose()  # libère les connexions (Windows refuse de supprimer un fichier ouvert)
     if DB_PATH.exists():
         DB_PATH.unlink()
     create_db_and_tables()

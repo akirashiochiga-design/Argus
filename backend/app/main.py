@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .db import create_db_and_tables
-from .routers import agents, dossiers
+from .routers import admin, agents, audit, dashboard, dossiers, taches
 
 load_dotenv()
 
@@ -23,6 +23,10 @@ app.add_middleware(
 
 app.include_router(agents.router)
 app.include_router(dossiers.router)
+app.include_router(taches.router)
+app.include_router(audit.router)
+app.include_router(dashboard.router)
+app.include_router(admin.router)
 
 
 @app.on_event("startup")

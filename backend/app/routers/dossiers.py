@@ -1,11 +1,20 @@
-"""Lecture des dossiers sinistres. L'exécution (/executer) arrive à l'étape 2."""
+"""Dossiers sinistres : lecture, déclaration entrante, exécution pas-à-pas."""
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from ..audit import tracer
 from ..db import get_session
 from ..models import Dossier, Police, Run, Workflow
+from ..orchestrator import OrchestrationErreur, avancer
 
 router = APIRouter(tags=["dossiers"])
+
+
+class DeclarationEntrante(BaseModel):
+    declaration_texte: str
+    police_numero: str
+    pieces: list[dict] = []
 
 
 @router.get("/dossiers")
@@ -41,3 +50,42 @@ def lire_dossier(dossier_id: int, session: Session = Depends(get_session)) -> di
         "workflow": workflow,
         "runs": runs,
     }
+
+
+@router.post("/dossiers", status_code=201)
+def declarer_sinistre(corps: DeclarationEntrante, session: Session = Depends(get_session)) -> Dossier:
+    """Nouvelle déclaration (texte libre FR/darija) — crée un dossier 'reçu'."""
+    police = session.exec(select(Police).where(Police.numero == corps.police_numero)).first()
+    if not police:
+        raise HTTPException(404, f"Police {corps.police_numero} introuvable")
+    workflow = session.exec(select(Workflow)).first()
+    numero = session.exec(select(Dossier)).all()
+    dossier = Dossier(
+        ref=f"SIN-2026-{len(numero) + 1:03d}",
+        police_id=police.id,
+        workflow_id=workflow.id if workflow else None,
+        declaration_texte=corps.declaration_texte,
+        pieces=corps.pieces,
+    )
+    session.add(dossier)
+    session.flush()
+    tracer(session, acteur="humain:declarant", acteur_type="humain", type="creation_dossier",
+           objet=f"dossier:{dossier.ref}", apres={"police": police.numero, "etat": "recu"})
+    session.commit()
+    session.refresh(dossier)
+    return dossier
+
+
+@router.post("/dossiers/{dossier_id}/executer")
+def executer_etape(dossier_id: int, session: Session = Depends(get_session)) -> dict:
+    """Avance le dossier d'UNE étape. Le frontend enchaîne les appels (animation).
+
+    Réponses : etape_executee | porte_humaine (pipeline suspendu) | termine.
+    """
+    dossier = session.get(Dossier, dossier_id)
+    if not dossier:
+        raise HTTPException(404, "Dossier introuvable")
+    try:
+        return avancer(session, dossier)
+    except OrchestrationErreur as e:
+        raise HTTPException(e.code, e.detail)

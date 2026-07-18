@@ -1,0 +1,147 @@
+"""Test de bout en bout du pipeline Argus — rejouable avant chaque répétition.
+
+Usage :  .venv/Scripts/python test_e2e.py   (backend démarré sur :8000)
+Réinitialise la base, déroule les 3 dossiers seed + 1 déclaration live,
+vérifie chaque invariant (montants, états, audit, studio). Sort en erreur
+au premier écart — si ce script passe, la démo passe.
+"""
+import json
+import sys
+import urllib.request
+
+BASE = "http://localhost:8000"
+ECHECS = []
+
+
+def appel(methode: str, chemin: str, corps: dict = None) -> dict | list:
+    donnees = json.dumps(corps).encode("utf-8") if corps is not None else None
+    req = urllib.request.Request(
+        BASE + chemin, data=donnees, method=methode,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req) as rep:
+            return json.loads(rep.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        return {"__erreur__": e.code, "detail": e.read().decode("utf-8")}
+
+
+def verifier(nom: str, condition: bool, detail: str = ""):
+    statut = "OK " if condition else "ECHEC"
+    print(f"  [{statut}] {nom}" + (f" — {detail}" if detail and not condition else ""))
+    if not condition:
+        ECHECS.append(nom)
+
+
+def executer_pipeline(dossier_id: int, max_etapes: int = 8) -> dict:
+    """Enchaîne /executer jusqu'à porte humaine ou fin."""
+    resultat = {}
+    for _ in range(max_etapes):
+        resultat = appel("POST", f"/dossiers/{dossier_id}/executer")
+        if "__erreur__" in resultat or resultat.get("resultat") in ("porte_humaine", "termine"):
+            break
+    return resultat
+
+
+print("=== 0. Reset démo ===")
+r = appel("POST", "/admin/reseed")
+verifier("reseed", r.get("statut") == "ok")
+
+print("=== 1. Dossier vedette SIN-2026-001 : 1 850 DT, validation obligatoire ===")
+r = executer_pipeline(1)
+verifier("pipeline suspendu à la porte humaine", r.get("resultat") == "porte_humaine")
+d = appel("GET", "/dossiers/1")["dossier"]
+verifier("montant recommandé = 1850.0", d["montant_recommande"] == 1850.0, str(d["montant_recommande"]))
+verifier("état = attente_validation", d["etat"] == "attente_validation", d["etat"])
+verifier("couvert = true", d["position_couverture"]["couvert"] is True)
+taches = appel("GET", "/taches?etat=en_attente")
+t1 = next(t for t in taches if t["dossier_ref"] == "SIN-2026-001")
+verifier("tâche au-dessus du seuil (validation obligatoire)", t1["proposition"]["sous_seuil"] is False)
+verifier("détail du calcul présent dans la proposition", len(t1["proposition"]["detail_calcul"]) >= 4)
+
+r = appel("POST", f"/taches/{t1['id']}/decider",
+          {"decision": "approuver", "validateur": "Selma (superviseure)"})
+verifier("décision enregistrée", r["tache"]["decision"] == "approuver")
+r = executer_pipeline(1)
+verifier("pipeline terminé", r.get("resultat") == "termine")
+d = appel("GET", "/dossiers/1")["dossier"]
+verifier("état final = regle", d["etat"] == "regle", d["etat"])
+verifier("montant validé = 1850.0", d["montant_valide"] == 1850.0)
+verifier("courrier généré", bool(d["courrier"].get("corps")))
+
+print("=== 2. SIN-2026-002 : formule tiers -> refus motivé, confirmé par l'humain ===")
+executer_pipeline(2)
+d = appel("GET", "/dossiers/2")["dossier"]
+verifier("non couvert", d["position_couverture"]["couvert"] is False)
+verifier("clause citée dans la motivation",
+         any("Art." in m["clause"] for m in d["position_couverture"]["motivation"]))
+t2 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-002")
+verifier("tâche de type validation_refus", t2["type"] == "validation_refus")
+appel("POST", f"/taches/{t2['id']}/decider",
+      {"decision": "approuver", "validateur": "Selma (superviseure)",
+       "motif": "Garantie collision absente de la formule tiers"})
+executer_pipeline(2)
+d = appel("GET", "/dossiers/2")["dossier"]
+verifier("état final = refuse", d["etat"] == "refuse", d["etat"])
+verifier("courrier de refus généré", "refus" in d["courrier"].get("objet", "").lower())
+
+print("=== 3. SIN-2026-003 : 420 DT sous le seuil -> proposé, humain approuve ===")
+executer_pipeline(3)
+t3 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-003")
+verifier("montant = 420.0", t3["montant"] == 420.0, str(t3["montant"]))
+verifier("routage sous seuil (proposé)", t3["proposition"]["sous_seuil"] is True)
+appel("POST", f"/taches/{t3['id']}/decider", {"decision": "approuver", "validateur": "Selma (superviseure)"})
+executer_pipeline(3)
+verifier("état final = regle", appel("GET", "/dossiers/3")["dossier"]["etat"] == "regle")
+
+print("=== 4. Garde-fou : impossible d'exécuter un dossier réglé ===")
+r = appel("POST", "/dossiers/1/executer")
+verifier("409 sur dossier réglé", r.get("__erreur__") == 409)
+
+print("=== 5. Studio : créer -> publier -> brancher, et modifier un seuil ===")
+a = appel("POST", "/agents", {"nom": "Règlement auto — bris de glace", "template_id": 3,
+                              "seuils": {"seuil_validation": 300}})
+verifier("agent créé en draft", a.get("statut") == "draft", str(a))
+r = appel("POST", "/workflows/1/affecter", {"agent_id": a["id"]})
+verifier("brancher un draft est refusé (409)", r.get("__erreur__") == 409)
+a2 = appel("POST", f"/agents/{a['id']}/publier")
+verifier("agent publié live", a2["statut"] == "live")
+w = appel("POST", "/workflows/1/affecter", {"agent_id": a["id"]})
+verifier("agent branché à l'étape indemnité", any(e["agent_id"] == a["id"] for e in w.get("etapes", [])))
+h = appel("PATCH", "/agents/6", {"seuils": {"seuil_validation": 300, "plafond_auto": 200}})
+verifier("seuil HITL modifié, version incrémentée", h["seuils"]["seuil_validation"] == 300 and h["version"] == 2)
+
+print("=== 6. Déclaration live -> nouveau seuil appliqué (380 DT >= 300 -> validation) ===")
+d4 = appel("POST", "/dossiers", {
+    "declaration_texte": "Bonjour, un caillou a fissuré mon pare-brise ce matin sur la GP1. "
+                         "Je joins le devis (380 DT). Mohamed Gharbi, police PA-2025-0212.",
+    "police_numero": "PA-2025-0212",
+    "pieces": [{"type": "devis", "chemin": "docs/samples/devis-parebrise.jpg", "montant": 380}],
+})
+verifier("dossier créé", d4.get("ref", "").startswith("SIN-2026-"), str(d4))
+executer_pipeline(d4["id"])
+t4 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == d4["ref"])
+verifier("380 DT >= nouveau seuil 300 -> validation obligatoire", t4["proposition"]["sous_seuil"] is False)
+appel("POST", f"/taches/{t4['id']}/decider",
+      {"decision": "modifier", "montant": 350.0, "validateur": "Selma (superviseure)",
+       "motif": "Vétusté du joint non indemnisable"})
+executer_pipeline(d4["id"])
+d = appel("GET", f"/dossiers/{d4['id']}")["dossier"]
+verifier("montant modifié par l'humain = 350.0", d["montant_valide"] == 350.0)
+verifier("état final = regle", d["etat"] == "regle")
+
+print("=== 7. Audit & KPI ===")
+audit = appel("GET", "/audit?limit=500")
+verifier("piste d'audit fournie (>= 40 événements)", len(audit) >= 40, str(len(audit)))
+verifier("décisions humaines tracées", any(e["type"] == "decision_humaine" for e in audit))
+verifier("création d'agent tracée", any(e["type"] == "creation_agent" for e in audit))
+verifier("modification de seuil tracée", any(e["type"] == "modification_agent" for e in audit))
+kpi = appel("GET", "/dashboard/kpi")
+verifier("4 dossiers traités", kpi["dossiers_traites"] == 4, str(kpi["dossiers_traites"]))
+verifier("taux de correction > 0 (décision 'modifier')", kpi["taux_correction"] > 0)
+
+print()
+if ECHECS:
+    print(f"{len(ECHECS)} ECHEC(S) : {ECHECS}")
+    sys.exit(1)
+print("TOUS LES TESTS PASSENT — la demo est prete. (Relancer /admin/reseed avant de presenter.)")
