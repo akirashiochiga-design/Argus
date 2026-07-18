@@ -1,17 +1,18 @@
 # Fichiers d'exemple pour la démo
 
-**Déjà générés** (par `python -m app.samples`, régénérables à volonté) :
+**Documents fictifs réalistes** (par `python -m app.samples`, régénérables à volonté) :
 `facture.jpg` (2 300 DT — calibrée pour SIN-2026-001), `devis.jpg` (1 750 DT),
 `devis-parebrise.jpg` (420 DT), `constat.jpg`. L'agent extraction vision les lit
-réellement dès qu'une clé API est présente. Remplacez-les par de vrais scans si possible.
+réellement dès qu'une clé API est présente.
 
-**À déposer manuellement AVANT la démo** (photos réelles, testées avec la clé API) :
+**Photos réelles libres d'usage** :
 
-- `degats-1.jpg`, `degats-2.jpg` — dégâts avant droit (pare-chocs, phare, aile) — gravité attendue : moyen
-- `degats-3.jpg` — capot/pare-chocs enfoncés (dossier SIN-2026-002)
-- `parebrise.jpg` — fissure de pare-brise (dossier SIN-2026-003)
+- `degats-1.jpg`, `degats-2.jpg` — dégâts avant droit (pare-chocs, phare, aile), cohérents avec SIN-2026-001.
+- `parebrise.jpg` — pare-brise fissuré. Elle est volontairement aussi jointe à SIN-2026-001 :
+  c'est la pièce incohérente utilisée pour démontrer l'agent « cohérence déclaration / photos ».
+- `degats-3.jpg` — véhicule fortement endommagé (dossier SIN-2026-002).
 
-Sans photos, l'agent gravité bascule en estimation sur la déclaration (confiance
-réduite, note explicite) — la démo fonctionne quand même.
+Sources : Pexels, photos 10747780, 7857825, 11627936 et 19773544,
+utilisées conformément à la licence Pexels.
 
 Les chemins sont référencés dans `backend/app/seed.py` (champ `pieces` des dossiers).

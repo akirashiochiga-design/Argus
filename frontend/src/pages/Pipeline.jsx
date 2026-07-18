@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { AGENT_ICONE, BadgeEtat, BadgeMode, dt } from '../ui'
+import { AGENT_ICONE, BadgeEtat, BadgeMode, GaleriePieces, dt } from '../ui'
 
 const DELAI_ANIMATION_MS = 650
 
@@ -199,6 +199,9 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
         <p className="mt-3 rounded-md bg-surface-deep p-3 text-sm italic text-encre/70">
           « {d.declaration_texte} »
         </p>
+        {d.pieces && d.pieces.length > 0 && (
+          <GaleriePieces pieces={d.pieces} className="mt-4" />
+        )}
       </div>
 
       {/* frise du pipeline */}
@@ -253,7 +256,7 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
       </div>
 
       {dernierRun && !termine && (
-        <SortieRun run={dernierRun} agents={agents} titre="Dernière sortie d'agent" />
+        <SortieRun run={dernierRun} agents={agents} pieces={d.pieces} titre="Dernière sortie d'agent" />
       )}
 
       {termine && d.courrier?.corps && <Courrier courrier={d.courrier} etat={d.etat} />}
@@ -265,7 +268,7 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
           </summary>
           <div className="mt-3 grid gap-3">
             {runs.map((r) => (
-              <SortieRun key={r.id} run={r} agents={agents} compact />
+              <SortieRun key={r.id} run={r} agents={agents} pieces={d.pieces} compact />
             ))}
           </div>
         </details>
@@ -315,7 +318,7 @@ function Frise({ etapes, agents, dossier, runs, occupe }) {
 
 /* ================= rendu des sorties par type d'agent ================= */
 
-function SortieRun({ run, agents, titre, compact }) {
+function SortieRun({ run, agents, pieces, titre, compact }) {
   const agent = agents[run.agent_id]
   const s = run.sorties ?? {}
   return (
@@ -332,12 +335,12 @@ function SortieRun({ run, agents, titre, compact }) {
           {run.duree_ms} ms{run.cout > 0 && ` · $${run.cout.toFixed(4)}`}
         </span>
       </div>
-      <CorpsSortie categorie={agent?.categorie} s={s} />
+      <CorpsSortie categorie={agent?.categorie} s={s} pieces={pieces} />
     </div>
   )
 }
 
-function CorpsSortie({ categorie, s }) {
+function CorpsSortie({ categorie, s, pieces = [] }) {
   if (categorie === 'fnol' && s.donnees_fnol) {
     const f = s.donnees_fnol
     return (
@@ -353,9 +356,11 @@ function CorpsSortie({ categorie, s }) {
     )
   }
   if (categorie === 'extraction' && s.pieces) {
+    const piecesExtraites = s.pieces.filter((p) => p.extraction)
     return (
       <div className="grid gap-2">
-        {s.pieces.filter((p) => p.extraction).map((p, i) => (
+        <GaleriePieces pieces={piecesExtraites} hauteur="h-24" />
+        {piecesExtraites.map((p, i) => (
           <div key={i} className="rounded-md bg-surface-deep p-2 text-sm">
             <div className="flex items-center gap-2">
               <b>{p.type}</b>
@@ -386,7 +391,15 @@ function CorpsSortie({ categorie, s }) {
     const couleurs = { leger: 'bg-ok-tint text-ok', moyen: 'bg-warn-tint text-warn', lourd: 'bg-bad-tint text-bad' }
     return (
       <div className="text-sm">
+        <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
         <span className={`rounded-full px-2.5 py-0.5 font-semibold ${couleurs[g.classe]}`}>gravité : {g.classe}</span>
+        {g.coherence_declaration != null && (
+          <span className={`ml-2 rounded-full px-2.5 py-0.5 font-semibold ${
+            g.coherence_declaration ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
+          }`}>
+            {g.coherence_declaration ? '✓ photos cohérentes' : '⚠ photos incohérentes avec la déclaration'}
+          </span>
+        )}
         <span className="ml-3 text-encre/60">zones : {g.zones?.join(', ') || '—'}</span>
         <p className="mt-1 text-encre/50">{g.commentaire}</p>
       </div>
@@ -450,10 +463,7 @@ function Courrier({ courrier, etat }) {
     <div className="rounded-lg border border-line bg-surface p-4">
       <div className="mb-2 flex items-center gap-2">
         <span>✉️</span>
-        <span className="font-semibold">Email envoyé à l'assuré</span>
-        <span className="rounded bg-surface-deep px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/50">
-          envoi simulé
-        </span>
+        <span className="font-semibold">Courrier généré</span>
         <BadgeMode mode={courrier.mode} />
         <span className="ml-auto"><BadgeEtat etat={etat} /></span>
       </div>
@@ -543,9 +553,6 @@ function FormulaireDeclaration({ onFermer, onCree }) {
         >
           <span>📡</span>
           {recuperation ? 'Récupération en cours…' : 'Récupérer via e-constat FTUSA'}
-          <span className="ml-auto rounded bg-surface px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/40">
-            connecteur simulé
-          </span>
         </button>
 
         <textarea
@@ -557,7 +564,7 @@ function FormulaireDeclaration({ onFermer, onCree }) {
         />
         {pieceFtusa && (
           <p className="mt-1.5 text-xs text-encre/50">
-            📎 Constat importé (e-constat, simulé) — aucun devis chiffré joint : ce dossier ira à la
+            📎 Constat importé (e-constat) — aucun devis chiffré joint : ce dossier ira à la
             porte « pièce manquante » lors du calcul de l'indemnité.
           </p>
         )}

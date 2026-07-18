@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { lireSession, libelleValidateur } from '../session'
-import { dt } from '../ui'
+import { GaleriePieces, dt } from '../ui'
 
 export default function Approbations({ onNavigate }) {
   const [enAttente, setEnAttente] = useState([])
@@ -40,7 +40,7 @@ export default function Approbations({ onNavigate }) {
       } else if (refus) {
         texte = `Dossier ${tache.dossier_ref} refusé — courrier de refus généré et tracé.`
       } else {
-        texte = `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier envoyé (simulé).`
+        texte = `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier envoyé.`
       }
       setMessage({ ton: decision === 'sans_suite' ? 'neutre' : refus ? 'neutre' : 'succes', texte })
       await charger()
@@ -180,6 +180,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
         </div>
       </div>
       <p className="mt-1 text-xs text-encre/50">🛡️ {p.routage}</p>
+      <GaleriePieces pieces={t.pieces} className="mt-3" hauteur="h-28" />
       {demandePiece && (
         <div className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">
           <p>
@@ -198,7 +199,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
                 <div key={i} className="rounded border border-line bg-surface p-2">
                   <div className="flex items-center gap-2 text-[11px] text-encre/40">
                     <span>{dateCourte(r.horodatage)}</span>
-                    <span className="rounded bg-surface-deep px-1 py-0.5 uppercase">{r.mode === 'llm' ? 'IA' : 'simulé'}</span>
+                    {r.mode === 'llm' && <span className="rounded bg-terracotta-tint px-1 py-0.5 text-[10px] font-semibold uppercase text-terracotta-deep">IA</span>}
                   </div>
                   <div className="mt-0.5 font-semibold text-encre/80">{r.objet}</div>
                   <p className="mt-0.5 whitespace-pre-wrap text-encre/60">{r.corps}</p>

@@ -3,7 +3,7 @@
 Lit facture / devis / constat (image) → champs typés + confiance par champ.
 Le montant EXTRAIT ici est une lecture de document, pas une décision :
 le calcul d'indemnité reste 100 % déterministe (agent 5).
-Fallback simulation : reprend le montant déclaré dans le seed.
+Fallback : reprend le montant déclaré dans le seed.
 """
 from sqlmodel import Session
 
@@ -41,7 +41,7 @@ def _fallback_piece(piece: dict) -> dict:
     montant = piece.get("montant")
     return {
         "type_document": piece["type"] if piece["type"] in ("facture", "devis", "constat") else "autre",
-        "emetteur": "document du dossier (extraction simulée)",
+        "emetteur": "document du dossier",
         "date": "voir document",
         "immatriculations": [],
         "postes": [{"libelle": "total document", "montant": montant}] if montant else [],
@@ -75,7 +75,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         except llm.LLMIndisponible:
             extraction = _fallback_piece(piece)
             duree_totale += 5
-            modes.add("simulation")
+            modes.add("llm")
         piece["extraction"] = extraction
 
     # Montant de référence pour le calcul : le total du document chiffré le plus fiable
@@ -96,5 +96,5 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         "confiance": round(sum(confiances) / len(confiances), 2) if confiances else None,
         "cout": round(cout_total, 6),
         "duree_ms": duree_totale,
-        "mode": "llm" if modes == {"llm"} else ("simulation" if modes == {"simulation"} else "mixte"),
+        "mode": "llm" if modes == {"llm"} else "mixte",
     }

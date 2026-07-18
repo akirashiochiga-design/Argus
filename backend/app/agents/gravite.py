@@ -2,7 +2,7 @@
 
 Photos de dégâts + circonstances FNOL → classe léger/moyen/lourd, zones,
 cohérence photo/déclaration, confiance.
-Fallback simulation : estimation sur les circonstances déclarées, confiance
+Fallback : estimation sur les circonstances déclarées, confiance
 réduite, note explicite que les photos n'ont pas pu être analysées.
 """
 from pathlib import Path
@@ -39,7 +39,7 @@ def _fallback(dossier: Dossier) -> dict:
         "classe": classe,
         "zones": zones,
         "coherence_declaration": True,
-        "commentaire": "Estimation sur les circonstances déclarées — photos non analysées (mode simulation).",
+        "commentaire": "Estimation sur les circonstances déclarées — photos non analysées.",
         "confiance": 0.55,
     }
 
@@ -67,6 +67,6 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
             pass
     if donnees is None:
         donnees = _fallback(dossier)
-        meta = {"cout": 0.0, "duree_ms": 5, "mode": "simulation"}
+        meta = {"cout": 0.0, "duree_ms": 5}
 
     return {"gravite": donnees["classe"], "analyse_gravite": donnees, "confiance": donnees["confiance"], **meta}

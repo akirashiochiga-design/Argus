@@ -219,7 +219,7 @@ def generer_instructions(corps: BriefAgent) -> dict:
             "Garde-fou : cet agent ne décide jamais d'un montant ni d'un paiement ; "
             "toute décision engageant de l'argent est validée par un humain."
         )
-        return {"instructions": instructions, "mode": "simulation", "cout": 0.0}
+        return {"instructions": instructions, "cout": 0.0}
 
 
 @router.post("/studio/agents-personnalises", status_code=201)

@@ -41,6 +41,7 @@ def lister_taches(etat: Optional[str] = None, session: Session = Depends(get_ses
             "dossier_ref": dossier.ref if dossier else None,
             "assure_nom": police.assure_nom if police else None,
             "police_numero": police.numero if police else None,
+            "pieces": dossier.pieces if dossier else [],
         })
     return out
 
@@ -59,7 +60,7 @@ def decider_tache(tache_id: int, corps: Decision, session: Session = Depends(get
 
 @router.post("/taches/{tache_id}/relancer")
 def relancer_tache(tache_id: int, corps: Relance, session: Session = Depends(get_session)) -> dict:
-    """Envoie une relance (email simulé) à l'assuré sur une tâche 'pièce manquante'."""
+    """Envoie une relance à l'assuré sur une tâche 'pièce manquante' (courrier généré par LLM)."""
     tache = session.get(Tache, tache_id)
     if not tache:
         raise HTTPException(404, "Tâche introuvable")

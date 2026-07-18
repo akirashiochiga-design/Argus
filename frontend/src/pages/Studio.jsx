@@ -161,7 +161,7 @@ function CreateurPrompt({ categories, onCree }) {
   const [nom, setNom] = useState('')
   const [categorie, setCategorie] = useState('vision')
   const [instructions, setInstructions] = useState('')
-  const [mode, setMode] = useState(null) // 'llm' | 'simulation'
+  const [mode, setMode] = useState(null) // 'llm'
   const [genere, setGenere] = useState(false)
   const [envoi, setEnvoi] = useState(false)
   const [erreur, setErreur] = useState(null)

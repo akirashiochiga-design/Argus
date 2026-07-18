@@ -23,34 +23,125 @@ def _police(taille: int, gras: bool = False) -> ImageFont.FreeTypeFont:
 
 def _document(titre: str, entete: list[str], lignes: list[tuple[str, str]],
               total: str, pied: str, chemin: Path) -> None:
-    img = Image.new("RGB", (900, 1100), "#fdfcf8")
+    img = Image.new("RGB", (900, 1100), "#f8f7f3")
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, 900, 110], fill="#1e3a5f")
-    d.text((40, 30), titre, font=_police(34, True), fill="white")
+    # Feuille scannée avec marges, en-tête garage et références comptables.
+    d.rectangle([24, 18, 876, 1080], fill="white", outline="#d3d0c8", width=2)
+    d.rectangle([48, 42, 132, 126], fill="#243b53")
+    d.text((70, 62), "GB", font=_police(28, True), fill="white")
+    d.text((154, 48), titre.split("—")[0].strip(), font=_police(25, True), fill="#172b4d")
+    d.text((154, 82), "Carrosserie · peinture · mécanique", font=_police(16), fill="#5d6774")
+    nature = titre.split("—")[-1].strip()
+    d.text((690, 50), nature, font=_police(28, True), fill="#172b4d")
+    d.text((690, 88), "ORIGINAL", font=_police(14, True), fill="#b3402a")
+    d.line([48, 144, 852, 144], fill="#243b53", width=3)
 
-    y = 150
-    for ligne in entete:
-        d.text((40, y), ligne, font=_police(20), fill="#333333")
-        y += 32
+    y = 174
+    for i, ligne in enumerate(entete):
+        if i == 0:
+            d.rounded_rectangle([480, y - 10, 842, y + 34], radius=5, fill="#eef2f6")
+            d.text((496, y), ligne, font=_police(16, True), fill="#243b53")
+        else:
+            d.text((58, y), ligne, font=_police(18), fill="#28323c")
+        y += 34
 
-    y += 30
-    d.rectangle([40, y, 860, y + 44], fill="#e8e4da")
-    d.text((60, y + 10), "Désignation", font=_police(20, True), fill="#1e3a5f")
-    d.text((640, y + 10), "Montant (DT)", font=_police(20, True), fill="#1e3a5f")
-    y += 44
+    y += 18
+    d.rectangle([48, y, 852, y + 46], fill="#243b53")
+    d.text((62, y + 12), "DÉSIGNATION DES TRAVAUX", font=_police(17, True), fill="white")
+    d.text((700, y + 12), "MONTANT DT", font=_police(17, True), fill="white")
+    y += 46
     for libelle, montant in lignes:
-        d.line([40, y + 42, 860, y + 42], fill="#dddddd")
-        d.text((60, y + 10), libelle, font=_police(20), fill="#222222")
-        d.text((640, y + 10), montant, font=_police(20), fill="#222222")
-        y += 44
+        d.rectangle([48, y, 852, y + 48], outline="#d9dde2")
+        d.text((62, y + 13), libelle, font=_police(17), fill="#202a35")
+        d.text((720, y + 13), montant, font=_police(17), fill="#202a35")
+        y += 48
 
-    y += 26
-    d.rectangle([480, y, 860, y + 54], fill="#1e3a5f")
-    d.text((500, y + 12), "TOTAL TTC", font=_police(24, True), fill="white")
-    d.text((640, y + 12), total, font=_police(24, True), fill="white")
+    y += 22
+    d.text((560, y), "Total HT", font=_police(17), fill="#5d6774")
+    d.text((720, y), total, font=_police(17), fill="#5d6774")
+    d.text((560, y + 34), "TVA", font=_police(17), fill="#5d6774")
+    d.text((720, y + 34), "incluse", font=_police(17), fill="#5d6774")
+    d.rectangle([540, y + 70, 852, y + 128], fill="#243b53")
+    d.text((558, y + 86), "TOTAL TTC", font=_police(21, True), fill="white")
+    d.text((712, y + 86), total, font=_police(21, True), fill="white")
 
-    d.text((40, 1020), pied, font=_police(16), fill="#777777")
+    d.line([48, 976, 852, 976], fill="#d3d0c8", width=2)
+    d.text((58, 994), pied, font=_police(14), fill="#68727d")
+    d.text((58, 1022), "Règlement : virement ou chèque · Document fictif de démonstration",
+           font=_police(13), fill="#8b939c")
     img.save(chemin, quality=90)
+    print(f"  {chemin.name}")
+
+
+def _constat(chemin: Path) -> None:
+    """Formulaire de constat amiable réaliste, structuré comme un imprimé assurance."""
+    img = Image.new("RGB", (1100, 820), "#efede6")
+    d = ImageDraw.Draw(img)
+    d.rectangle([20, 16, 1080, 804], fill="#fffef9", outline="#9d9a91", width=2)
+    d.rectangle([36, 30, 1064, 92], fill="#f2c94c")
+    d.text((54, 44), "CONSTAT AMIABLE D'ACCIDENT AUTOMOBILE", font=_police(25, True), fill="#242424")
+    d.text((838, 47), "Exemplaire assureur", font=_police(14, True), fill="#6b5700")
+
+    champs = [
+        ("1. Date", "13/07/2026 — 19h30"),
+        ("2. Lieu", "Av. Habib Bourguiba, Ariana"),
+        ("3. Blessés", "☐ oui   ☒ non"),
+        ("4. Dégâts matériels autres", "☐ oui   ☒ non"),
+    ]
+    x = 44
+    for titre, valeur in champs:
+        d.rectangle([x, 110, x + 245, 174], outline="#77736c")
+        d.text((x + 8, 118), titre, font=_police(13, True), fill="#55514b")
+        d.text((x + 8, 144), valeur, font=_police(14), fill="#171717")
+        x += 253
+
+    d.rectangle([44, 190, 530, 630], outline="#3978a8", width=3)
+    d.rectangle([570, 190, 1056, 630], outline="#d04b3e", width=3)
+    d.rectangle([44, 190, 530, 232], fill="#dbeef8")
+    d.rectangle([570, 190, 1056, 232], fill="#f8dfdc")
+    d.text((60, 201), "VÉHICULE A — ASSURÉ", font=_police(18, True), fill="#1e557d")
+    d.text((586, 201), "VÉHICULE B — TIERS", font=_police(18, True), fill="#97352d")
+
+    a = [
+        "Nom : Ahmed Ben Salah",
+        "Assureur : Argus Assurances",
+        "Police : PA-2024-1183",
+        "Véhicule : Volkswagen Golf 8",
+        "Immatriculation : 225 TU 4817",
+        "Point de choc : avant droit",
+        "Dégâts : pare-chocs, optique, aile",
+    ]
+    b = [
+        "Nom : Mohamed R. (conducteur)",
+        "Assureur : Assurances du Centre",
+        "Police : AC-88421",
+        "Véhicule : Renault Symbol",
+        "Immatriculation : 190 TU 7752",
+        "☒ Sortait d'un stationnement",
+        "Observations : torts reconnus",
+    ]
+    for col_x, lignes in ((60, a), (586, b)):
+        y = 250
+        for ligne in lignes:
+            d.text((col_x, y), ligne, font=_police(15), fill="#262626")
+            d.line([col_x, y + 23, col_x + 440, y + 23], fill="#ddd9d0")
+            y += 43
+
+    d.rectangle([44, 648, 680, 770], outline="#77736c")
+    d.text((56, 658), "Croquis de l'accident", font=_police(14, True), fill="#4d4943")
+    d.line([260, 712, 590, 712], fill="#77736c", width=5)
+    d.rectangle([170, 688, 245, 738], outline="#3978a8", width=3)
+    d.rectangle([600, 676, 650, 746], outline="#d04b3e", width=3)
+    d.line([595, 711, 542, 711], fill="#d04b3e", width=4)
+    d.polygon([(542, 711), (558, 702), (558, 720)], fill="#d04b3e")
+    d.text((178, 704), "A", font=_police(20, True), fill="#3978a8")
+    d.text((615, 700), "B", font=_police(20, True), fill="#d04b3e")
+
+    d.rectangle([700, 648, 1056, 770], outline="#77736c")
+    d.text((716, 660), "Signatures des conducteurs", font=_police(14, True), fill="#4d4943")
+    d.text((716, 704), "A : Ahmed Ben Salah", font=_police(15), fill="#202020")
+    d.text((716, 738), "B : Mohamed R.", font=_police(15), fill="#202020")
+    img.save(chemin, quality=92)
     print(f"  {chemin.name}")
 
 
@@ -175,56 +266,10 @@ def generer() -> None:
         DOSSIER / "devis-parebrise.jpg",
     )
 
-    # --- Croquis d'expertise (substituts des photos de dégâts, à remplacer si possible) ---
-    # SIN-2026-001 : choc avant droit (pare-chocs + phare, puis aile)
-    _croquis_degats(
-        "SIN-2026-001 — dégâts avant droit (1/2)",
-        [[(566, 196), (600, 214), (600, 268), (566, 262)]],
-        ["Pare-chocs avant droit : enfoncé", "Optique avant droit : brisé",
-         "Choc latéral, véhicule sortant d'un stationnement"],
-        DOSSIER / "degats-1.jpg",
-    )
-    _croquis_degats(
-        "SIN-2026-001 — dégâts avant droit (2/2)",
-        [[(586, 300), (600, 300), (600, 380), (586, 380)]],
-        ["Aile avant droite : tôle enfoncée", "Peinture à reprendre (aile + pare-chocs)",
-         "Cohérent avec le constat amiable"],
-        DOSSIER / "degats-2.jpg",
-    )
-    # SIN-2026-002 : choc frontal (capot + pare-chocs), gravité plus marquée
-    _croquis_degats(
-        "SIN-2026-002 — choc frontal",
-        [[(330, 195), (570, 195), (560, 250), (340, 250)]],
-        ["Capot : plié", "Pare-chocs avant : enfoncé sur toute la largeur",
-         "Pas de tiers identifié, pas de constat"],
-        DOSSIER / "degats-3.jpg",
-    )
-    # SIN-2026-003 : fissure de pare-brise
-    _croquis_degats(
-        "SIN-2026-003 — bris de glace",
-        [],
-        ["Fissure pare-brise côté conducteur (~30 cm)", "Impact d'un gravier projeté",
-         "Remplacement préconisé"],
-        DOSSIER / "parebrise.jpg",
-        fissure=True,
-    )
-
-    # Constat simplifié (texte) pour SIN-2026-001
-    _document(
-        "CONSTAT AMIABLE D'ACCIDENT (extrait)",
-        ["Date : 13/07/2026 à 19h30 — Lieu : Av. Habib Bourguiba, Ariana",
-         "Véhicule A : VW Golf 8 — 225 TU 4817 — Ahmed Ben Salah",
-         "Véhicule B : Renault Symbol — 190 TU 7752 — conducteur adverse",
-         "Croquis : B sortait d'un parking, choc sur avant droit de A",
-         "Case 8 cochée (B sortait d'un stationnement) — B reconnaît ses torts"],
-        [("Dégâts véhicule A : pare-chocs avant droit", "—"),
-         ("Dégâts véhicule A : optique droit, aile enfoncée", "—"),
-         ("Signatures : A ✔   B ✔", "—")],
-        "—",
-        "Document reconstitué pour démo — remplacer par un vrai constat scanné si possible",
-        DOSSIER / "constat.jpg",
-    )
-    print("OK — 4 croquis de dégâts générés (substituts, à remplacer par de vraies photos si possible)")
+    # Les photos réelles de dégâts sont des assets versionnés : ne jamais les
+    # écraser lors de la régénération des documents.
+    _constat(DOSSIER / "constat.jpg")
+    print("OK — documents régénérés ; photos réelles conservées")
 
 
 if __name__ == "__main__":

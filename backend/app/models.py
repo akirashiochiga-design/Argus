@@ -72,7 +72,7 @@ class Dossier(SQLModel, table=True):
     montant_estime: Optional[float] = None  # montant lu sur facture/devis (extraction)
     montant_recommande: Optional[float] = None
     montant_valide: Optional[float] = None  # écrit UNIQUEMENT par une décision humaine
-    # {"objet": ..., "corps": ..., "mode": "llm"|"simulation"} — l'email simulé
+    # {"objet": ..., "corps": ..., "mode": "llm"} — la lettre générée
     courrier: dict = Field(default_factory=dict, sa_column=Column(JSON))
     # [{"type": "constat", "chemin": "docs/samples/constat.jpg", "extraction": {...}}]
     pieces: list = Field(default_factory=list, sa_column=Column(JSON))

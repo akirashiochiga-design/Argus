@@ -14,11 +14,9 @@
       automatiquement (`degats-1/2/3.jpg`, `parebrise.jpg` — vue de dessus, zone
       endommagée hachurée). Ça suffit pour la démo. Les remplacer par de vraies
       photos si vous en trouvez (regénérer les croquis : `python -m app.samples`).
-- [ ] Mettre la clé dans `backend/.env` : `ANTHROPIC_API_KEY=sk-ant-...`.
-      **Modèle par défaut : Haiku 4.5** (le moins cher, ~1-2 cents/dossier, vision
-      comprise) — les crédits offerts à l'inscription suffisent. Les agents passent
-      alors en vrais appels Claude (badge **IA** au lieu de **simulé**), y compris
-      la génération d'instructions dans le Studio.
+- [ ] Clé API configurée dans `backend/.env` : `ANTHROPIC_API_KEY=sk-ant-...`.
+      **Modèle : Haiku 4.5** (le moins cher, ~1-2 cents/dossier, vision comprise).
+      Tous les agents LLM appellent Claude en direct — badges **IA** dans l'UI.
 - [ ] Répétition générale : `cd backend && .venv/Scripts/python test_e2e.py`
       → doit afficher `TOUS LES TESTS PASSENT`.
 - [ ] Faire relire les déclarations darija du seed par un locuteur (fichier `backend/app/seed.py`).
@@ -38,12 +36,12 @@
   trop vite ou voulez remontrer un agent.
 - **↺ Rejouer** (Pipeline) : remet le dossier courant au début pour le rejouer en direct.
 
-**Plan B intégré (à connaître, pas à dire) :** si le Wi-Fi tombe ou la clé API expire,
-les agents LLM basculent automatiquement en mode simulation (badge gris « simulé »),
-le calcul et la gouvernance restant identiques. La démo ne peut pas planter.
-Si on vous le demande : « le fallback est un garde-fou de production, pas un artifice
-de démo — un assureur ne peut pas arrêter de traiter des sinistres parce qu'une API
-est indisponible. »
+**Plan B intégré (à connaître, pas à dire) :** si le Wi-Fi tombe ou l'API Anthropic
+est indisponible, les agents LLM basculent automatiquement sur leurs fallbacks
+déterministes/heuristiques (même résultat final, calcul et gouvernance identiques).
+La démo ne peut pas planter. Si on vous le demande : « c'est un garde-fou de
+production — un assureur ne peut pas arrêter de traiter des sinistres à cause d'une
+API indisponible. »
 
 ---
 
@@ -85,8 +83,8 @@ est indisponible. »
 - **Créer un agent personnalisé** (encadré terracotta en haut) : taper une phrase,
   ex. *« un agent qui vérifie la cohérence entre les photos et la déclaration »*,
   puis **✦ Générer les instructions**.
-  > « Je décris ce que je veux, l'IA rédige la consigne de l'agent. » (Avec la clé,
-  > badge **IA** = vraie génération Claude ; sans clé, badge **simulé**.)
+  > « Je décris ce que je veux, l'IA rédige la consigne de l'agent. » (Badge **IA**
+  > = génération Claude en direct.)
 - Choisir le rôle « Analyse d'images », **Créer l'agent** → il apparaît avec le
   badge **✦ perso**. Montrer l'encadré 🔒 :
   > « Même en écrivant ce que je veux, impossible de créer un agent qui décide d'un

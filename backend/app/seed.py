@@ -241,6 +241,7 @@ DECLARATION_4 = (
 def build_dossiers() -> list[Dossier]:
     return [
         # LE dossier de la démo live : tous risques, collision → ~1 850 DT
+        # + une photo de pare-brise (incohérente) pour démontrer la création d'agent
         Dossier(
             ref="SIN-2026-001",
             police_id=1,
@@ -251,6 +252,7 @@ def build_dossiers() -> list[Dossier]:
                 {"type": "facture", "chemin": "docs/samples/facture.jpg", "montant": 2300.0},
                 {"type": "photo_degats", "chemin": "docs/samples/degats-1.jpg", "montant": None},
                 {"type": "photo_degats", "chemin": "docs/samples/degats-2.jpg", "montant": None},
+                {"type": "photo_degats", "chemin": "docs/samples/parebrise.jpg", "montant": None},
             ],
         ),
         # Formule tiers, dégâts collision sans tiers identifié → non couvert → refus motivé

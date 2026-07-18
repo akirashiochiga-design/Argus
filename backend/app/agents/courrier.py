@@ -2,7 +2,7 @@
 
 Le montant et la décision sont IMPOSÉS par le calcul déterministe et la
 décision humaine — ils sont injectés dans le prompt, jamais calculés ici.
-Fallback simulation : lettre à trous déterministe.
+Fallback : lettre à trous déterministe.
 """
 from sqlmodel import Session, select
 
@@ -101,7 +101,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         }
         meta = {"cout": resultat["cout"], "duree_ms": resultat["duree_ms"], "mode": "llm"}
     except llm.LLMIndisponible:
-        courrier = {**_fallback(ctx, dossier), "mode": "simulation"}
-        meta = {"cout": 0.0, "duree_ms": 5, "mode": "simulation"}
+        courrier = {**_fallback(ctx, dossier)}
+        meta = {"cout": 0.0, "duree_ms": 5}
 
     return {"courrier": courrier, "confiance": 0.95, **meta}

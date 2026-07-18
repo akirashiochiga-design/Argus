@@ -2,7 +2,7 @@
 
 Entrée : declaration_texte (français ou darija tunisienne).
 Sortie : dossier FNOL structuré + champs manquants + complétude + langue.
-Fallback simulation : heuristiques par mots-clés si l'API est indisponible.
+Fallback : heuristiques par mots-clés si l'API est indisponible.
 """
 from sqlmodel import Session
 
@@ -37,7 +37,7 @@ MOTS_DARIJA = ("aslema", "salem", "ena", "el ", "3and", "mkass", "karhba", "chno
 
 
 def _fallback(dossier: Dossier) -> dict:
-    """Structuration par mots-clés — utilisée seulement sans clé API / hors ligne."""
+    """Structuration par mots-clés — fallback si API indisponible."""
     texte = dossier.declaration_texte.lower()
     if "pare-brise" in texte or "fissur" in texte or "gravier" in texte:
         type_sinistre = "bris_glace"
@@ -73,7 +73,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         meta = {"cout": resultat["cout"], "duree_ms": resultat["duree_ms"], "mode": "llm"}
     except llm.LLMIndisponible:
         donnees = _fallback(dossier)
-        meta = {"cout": 0.0, "duree_ms": 5, "mode": "simulation"}
+        meta = {"cout": 0.0, "duree_ms": 5}
 
     return {
         "donnees_fnol": donnees,

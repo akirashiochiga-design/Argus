@@ -3,7 +3,7 @@
 - Clé lue depuis ANTHROPIC_API_KEY (via .env), jamais en dur.
 - Sorties structurées garanties par `output_config.format` (json_schema).
 - Si la clé est absente ou que l'appel échoue (réseau coupé en démo),
-  l'appelant reçoit LLMIndisponible et bascule sur son fallback simulé :
+  l'appelant reçoit LLMIndisponible et bascule sur son fallback :
   la démo ne peut pas planter.
 
 Rappel non négociable : aucun montant de règlement ne sort d'ici.

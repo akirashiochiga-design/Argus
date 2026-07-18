@@ -1,6 +1,12 @@
 // Unique point de contact avec le backend — tout le front passe par ici.
 const BASE_URL = 'http://localhost:8000'
 
+export const assetUrl = (chemin) => {
+  if (!chemin) return ''
+  if (/^https?:\/\//i.test(chemin)) return chemin
+  return `${BASE_URL}/${chemin.replace(/^\/+/, '')}?v=photos-reelles-1`
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },

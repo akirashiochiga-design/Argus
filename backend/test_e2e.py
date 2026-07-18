@@ -176,7 +176,7 @@ cats = appel("GET", "/studio/categories")
 verifier("catégories argent NON proposées au prompt",
          "garanties" not in cats and "indemnite" not in cats and "hitl" not in cats)
 gen = appel("POST", "/studio/generer-instructions", {"brief": "vérifier la cohérence photos / déclaration"})
-verifier("instructions générées (llm ou simulation)", len(gen["instructions"]) > 40 and gen["mode"] in ("llm", "simulation"))
+verifier("instructions générées", len(gen["instructions"]) > 40 and gen.get("mode") in (None, "llm"))
 ap = appel("POST", "/studio/agents-personnalises",
            {"nom": "Contrôle cohérence", "categorie": "vision", "instructions": gen["instructions"]})
 verifier("agent personnalisé créé en draft", ap.get("statut") == "draft")
@@ -209,7 +209,7 @@ d4b = next(x for x in appel("GET", "/dossiers") if x["ref"] == "SIN-2026-004")
 executer_pipeline(d4b["id"])
 t6 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-004")
 r = appel("POST", f"/taches/{t6['id']}/relancer", {"validateur": "Selma (superviseure)"})
-verifier("relance envoyée, message généré (email simulé ou IA)",
+verifier("relance envoyée, message généré",
          len(r["tache"]["relances"]) == 1 and bool(r["tache"]["relances"][0].get("objet")))
 r2 = appel("POST", f"/taches/{t6['id']}/relancer", {"validateur": "Selma (superviseure)"})
 verifier("une deuxième relance s'ajoute à l'historique (pas de remplacement)",

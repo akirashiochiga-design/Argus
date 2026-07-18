@@ -18,15 +18,15 @@ npm install        # 1re fois
 npm run dev
 ```
 
-Clé API : copier `backend/.env.example` vers `backend/.env` et renseigner
-`ANTHROPIC_API_KEY`. **Sans clé, l'app fonctionne intégralement** : les agents
-LLM basculent en mode simulation (badge « simulé » dans l'UI) ; avec la clé, ils
-font de vrais appels Claude (texte + vision, badge « IA »).
+Clé API : la clé est configurée dans `backend/.env` (variable
+`ANTHROPIC_API_KEY`). Les agents LLM appellent l'API Anthropic en temps réel
+(texte + vision, badge « IA »). **En cas d'indisponibilité de l'API**, chaque
+agent bascule sur un fallback déterministe/heuristique pour que la démo
+continue de tourner.
 
 **Modèle : `claude-haiku-4-5` par défaut** — le moins cher de l'API Anthropic,
-vision comprise, ~1-2 cents par dossier. Les crédits offerts à l'inscription sur
-console.anthropic.com couvrent tout le hackathon. Pour plus de qualité
-rédactionnelle : `ARGUS_MODEL=claude-sonnet-5` ou `claude-opus-4-8` dans `.env`.
+vision comprise, ~1-2 cents par dossier. Pour plus de qualité rédactionnelle :
+`ARGUS_MODEL=claude-sonnet-5` ou `claude-opus-4-8` dans `.env`.
 
 ## Direction artistique
 

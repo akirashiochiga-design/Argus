@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { assetUrl } from './api'
+
 // Composants et tokens partagés, alignés sur le brand book Argus.
 // Encre / crème / terracotta ; états en teintes terreuses désaturées.
 
@@ -58,10 +61,9 @@ export function BadgeMode({ mode }) {
   const styles = {
     llm: 'bg-terracotta-tint text-terracotta-deep',
     mixte: 'bg-terracotta-tint text-terracotta-deep',
-    simulation: 'bg-surface-deep text-encre/50',
     deterministe: 'bg-ok-tint text-ok',
   }
-  const libelles = { llm: 'IA', simulation: 'simulé', mixte: 'IA partiel', deterministe: 'déterministe' }
+  const libelles = { llm: 'IA', mixte: 'IA partiel', deterministe: 'déterministe' }
   return (
     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[mode] ?? ''}`}>
       {libelles[mode] ?? mode}
@@ -73,6 +75,49 @@ export const dt = (montant) =>
   montant === null || montant === undefined
     ? '—'
     : `${Number(montant).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} DT`
+
+const libellePiece = (type = '') =>
+  type.replaceAll('_', ' ').replace(/^\w/, (lettre) => lettre.toUpperCase())
+
+function ApercuPiece({ piece, index, hauteur = 'h-32' }) {
+  const [indisponible, setIndisponible] = useState(false)
+  const estPhoto = piece.type === 'photo_degats'
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-line bg-surface-deep">
+      {!indisponible ? (
+        <img
+          src={assetUrl(piece.chemin)}
+          alt={`${libellePiece(piece.type)} ${index + 1}`}
+          className={`${hauteur} w-full object-cover`}
+          loading="lazy"
+          onError={() => setIndisponible(true)}
+        />
+      ) : (
+        <div className={`${hauteur} flex items-center justify-center bg-line/35 text-3xl`} aria-hidden="true">
+          {estPhoto ? '📷' : '📄'}
+        </div>
+      )}
+      <div className="p-2 text-xs text-encre/60">
+        <div className="font-semibold">{libellePiece(piece.type)}</div>
+        {piece.montant != null && <div className="text-encre/40">{dt(piece.montant)}</div>}
+      </div>
+    </div>
+  )
+}
+
+export function GaleriePieces({ pieces = [], photosSeulement = false, className = '', hauteur }) {
+  const visibles = photosSeulement ? pieces.filter((piece) => piece.type === 'photo_degats') : pieces
+  if (visibles.length === 0) return null
+
+  return (
+    <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 ${className}`}>
+      {visibles.map((piece, index) => (
+        <ApercuPiece key={`${piece.chemin}-${index}`} piece={piece} index={index} hauteur={hauteur} />
+      ))}
+    </div>
+  )
+}
 
 export const heure = (iso) => {
   if (!iso) return '—'

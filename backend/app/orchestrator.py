@@ -207,7 +207,7 @@ def reculer(session: Session, dossier: Dossier) -> dict:
 
 
 def relancer(session: Session, tache: Tache, validateur: str) -> dict:
-    """Envoie une relance à l'assuré sur une tâche 'demande_piece' (email simulé).
+    """Envoie une relance à l'assuré sur une tâche 'demande_piece' (courrier généré).
 
     N'est PAS une décision : la tâche reste 'en_attente'. C'est l'étape
     intermédiaire de la capacité d'adaptation — avant de clôturer un dossier
@@ -251,7 +251,6 @@ def relancer(session: Session, tache: Tache, validateur: str) -> dict:
                 "Merci de nous la transmettre sous 15 jours ; passé ce délai, nous serons "
                 "contraints de clôturer le dossier sans suite.\n\nCordialement,\nService Sinistres"
             ),
-            "mode": "simulation",
         }
 
     relance = {"horodatage": datetime.now(timezone.utc).isoformat(), **message}

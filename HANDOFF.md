@@ -69,9 +69,9 @@ backend/
                           decider() — voir §6
     audit.py              helper unique d'écriture de la piste d'audit
     agents/               les 7 agents du pipeline P5 (voir §7)
-      fnol.py extraction.py gravite.py            → LLM (avec repli simulation)
+      fnol.py extraction.py gravite.py            → LLM (avec fallback déterministe)
       garanties.py indemnite.py hitl.py           → déterministe, PAS de LLM
-      courrier.py                                  → LLM (avec repli simulation)
+      courrier.py                                  → LLM (avec fallback déterministe)
     routers/
       dossiers.py    GET/POST /dossiers, /executer, /reculer, /rejouer
       taches.py      GET /taches, POST /taches/{id}/decider
@@ -189,44 +189,30 @@ jointe) est laissé à l'état `recu` pour démontrer cette porte en direct
 pendant la démo — ne pas l'exécuter dans le seed lui-même, ça casserait la
 mise en scène.
 
-## 8. LLM — modèle, clé API, mode simulation
+## 8. LLM — modèle et clé API
 
 `llm.py` est l'unique point d'appel Anthropic. **Modèle par défaut :
 `claude-haiku-4-5`** (le moins cher de l'API, vision comprise, ~1-2 cents
 par dossier complet) — changeable via `ARGUS_MODEL` dans `.env`
 (`claude-sonnet-5` ou `claude-opus-4-8` pour plus de qualité rédactionnelle).
 
-**Sans clé API, tout fonctionne quand même** : chaque agent LLM a un repli
-déterministe/heuristique (voir tableau §7), marqué `mode: "simulation"` dans
-sa sortie (badge gris "simulé" dans l'UI vs badge terracotta "IA" avec une
-vraie clé). C'est un choix de robustesse assumé, pas un bug : la démo ne
-peut pas planter si le Wi-Fi tombe.
+**Clé API branchée** : la clé est configurée dans `backend/.env`
+(variable `ANTHROPIC_API_KEY`). Les agents LLM appelent réellement l'API
+Anthropic et produisent des sorties avec `mode: "llm"`, affichées avec le
+badge terracotta "IA" dans l'UI. Le coût de chaque appel est calculé et
+affiché dans le dashboard (`cout_ia_usd`).
 
-**Pour obtenir et brancher une vraie clé** — pas de "crédits hackathon"
-spécifiques, juste le crédit d'essai standard qu'Anthropic offre à toute
-nouvelle inscription (aucun code organisateur à chercher) :
-1. Aller sur **console.anthropic.com**, créer un compte/organisation.
-2. Le crédit d'essai offert à l'inscription est appliqué automatiquement.
-   Avec Haiku (~1-2 centimes par dossier complet), il couvre largement
-   toute la durée du hackathon.
-3. Créer une clé API (section "API Keys" de la console).
-4. `cp backend/.env.example backend/.env`, coller la clé dans
-   `ANTHROPIC_API_KEY=sk-ant-...`.
-5. Redémarrer uvicorn (python-dotenv lit `.env` au démarrage seulement).
-6. Vérifier : exécuter un dossier, les badges passent de "simulé" à "IA",
-   `dashboard/kpi` → `cout_ia_usd` commence à bouger (quelques centimes).
+**Robustesse via fallbacks** : chaque agent LLM a un repli déterministe/
+heuristique (voir tableau §7), utilisé seulement si l'API est indisponible
+ou si la clé n'est pas configurée. C'est un choix de robustesse : la démo ne
+plante pas si le Wi-Fi tombe, mais en conditions normales tous les agents
+LLM appellent l'API et retournent des résultats réels.
 
-**Pourquoi la gravité vision "marche" même sans vraie photo d'accident** :
-des **croquis d'expertise générés** (`backend/app/samples.py` → vue de
+Les **croquis d'expertise générés** (`backend/app/samples.py` → vue de
 dessus du véhicule, zone endommagée hachurée) tiennent lieu de photos dans
 `docs/samples/` (`degats-1/2/3.jpg`, `parebrise.jpg`), référencés dans
-`seed.py`. Avec une clé API, `gravite.py` envoie réellement ces images à
-Claude (vision). **Sans clé**, l'agent ne les ouvre jamais : il tombe
-directement sur l'exception `LLMIndisponible` avant de lire le moindre
-octet d'image, et produit une estimation plausible à partir du texte de la
-déclaration seul (`_fallback()`). Les deux chemins produisent un résultat
-qui a l'air cohérent — c'est voulu, mais ne pas confondre "ça a l'air de
-marcher" avec "ça regarde vraiment l'image" en l'absence de clé.
+`seed.py`. Avec la clé API, `gravite.py` envoie réellement ces images à
+Claude (vision) pour une analyse authentique.
 
 ## 9. Authentification (factice, assumée)
 
