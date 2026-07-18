@@ -98,18 +98,31 @@ print("=== 4. Garde-fou : impossible d'exécuter un dossier réglé ===")
 r = appel("POST", "/dossiers/1/executer")
 verifier("409 sur dossier réglé", r.get("__erreur__") == 409)
 
-print("=== 5. Studio : créer -> publier -> brancher, et modifier un seuil ===")
+print("=== 5. Studio : créer -> publier -> AJOUTER (pas remplacer), et modifier un seuil ===")
+wf_avant = appel("GET", "/workflows")[0]
+nb_etapes_avant = len(wf_avant["etapes"])
 a = appel("POST", "/agents", {"nom": "Règlement auto — bris de glace", "template_id": 3,
                               "seuils": {"seuil_validation": 300}})
 verifier("agent créé en draft", a.get("statut") == "draft", str(a))
-r = appel("POST", "/workflows/1/affecter", {"agent_id": a["id"]})
-verifier("brancher un draft est refusé (409)", r.get("__erreur__") == 409)
+r = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
+verifier("ajouter un draft est refusé (409)", r.get("__erreur__") == 409)
 a2 = appel("POST", f"/agents/{a['id']}/publier")
 verifier("agent publié live", a2["statut"] == "live")
-w = appel("POST", "/workflows/1/affecter", {"agent_id": a["id"]})
-verifier("agent branché à l'étape indemnité", any(e["agent_id"] == a["id"] for e in w.get("etapes", [])))
+w = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
+verifier("agent présent dans le pipeline", any(e["agent_id"] == a["id"] for e in w.get("etapes", [])))
+verifier("le pipeline compte UNE étape de PLUS qu'avant (ajout, pas remplacement)",
+         len(w["etapes"]) == nb_etapes_avant + 1, f"{len(w['etapes'])} vs {nb_etapes_avant}")
+verifier("l'agent d'origine 'Calcul indemnité auto' (id 5) est toujours présent",
+         any(e["agent_id"] == 5 for e in w["etapes"]))
+r = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
+verifier("ajouter deux fois le même agent est refusé (409)", r.get("__erreur__") == 409)
 h = appel("PATCH", "/agents/6", {"seuils": {"seuil_validation": 300, "plafond_auto": 200}})
 verifier("seuil HITL modifié, version incrémentée", h["seuils"]["seuil_validation"] == 300 and h["version"] == 2)
+avant_instr = appel("GET", "/agents")
+agent5_avant = next(x for x in avant_instr if x["id"] == 5)
+i = appel("PATCH", "/agents/5", {"instructions": "Calcule le montant en franchisant systématiquement 50 DT de plus."})
+verifier("instructions d'un agent DE BASE modifiables séparément (action distincte)",
+         i["instructions"] != agent5_avant["instructions"] and i["version"] == agent5_avant["version"] + 1)
 
 print("=== 6. Déclaration live -> nouveau seuil appliqué (380 DT >= 300 -> validation) ===")
 d4 = appel("POST", "/dossiers", {

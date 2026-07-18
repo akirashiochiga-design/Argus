@@ -1,26 +1,22 @@
 // Composants et tokens partagés, alignés sur le brand book Argus.
 // Encre / crème / terracotta ; états en teintes terreuses désaturées.
 
-// Le signe : « huit yeux, un seul regard ». Une lentille — pupille terracotta.
-// Trait unique, hérite de la couleur du texte (currentColor).
+// Le signe officiel du brand book : « huit yeux, un seul regard ».
+// Huit lentilles (pas des lignes) disposées en rosace autour d'une pupille
+// terracotta centrale. Trait unique, hérite de la couleur du texte
+// (currentColor) ; la pupille reste toujours terracotta.
+const PETALE = 'M120 107 Q101 66 120 25 Q139 66 120 107 Z'
+const ANGLES = [0, 45, 90, 135, 180, 225, 270, 315]
+
 export function Logo({ size = 28, className = '' }) {
-  const ticks = Array.from({ length: 8 }, (_, i) => {
-    const a = (i * Math.PI) / 4
-    const cx = 16, cy = 16
-    return (
-      <line key={i}
-        x1={cx + 11 * Math.cos(a)} y1={cy + 11 * Math.sin(a)}
-        x2={cx + 8.4 * Math.cos(a)} y2={cy + 8.4 * Math.sin(a)} />
-    )
-  })
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden="true">
-      <g fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        <circle cx="16" cy="16" r="12" />
-        <circle cx="16" cy="16" r="6" />
-        {ticks}
+    <svg width={size} height={size} viewBox="0 0 240 240" className={className} aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="8" strokeLinejoin="round">
+        {ANGLES.map((deg) => (
+          <path key={deg} d={PETALE} transform={`rotate(${deg} 120 120)`} />
+        ))}
       </g>
-      <circle cx="16" cy="16" r="3.1" fill="#D97757" />
+      <circle cx="120" cy="120" r="13" fill="#D97757" />
     </svg>
   )
 }

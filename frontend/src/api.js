@@ -28,8 +28,8 @@ export const api = {
   modifierAgent: (id, corps) =>
     request(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(corps) }),
   listerWorkflows: () => request('/workflows'),
-  affecterAgent: (workflowId, agentId) =>
-    post(`/workflows/${workflowId}/affecter`, { agent_id: agentId }),
+  ajouterEtape: (workflowId, agentId) =>
+    post(`/workflows/${workflowId}/ajouter-etape`, { agent_id: agentId }),
   // Studio — agent personnalisé depuis un prompt
   categoriesStudio: () => request('/studio/categories'),
   genererInstructions: (brief) => post('/studio/generer-instructions', { brief }),
@@ -50,5 +50,3 @@ export const api = {
   // Démo
   reseed: () => post('/admin/reseed'),
 }
-
-export const VALIDATEUR = 'Selma Gharbi (superviseure)'

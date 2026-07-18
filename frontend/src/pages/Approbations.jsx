@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { api, VALIDATEUR } from '../api'
+import { api } from '../api'
+import { lireSession, libelleValidateur } from '../session'
 import { dt } from '../ui'
 
 export default function Approbations({ onNavigate }) {
   const [enAttente, setEnAttente] = useState([])
   const [decidees, setDecidees] = useState([])
   const [message, setMessage] = useState(null)
+  const validateur = libelleValidateur(lireSession())
 
   const charger = async () => {
     const [attente, faites] = await Promise.all([
@@ -22,7 +24,7 @@ export default function Approbations({ onNavigate }) {
     setMessage(null)
     try {
       const r = await api.deciderTache(tache.id, {
-        decision, validateur: VALIDATEUR,
+        decision, validateur,
         montant: montant != null ? Number(montant) : null,
         motif: motif || null,
       })
@@ -49,7 +51,7 @@ export default function Approbations({ onNavigate }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold">File d'approbation</h2>
         <span className="text-sm text-encre/50">
-          {enAttente.length} tâche{enAttente.length !== 1 ? 's' : ''} en attente — décideur : {VALIDATEUR}
+          {enAttente.length} tâche{enAttente.length !== 1 ? 's' : ''} en attente — décideur : {validateur}
         </span>
       </div>
 

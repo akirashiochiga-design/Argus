@@ -122,10 +122,12 @@ export default function Studio() {
             {agents.map((a) => (
               <CarteAgent key={a.id} agent={a} dansPipeline={agentsDuPipeline.has(a.id)}
                 onPublier={() => agir(() => api.publierAgent(a.id), `« ${a.nom} » est maintenant live (tracé dans l'audit).`)}
-                onBrancher={() => agir(() => api.affecterAgent(workflow.id, a.id),
-                  `« ${a.nom} » est branché dans le pipeline P5 — effectif immédiatement.`)}
+                onAjouter={() => agir(() => api.ajouterEtape(workflow.id, a.id),
+                  `« ${a.nom} » est ajouté au pipeline P5 comme étape supplémentaire — effectif immédiatement.`)}
                 onSeuils={(seuils) => agir(() => api.modifierAgent(a.id, { seuils }),
                   `Seuils de « ${a.nom} » mis à jour → nouvelle version, tracée dans l'audit.`)}
+                onInstructions={(instructions) => agir(() => api.modifierAgent(a.id, { instructions }),
+                  `Instructions de « ${a.nom} » mises à jour → nouvelle version, tracée dans l'audit.`)}
               />
             ))}
           </div>
@@ -147,8 +149,9 @@ export default function Studio() {
 /* ============ créateur d'agent depuis un prompt (assisté IA) ============ */
 
 // Rôles qui correspondent à une étape réelle du pipeline P5 : un agent créé
-// dans l'un de ces rôles peut être publié PUIS branché, et remplace alors
-// vraiment l'agent de cette étape à la prochaine exécution. "assistant" n'a
+// dans l'un de ces rôles peut être publié PUIS ajouté au pipeline — il vient
+// s'insérer comme une étape SUPPLÉMENTAIRE, juste après l'étape de même
+// catégorie ; il ne remplace jamais l'agent déjà en place. "assistant" n'a
 // aucune étape correspondante — volontairement hors pipeline (voir CLAUDE.md
 // §3 : pas de nouvelle étape métier improvisée depuis un prompt).
 const ROLES_BRANCHABLES = new Set(['fnol', 'extraction', 'vision', 'courrier'])
@@ -253,8 +256,8 @@ function CreateurPrompt({ categories, onCree }) {
           </div>
           {ROLES_BRANCHABLES.has(categorie) ? (
             <p className="text-xs text-encre/50">
-              ✓ Une fois publié, ce rôle peut être <b>branché au pipeline</b> — il remplacera alors
-              vraiment l'agent de cette étape à la prochaine exécution.
+              ✓ Une fois publié, ce rôle peut être <b>ajouté au pipeline</b> — il s'insère comme une
+              étape supplémentaire, sans jamais remplacer l'agent déjà en place.
             </p>
           ) : (
             <p className="text-xs text-encre/50">
@@ -265,7 +268,9 @@ function CreateurPrompt({ categories, onCree }) {
           <div className="rounded-md bg-ok-tint px-3 py-2 text-xs text-ok">
             🔒 Garde-fou imposé : cet agent ne peut ni décider d'un montant, ni contourner la validation
             humaine — quelle que soit la consigne saisie. Les rôles « garanties », « indemnité » et la porte
-            de validation ne sont pas créables depuis un prompt.
+            de validation ne sont pas créables depuis un prompt. Et une fois ajouté, il vient <b>compléter</b>
+            le pipeline — il ne supprime ni ne modifie jamais un agent existant. Pour ajuster un agent déjà en
+            place, utilisez son bouton « ✎ Instructions » dans la liste ci-dessous.
           </div>
         </div>
       )}
@@ -276,9 +281,11 @@ function CreateurPrompt({ categories, onCree }) {
 
 /* ============ carte d'un agent déployé ============ */
 
-function CarteAgent({ agent: a, dansPipeline, onPublier, onBrancher, onSeuils }) {
+function CarteAgent({ agent: a, dansPipeline, onPublier, onAjouter, onSeuils, onInstructions }) {
   const [editionSeuil, setEditionSeuil] = useState(false)
+  const [editionInstructions, setEditionInstructions] = useState(false)
   const [seuil, setSeuil] = useState(a.seuils?.seuil_validation ?? '')
+  const [instructions, setInstructions] = useState(a.instructions)
   const aDesSeuils = a.seuils && Object.keys(a.seuils).length > 0
   const perso = a.garde_fous?.origine === 'prompt_studio'
 
@@ -306,10 +313,14 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onBrancher, onSeuils })
             </button>
           )}
           {a.statut === 'live' && !dansPipeline && ['fnol', 'extraction', 'vision', 'garanties', 'indemnite', 'courrier'].includes(a.categorie) && (
-            <button onClick={onBrancher} className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/70 hover:bg-surface-deep">
-              Brancher au pipeline
+            <button onClick={onAjouter} className="rounded-md border border-terracotta/40 px-3 py-1 text-xs font-semibold text-terracotta-deep hover:bg-terracotta-tint">
+              + Ajouter au pipeline
             </button>
           )}
+          <button onClick={() => setEditionInstructions(!editionInstructions)}
+            className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/60 hover:bg-surface-deep">
+            ✎ Instructions
+          </button>
           {aDesSeuils && (
             <button onClick={() => setEditionSeuil(!editionSeuil)}
               className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/60 hover:bg-surface-deep">
@@ -336,6 +347,26 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onBrancher, onSeuils })
             Enregistrer (v{a.version + 1})
           </button>
           <span className="pb-1 text-[10px] text-encre/40">changement de gouvernance → versionné + audité</span>
+        </div>
+      )}
+      {editionInstructions && (
+        <div className="mt-2 grid gap-2 rounded-md bg-surface-deep p-2">
+          <span className="text-xs uppercase tracking-wide text-encre/40">
+            Instructions de « {a.nom} » — une modification distincte de la création d'un nouvel agent
+          </span>
+          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={4}
+            className="w-full rounded border border-line bg-creme p-2 text-sm" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => { onInstructions(instructions); setEditionInstructions(false) }}
+              className="rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme">
+              Enregistrer (v{a.version + 1})
+            </button>
+            <button onClick={() => { setInstructions(a.instructions); setEditionInstructions(false) }}
+              className="rounded-md px-3 py-1.5 text-xs text-encre/50 hover:bg-line">
+              Annuler
+            </button>
+            <span className="text-[10px] text-encre/40">versionné + audité — l'agent reste à la même place du pipeline</span>
+          </div>
         </div>
       )}
     </div>

@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from .. import llm
 from ..audit import tracer
 from ..db import get_session
-from ..models import Agent, Template, Workflow
+from ..models import Agent, Dossier, Template, Workflow
 
 router = APIRouter(tags=["studio"])
 
@@ -113,33 +113,56 @@ class Affectation(BaseModel):
     agent_id: int
 
 
-@router.post("/workflows/{workflow_id}/affecter")
-def affecter_agent(workflow_id: int, corps: Affectation, session: Session = Depends(get_session)) -> Workflow:
-    """Branche un agent (live) dans le pipeline, à l'étape de sa catégorie."""
+@router.post("/workflows/{workflow_id}/ajouter-etape")
+def ajouter_etape(workflow_id: int, corps: Affectation, session: Session = Depends(get_session)) -> Workflow:
+    """Ajoute un agent (live) comme NOUVELLE étape du pipeline.
+
+    Il s'AJOUTE — il ne remplace jamais un agent existant. Inséré juste après
+    la première étape de même catégorie (le point d'insertion le plus lisible :
+    "un contrôle de plus, au même endroit du parcours"), ou avant la porte
+    humaine si aucune étape de cette catégorie n'existe déjà.
+
+    Les dossiers déjà en cours d'exécution sur ce workflow ont leur curseur
+    (`etape_courante`) décalé d'un cran s'il pointait au-delà du point
+    d'insertion, pour ne sauter ni rejouer aucune étape.
+    """
+    import copy
+
     workflow = session.get(Workflow, workflow_id)
     agent = session.get(Agent, corps.agent_id)
     if not workflow or not agent:
         raise HTTPException(404, "Workflow ou agent introuvable")
     if agent.statut != "live":
-        raise HTTPException(409, "Seul un agent 'live' peut être branché au pipeline")
+        raise HTTPException(409, "Seul un agent 'live' peut être ajouté au pipeline")
+    if any(e["agent_id"] == agent.id for e in workflow.etapes):
+        raise HTTPException(409, "Cet agent est déjà dans le pipeline")
 
-    import copy
-
-    ancien_id = None
     # deepcopy obligatoire : muter les dicts en place empêcherait SQLAlchemy
     # de détecter le changement de la colonne JSON (pas d'UPDATE émis)
     etapes = copy.deepcopy(workflow.etapes)
-    for etape in etapes:
+    position = None
+    for i, etape in enumerate(etapes):
+        if etape["type"] != "agent":
+            continue
         etape_agent = session.get(Agent, etape["agent_id"])
         if etape_agent and etape_agent.categorie == agent.categorie:
-            ancien_id = etape["agent_id"]
-            etape["agent_id"] = agent.id
-    if ancien_id is None:
-        raise HTTPException(409, f"Aucune étape de catégorie '{agent.categorie}' dans ce workflow")
+            position = i + 1
+            break
+    if position is None:  # pas d'étape de cette catégorie : insertion avant la porte humaine
+        position = next((i for i, e in enumerate(etapes) if e["type"] == "porte_humaine"), len(etapes))
 
+    etapes.insert(position, {"agent_id": agent.id, "type": "agent"})
+    for i, e in enumerate(etapes):
+        e["ordre"] = i
     workflow.etapes = etapes
-    tracer(session, "humain:superviseur", "humain", "affectation_workflow", f"workflow:{workflow.id}",
-           avant={"agent_id": ancien_id}, apres={"agent_id": agent.id, "categorie": agent.categorie})
+
+    for dossier in session.exec(select(Dossier).where(Dossier.workflow_id == workflow.id)).all():
+        if dossier.etape_courante >= position:
+            dossier.etape_courante += 1
+
+    tracer(session, "humain:superviseur", "humain", "ajout_etape_workflow", f"workflow:{workflow.id}",
+           avant={"nb_etapes": len(etapes) - 1},
+           apres={"nb_etapes": len(etapes), "agent_id": agent.id, "position": position})
     session.commit()
     session.refresh(workflow)
     return workflow

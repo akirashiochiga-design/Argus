@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Argus — Brand Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#17150F; --cream:#F4F1EA; --surface:#FBFAF6; --terra:#D97757;
+    --muted:#6B6656; --faint:#A29C8C; --line:#E6E1D5; --linedark:#2A2418;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Space Grotesk','Segoe UI',Arial,sans-serif; color:var(--ink); background:var(--cream);
+       -webkit-print-color-adjust:exact; print-color-adjust:exact; font-size:14px; line-height:1.55;}
+  @page{size:A4; margin:0;}
+  .sheet{min-height:297mm; padding:24mm 22mm; page-break-after:always; display:flex; flex-direction:column; position:relative; overflow:hidden;}
+  .sheet:last-child{page-break-after:auto;}
+  .dark{background:var(--ink); color:var(--cream);}
+  .kicker{font-size:11px; font-weight:600; letter-spacing:.3em; text-transform:uppercase; color:var(--terra);}
+  .kicker.mut{color:var(--faint);}
+  h1,h2,h3{font-weight:600; letter-spacing:-.02em; margin:0;}
+  .display{font-size:52px; line-height:1.05;}
+  .big{font-size:34px; line-height:1.15; letter-spacing:-.02em; font-weight:600;}
+  .lead{font-size:17px; line-height:1.6; color:var(--muted); max-width:46em;}
+  .dark .lead{color:#B9B3A3;}
+  .small{font-size:12.5px; color:var(--muted);}
+  .dark .small{color:#8A8578;}
+  .mark{display:block;}
+  .rule{height:2px; background:var(--terra); width:56px; border:0; margin:0;}
+  .mono{color:var(--terra);}
+  .dot{color:var(--terra);}
+  .spacer{flex:1 1 auto;}
+  .row{display:flex; gap:22px; flex-wrap:wrap;}
+  .chip{width:26px;height:26px;border-radius:7px;flex:none;}
+  table{border-collapse:collapse;width:100%;}
+  .knife{display:flex; justify-content:space-between; gap:24px; padding:16px 0; border-top:1px solid var(--line);}
+  .dark .knife{border-top:1px solid var(--linedark);}
+  .knife .who{font-weight:600; font-size:16px;}
+  .knife .verdict{color:var(--muted); font-size:14px; text-align:right; max-width:24em;}
+  .dark .knife .verdict{color:#9A9484;}
+  .num{font-size:40px; font-weight:600; letter-spacing:-.02em; line-height:1;}
+  .numlabel{font-size:12px; color:var(--muted); margin-top:6px; max-width:12em;}
+  .grid4{display:flex; gap:14px; flex-wrap:wrap;}
+  .stat{flex:1 1 150px; border-top:2px solid var(--ink); padding-top:12px;}
+  .dolist{display:flex; gap:40px; flex-wrap:wrap;}
+  .dolist ul{list-style:none; padding:0; margin:8px 0 0;}
+  .dolist li{padding:7px 0; border-top:1px solid var(--line); font-size:14px;}
+  .do b{color:var(--ink);} .dont b{color:var(--terra);}
+  .swatchbig{flex:1 1 200px; border-radius:12px; padding:20px; min-height:150px; display:flex; flex-direction:column; justify-content:space-between;}
+  .lock{display:flex; align-items:center; gap:16px;}
+  .word{font-weight:600; letter-spacing:-.02em;}
+  .fav{width:56px;height:56px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none;}
+  .dontbox{flex:1 1 150px; border:1px solid var(--line); border-radius:10px; padding:14px; font-size:12.5px; color:var(--muted);}
+  .tag{font-size:22px; font-weight:600; letter-spacing:-.02em; padding:12px 0; border-top:1px solid var(--line);}
+  .tag .en{color:var(--muted); font-size:14px; font-weight:400; margin-left:10px;}
+</style>
+</head>
+<body>
+
+<!-- reusable mark -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="argusmark" viewBox="0 0 240 240">
+  <g fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round">
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(0 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(45 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(90 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(135 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(180 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(225 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(270 120 120)"/>
+    <path d="M120 107 Q101 66 120 25 Q139 66 120 107 Z" transform="rotate(315 120 120)"/>
+  </g>
+  <circle cx="120" cy="120" r="13" fill="#D97757"/>
+</symbol></svg>
+
+<!-- ============ SHEET 1 · COVER ============ -->
+<section class="sheet dark" style="justify-content:center;">
+  <div class="kicker">Brand book · v1</div>
+  <div class="spacer"></div>
+  <svg class="mark" style="color:var(--cream); width:120px; height:120px;"><use href="#argusmark"/></svg>
+  <div style="font-size:96px; font-weight:600; letter-spacing:-.03em; line-height:1; margin-top:26px;">argus<span class="dot">.</span></div>
+  <div style="font-size:20px; color:#CFC9B8; margin-top:20px; max-width:30em;">Lovable + Vercel, pour les agents IA de l'assurance.</div>
+  <div class="spacer"></div>
+  <div class="small">Argus (nom de travail) · 16 juillet 2026</div>
+</section>
+
+<!-- ============ SHEET 2 · CE QU'ON FAIT + LE SECRET ============ -->
+<section class="sheet">
+  <div class="kicker">01 — Ce qu'on fait</div>
+  <h2 class="display" style="margin-top:14px;">L'usine à agents<br>pour l'assurance.</h2>
+  <p class="lead" style="margin-top:20px;">
+    Tu décris un agent de gestion de sinistre, il se construit, sans code : c'est <b>Lovable</b>.
+    Tu le déploies, tu le branches à ton ERP et il tourne en production en un clic : c'est <b>Vercel</b>,
+    là où c'est le plus dur, le branchement au système de l'assureur.
+  </p>
+  <div style="margin-top:22px; padding:18px 20px; background:var(--surface); border:1px solid var(--line); border-radius:12px; max-width:46em;">
+    <div class="kicker mut">L'analogie, précise</div>
+    <p class="small" style="margin:10px 0 0; line-height:1.6;">
+      <b style="color:var(--ink)">Lovable</b> : construire l'agent en le décrivant, pas en le codant.
+      <b style="color:var(--ink)">Vercel</b> : le livrer et le faire tourner en production tout de suite, en absorbant le vrai
+      point dur, le branchement au système de l'assureur. Et une place de marché en plus : des agents prêts,
+      publiés par d'autres, installés en un clic. Le tout sur un seul métier, l'assurance.
+    </p>
+  </div>
+
+  <hr class="rule" style="margin:44px 0 26px;">
+
+  <div class="kicker">02 — Le secret</div>
+  <h2 class="big" style="margin-top:12px; max-width:20em;">Le problème n'est pas l'IA.<br>C'est le branchement.</h2>
+  <p class="lead" style="margin-top:16px;">
+    Tout le monde veut automatiser les sinistres. Presque personne n'y arrive, parce que chaque assureur a son
+    système et ses règles, et que brancher un agent dessus prend des mois. Le jour où ça prend des heures,
+    l'automatisation devient un produit, pas un projet. C'est là qu'on gagne.
+  </p>
+</section>
+
+<!-- ============ SHEET 3 · POSITIONNEMENT + PREUVES ============ -->
+<section class="sheet dark">
+  <div class="kicker">03 — Positionnement</div>
+  <h2 class="big" style="margin-top:12px;">On ne se compare pas.<br>On tranche.</h2>
+
+  <div style="margin-top:26px;">
+    <div class="knife"><span class="who">Guidewire</span><span class="verdict">Un système d'enregistrement. Douze mois, sept chiffres.</span></div>
+    <div class="knife"><span class="who">Sierra, agents génériques</span><span class="verdict">Un assistant hors métier, anglophone, sans connecteur assurance.</span></div>
+    <div class="knife"><span class="who">Services fermés (ClaimSorted, Avallon)</span><span class="verdict">Ils gèrent tes sinistres à ta place. Tu ne contrôles rien.</span></div>
+    <div class="knife" style="border-bottom:1px solid var(--linedark);"><span class="who mono">Argus</span><span class="verdict" style="color:var(--cream);">L'usine, pas la sous-traitance. Tu construis, tu déploies, tu gardes la main.</span></div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="kicker mut">Les chiffres qu'on cite, jamais les adjectifs</div>
+  <div class="grid4" style="margin-top:18px;">
+    <div class="stat" style="border-top-color:var(--terra);"><div class="num">70%</div><div class="numlabel" style="color:#9A9484;">des coûts d'un assureur, ce sont les sinistres</div></div>
+    <div class="stat" style="border-top-color:var(--terra);"><div class="num">&gt;100%</div><div class="numlabel" style="color:#9A9484;">sinistralité de la RC auto en Tunisie</div></div>
+    <div class="stat" style="border-top-color:var(--terra);"><div class="num">200 M</div><div class="numlabel" style="color:#9A9484;">de dinars de fraude auto détectée par an</div></div>
+    <div class="stat" style="border-top-color:var(--terra);"><div class="num">30 j → 90 s</div><div class="numlabel" style="color:#9A9484;">le délai d'un sinistre, en démonstration</div></div>
+  </div>
+</section>
+
+<!-- ============ SHEET 4 · LA VOIX + LE NOM ============ -->
+<section class="sheet">
+  <div class="kicker">04 — La voix</div>
+  <h2 class="big" style="margin-top:12px;">Comme on parle,<br>comme on écrit.</h2>
+  <p class="lead" style="margin-top:14px;">Build something people want. On dit ce que le produit fait, pas ce qu'il évoque.</p>
+
+  <div class="dolist" style="margin-top:24px;">
+    <div class="do" style="flex:1 1 260px;">
+      <div class="kicker mut">On fait</div>
+      <ul>
+        <li>Phrases courtes. Verbes d'action.</li>
+        <li>Des chiffres, pas des adjectifs.</li>
+        <li>Le bénéfice avant la fonctionnalité.</li>
+        <li>Une idée par phrase.</li>
+        <li>On assume ce qu'on ne fait pas encore.</li>
+      </ul>
+    </div>
+    <div class="dont" style="flex:1 1 260px;">
+      <div class="kicker mut" style="color:var(--terra);">On ne fait pas</div>
+      <ul>
+        <li>Mythologie, storytelling, poésie.</li>
+        <li>« Révolutionnaire », « disruptif », « puissant ».</li>
+        <li>Jargon corporate, mots creux.</li>
+        <li>Promettre ce qu'on ne mesure pas.</li>
+        <li>Trois adjectifs quand un chiffre suffit.</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="rule" style="margin:44px 0 26px;">
+
+  <div class="kicker">05 — Le nom</div>
+  <h2 class="big" style="margin-top:12px; max-width:24em;">Argus : le veilleur aux cent yeux, qui ne ferme jamais l'œil.</h2>
+  <p class="lead" style="margin-top:14px;">Rien ne passe. On s'arrête là. Le produit fait le reste, pas la légende.</p>
+</section>
+
+<!-- ============ SHEET 5 · LE SIGNE ============ -->
+<section class="sheet">
+  <div class="kicker">06 — Le signe</div>
+  <h2 class="big" style="margin-top:12px;">Huit yeux, un seul regard.</h2>
+  <p class="lead" style="margin-top:12px;">Une lentille, pas une fleur. Trait unique, pupille centrale en terracotta. Un signe qui tient à 16 pixels comme à trois mètres.</p>
+
+  <div class="row" style="margin-top:30px; align-items:stretch;">
+    <div style="flex:1 1 220px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:34px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+      <svg class="mark" style="color:var(--ink); width:120px; height:120px;"><use href="#argusmark"/></svg>
+      <div class="small" style="margin-top:16px; letter-spacing:.14em; text-transform:uppercase;">Le signe</div>
+    </div>
+    <div style="flex:1 1 220px; display:flex; flex-direction:column; gap:14px;">
+      <div class="lock" style="background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:24px; justify-content:center;">
+        <svg class="mark" style="color:var(--ink); width:48px; height:48px;"><use href="#argusmark"/></svg>
+        <span class="word" style="font-size:38px;">argus<span class="dot">.</span></span>
+      </div>
+      <div class="lock" style="background:var(--ink); border-radius:14px; padding:24px; justify-content:center;">
+        <svg class="mark" style="color:var(--cream); width:48px; height:48px;"><use href="#argusmark"/></svg>
+        <span class="word" style="font-size:38px; color:var(--cream);">argus<span class="dot">.</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" style="margin-top:22px; align-items:center; gap:14px;">
+    <div class="small" style="letter-spacing:.14em; text-transform:uppercase; width:100%;">Favicon</div>
+    <div class="fav" style="background:var(--ink);"><svg class="mark" style="color:var(--cream); width:34px;height:34px;"><use href="#argusmark"/></svg></div>
+    <div class="fav" style="background:var(--terra);"><svg class="mark" style="color:var(--cream); width:34px;height:34px;"><use href="#argusmark"/></svg></div>
+    <div class="fav" style="background:var(--surface); border:1px solid var(--line);"><svg class="mark" style="color:var(--ink); width:34px;height:34px;"><use href="#argusmark"/></svg></div>
+  </div>
+
+  <div class="row" style="margin-top:26px;">
+    <div class="dontbox"><b style="color:var(--terra);">Jamais</b> incliner ou étirer le signe.</div>
+    <div class="dontbox"><b style="color:var(--terra);">Jamais</b> plus d'une couleur d'accent.</div>
+    <div class="dontbox"><b style="color:var(--terra);">Jamais</b> d'ombre, de dégradé, de contour ajouté.</div>
+  </div>
+</section>
+
+<!-- ============ SHEET 6 · COULEURS + TYPO ============ -->
+<section class="sheet">
+  <div class="kicker">07 — Couleurs</div>
+  <h2 class="big" style="margin-top:12px;">Encre, crème, terracotta.</h2>
+  <p class="lead" style="margin-top:12px;">Un fond, une surface, un seul accent. Le terracotta se mérite : un par écran, jamais deux.</p>
+
+  <div class="row" style="margin-top:24px;">
+    <div class="swatchbig" style="background:var(--ink); color:var(--cream);"><span style="font-weight:600;">Encre</span><span class="small" style="color:#9A9484;">#17150F · texte, fonds</span></div>
+    <div class="swatchbig" style="background:var(--cream); color:var(--ink); border:1px solid var(--line);"><span style="font-weight:600;">Crème</span><span class="small">#F4F1EA · surfaces</span></div>
+    <div class="swatchbig" style="background:var(--terra); color:#2a1710;"><span style="font-weight:600;">Terracotta</span><span class="small" style="color:#5a2f1f;">#D97757 · accent, un seul</span></div>
+  </div>
+
+  <hr class="rule" style="margin:44px 0 24px;">
+
+  <div class="kicker">08 — Typographie</div>
+  <div class="row" style="margin-top:16px; align-items:flex-end;">
+    <div style="flex:0 0 auto;"><div style="font-size:96px; font-weight:600; letter-spacing:-.03em; line-height:1;">Aa</div></div>
+    <div style="flex:1 1 240px;">
+      <div class="big">Space Grotesk</div>
+      <p class="small" style="margin-top:6px;">Une seule police. Semibold pour les titres, Regular pour le texte. Bas de casse pour le wordmark.</p>
+      <table style="margin-top:14px;">
+        <tr style="border-top:1px solid var(--line);"><td style="padding:12px 0; font-size:30px; font-weight:600;">Titre</td><td class="small" style="text-align:right;">Semibold · 600</td></tr>
+        <tr style="border-top:1px solid var(--line);"><td style="padding:12px 0; font-size:20px; font-weight:500;">Sous-titre</td><td class="small" style="text-align:right;">Medium · 500</td></tr>
+        <tr style="border-top:1px solid var(--line);"><td style="padding:12px 0; font-size:15px;">Texte courant, clair et court.</td><td class="small" style="text-align:right;">Regular · 400</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SHEET 7 · SIGNATURES + BOILERPLATE ============ -->
+<section class="sheet dark" style="justify-content:space-between;">
+  <div>
+    <div class="kicker">09 — Signatures</div>
+    <div class="tag" style="border-top:1px solid var(--linedark);">Build, deploy, run insurance AI agents.<span class="en">signature produit, EN</span></div>
+    <div class="tag" style="border-top:1px solid var(--linedark);">L'usine à agents pour l'assurance.<span class="en">signature FR</span></div>
+    <div class="tag" style="border-top:1px solid var(--linedark);">Des agents assurance, en production en heures.<span class="en">preuve, orientée bénéfice</span></div>
+    <div class="tag" style="border-top:1px solid var(--linedark); border-bottom:1px solid var(--linedark);">Rien ne passe.<span class="en">registre premium, à réserver</span></div>
+  </div>
+
+  <div style="max-width:44em;">
+    <div class="kicker mut">Boilerplate</div>
+    <p class="lead" style="margin-top:12px; color:#CFC9B8;">
+      Argus est la plateforme qui permet à un assureur de créer, déployer, exploiter et acheter des agents d'IA
+      pour ses sinistres, branchés sur son système, en arabe et en français, avec l'humain sur chaque décision qui
+      engage de l'argent. Construire en heures, plus en mois.
+    </p>
+  </div>
+
+  <div class="lock" style="margin-top:20px;">
+    <svg class="mark" style="color:var(--cream); width:40px; height:40px;"><use href="#argusmark"/></svg>
+    <span class="word" style="font-size:30px; color:var(--cream);">argus<span class="dot">.</span></span>
+  </div>
+</section>
+
+</body>
+</html>

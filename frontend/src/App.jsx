@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api, VALIDATEUR } from './api'
+import { api } from './api'
+import { deconnecter, initiales, lireSession, libelleValidateur } from './session'
 import { Logo, Wordmark } from './ui'
+import Login from './pages/Login'
 import Studio from './pages/Studio'
 import Pipeline from './pages/Pipeline'
 import Approbations from './pages/Approbations'
@@ -14,6 +16,7 @@ const PAGES = [
 ]
 
 export default function App() {
+  const [session, setSession] = useState(() => lireSession())
   const [page, setPage] = useState('pipeline')
   const [backendOk, setBackendOk] = useState(null)
   const [enAttente, setEnAttente] = useState(0)
@@ -44,6 +47,15 @@ export default function App() {
     } finally {
       setReset(false)
     }
+  }
+
+  if (!session) {
+    return <Login onConnecte={setSession} />
+  }
+
+  const seDeconnecter = () => {
+    deconnecter()
+    setSession(null)
   }
 
   const Page = PAGES.find((p) => p.id === page).composant
@@ -94,12 +106,16 @@ export default function App() {
               <span className={`h-2 w-2 rounded-full ${backendOk ? 'bg-ok' : 'bg-terracotta'} ${backendOk === null ? 'animate-pulse' : ''}`} />
               {backendOk === null ? '…' : backendOk ? 'connecté' : 'hors ligne'}
             </span>
-            <span className="hidden items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs md:flex">
+            <button
+              onClick={seDeconnecter}
+              title="Se déconnecter"
+              className="hidden items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs transition hover:bg-creme/15 md:flex"
+            >
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
-                SG
+                {initiales(session.nom)}
               </span>
-              <span className="text-creme/85">{VALIDATEUR}</span>
-            </span>
+              <span className="text-creme/85">{libelleValidateur(session)}</span>
+            </button>
           </div>
         </div>
       </header>
