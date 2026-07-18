@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { COMPTE_DEMO, connecter } from '../session'
+import { COMPTE_SUPERVISEUR, connecter } from '../session'
 import { Logo, Wordmark } from '../ui'
 
 export default function Login({ onConnecte }) {
-  const [email, setEmail] = useState('')
-  const [motDePasse, setMotDePasse] = useState('')
+  const [email, setEmail] = useState(COMPTE_SUPERVISEUR.email)
+  const [motDePasse, setMotDePasse] = useState(COMPTE_SUPERVISEUR.motDePasse)
   const [erreur, setErreur] = useState(null)
   const [envoi, setEnvoi] = useState(false)
 
@@ -21,18 +21,13 @@ export default function Login({ onConnecte }) {
     }
   }
 
-  const remplirCompteDemo = () => {
-    setEmail(COMPTE_DEMO.email)
-    setMotDePasse(COMPTE_DEMO.motDePasse)
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-encre px-4 text-creme">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo size={56} className="text-creme" />
           <Wordmark className="text-4xl text-creme" />
-          <p className="text-sm text-creme/50">l'usine à agents pour l'assurance</p>
+          <p className="text-sm text-creme/50">Gestion intelligente des sinistres</p>
         </div>
 
         <form onSubmit={soumettre} className="rounded-xl border border-creme/15 bg-creme/[0.04] p-6">
@@ -70,25 +65,7 @@ export default function Login({ onConnecte }) {
           >
             Se connecter
           </button>
-
-          <div className="mt-5 rounded-md border border-creme/15 bg-creme/[0.03] p-3 text-xs text-creme/60">
-            <div className="mb-1.5 font-semibold uppercase tracking-wide text-creme/40">Compte de démonstration</div>
-            <div>{COMPTE_DEMO.email}</div>
-            <div>{COMPTE_DEMO.motDePasse}</div>
-            <button
-              type="button"
-              onClick={remplirCompteDemo}
-              className="mt-2 rounded border border-creme/20 px-2.5 py-1 text-[11px] font-medium text-creme/80 hover:bg-creme/10"
-            >
-              Remplir automatiquement
-            </button>
-          </div>
         </form>
-
-        <p className="mt-4 text-center text-[11px] text-creme/30">
-          Authentification de démonstration — n'importe quel email/mot de passe fonctionne ;
-          l'identité affichée dans l'application correspond à ce que vous saisissez ici.
-        </p>
       </div>
     </div>
   )

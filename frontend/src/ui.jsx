@@ -63,7 +63,7 @@ export function BadgeMode({ mode }) {
     mixte: 'bg-terracotta-tint text-terracotta-deep',
     deterministe: 'bg-ok-tint text-ok',
   }
-  const libelles = { llm: 'IA', mixte: 'IA partiel', deterministe: 'déterministe' }
+  const libelles = { llm: 'Assisté par IA', mixte: 'IA assistée', deterministe: 'Règles métier' }
   return (
     <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[mode] ?? ''}`}>
       {libelles[mode] ?? mode}

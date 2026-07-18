@@ -2,6 +2,22 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { AGENT_ICONE, BadgeMode } from '../ui'
 
+const LIBELLES_GARDE_FOU = {
+  deterministe: 'Règles de gestion',
+  non_desactivable: 'Contrôle obligatoire',
+  hitl_obligatoire: 'Validation humaine obligatoire',
+  pas_de_decision_argent: 'Aucune décision financière',
+  montant_impose: 'Montant validé uniquement',
+  pas_de_donnees_sensibles: 'Données sensibles protégées',
+  langues: 'Langues prises en charge',
+  bareme_vetuste: 'Barème de vétusté',
+  vetuste_garanties: 'Garanties soumises à vétusté',
+  origine: 'Configuration personnalisée',
+}
+
+const libelleGardeFou = (cle) =>
+  LIBELLES_GARDE_FOU[cle] ?? cle.replaceAll('_', ' ').replace(/^\w/, (lettre) => lettre.toUpperCase())
+
 export default function Studio() {
   const [templates, setTemplates] = useState([])
   const [agents, setAgents] = useState([])
@@ -41,7 +57,7 @@ export default function Studio() {
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h2 className="text-lg font-semibold">Studio d'agents</h2>
-        <span className="text-sm text-encre/50">décris un agent, il se construit — sans code, gouvernance incluse</span>
+        <span className="text-sm text-encre/50">Configurez vos agents métier et leurs règles de contrôle</span>
       </div>
 
       {message && (
@@ -65,7 +81,7 @@ export default function Studio() {
         {/* templates */}
         <div>
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">
-            Ou partez d'un template métier
+            Modèles métier
           </h3>
           <div className="grid gap-3">
             {templates.map((t) => (
@@ -82,7 +98,7 @@ export default function Studio() {
                 {Object.keys(t.garde_fous_defaut ?? {}).length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {Object.keys(t.garde_fous_defaut).map((g) => (
-                      <span key={g} className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-medium text-ok">🔒 {g}</span>
+                      <span key={g} className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-medium text-ok">🔒 {libelleGardeFou(g)}</span>
                     ))}
                   </div>
                 )}
@@ -93,7 +109,7 @@ export default function Studio() {
           {workflow && (
             <div className="mt-6">
               <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">
-                Pipeline live — {workflow.nom}
+                Parcours actif — {workflow.nom}
               </h3>
               <ol className="grid gap-1 rounded-lg border border-line bg-surface p-3">
                 {workflow.etapes.map((e, i) => {
@@ -105,7 +121,7 @@ export default function Studio() {
                       <span>{a?.nom}</span>
                       <span className="text-xs text-encre/40">v{a?.version}</span>
                       {e.type === 'porte_humaine' && (
-                        <span className="rounded bg-warn-tint px-1.5 py-0.5 text-[10px] font-semibold text-warn">porte humaine</span>
+                        <span className="rounded bg-warn-tint px-1.5 py-0.5 text-[10px] font-semibold text-warn">validation humaine</span>
                       )}
                     </li>
                   )
@@ -121,13 +137,13 @@ export default function Studio() {
           <div className="grid gap-2">
             {agents.map((a) => (
               <CarteAgent key={a.id} agent={a} dansPipeline={agentsDuPipeline.has(a.id)}
-                onPublier={() => agir(() => api.publierAgent(a.id), `« ${a.nom} » est maintenant live (tracé dans l'audit).`)}
+                onPublier={() => agir(() => api.publierAgent(a.id), `« ${a.nom} » est publié et enregistré dans le journal d'audit.`)}
                 onAjouter={() => agir(() => api.ajouterEtape(workflow.id, a.id),
-                  `« ${a.nom} » est ajouté au pipeline P5 comme étape supplémentaire — effectif immédiatement.`)}
+                  `« ${a.nom} » est ajouté au parcours sinistre.`)}
                 onSeuils={(seuils) => agir(() => api.modifierAgent(a.id, { seuils }),
-                  `Seuils de « ${a.nom} » mis à jour → nouvelle version, tracée dans l'audit.`)}
+                  `Seuils de « ${a.nom} » mis à jour et enregistrés dans le journal d'audit.`)}
                 onInstructions={(instructions) => agir(() => api.modifierAgent(a.id, { instructions }),
-                  `Instructions de « ${a.nom} » mises à jour → nouvelle version, tracée dans l'audit.`)}
+                  `Instructions de « ${a.nom} » mises à jour et enregistrées dans le journal d'audit.`)}
               />
             ))}
           </div>
@@ -155,9 +171,10 @@ export default function Studio() {
 // aucune étape correspondante — volontairement hors pipeline (voir CLAUDE.md
 // §3 : pas de nouvelle étape métier improvisée depuis un prompt).
 const ROLES_BRANCHABLES = new Set(['fnol', 'extraction', 'vision', 'courrier'])
+const EXEMPLE_BRIEF = 'Un agent qui détecte les incohérences entre la déclaration et les photos'
 
 function CreateurPrompt({ categories, onCree }) {
-  const [brief, setBrief] = useState('')
+  const [brief, setBrief] = useState(EXEMPLE_BRIEF)
   const [nom, setNom] = useState('')
   const [categorie, setCategorie] = useState('vision')
   const [instructions, setInstructions] = useState('')
@@ -188,7 +205,7 @@ function CreateurPrompt({ categories, onCree }) {
     try {
       const a = await api.creerAgentPersonnalise({ nom, categorie, instructions })
       onCree(a.nom)
-      setBrief(''); setNom(''); setInstructions(''); setMode(null)
+      setBrief(EXEMPLE_BRIEF); setNom(''); setInstructions(''); setMode(null)
     } catch (e) {
       setErreur(e.message)
     } finally {
@@ -201,7 +218,7 @@ function CreateurPrompt({ categories, onCree }) {
       <div className="flex items-center gap-2">
         <span className="text-lg text-terracotta">✦</span>
         <h3 className="font-semibold">Créer un agent personnalisé</h3>
-        <span className="text-xs text-encre/50">décrivez ce que l'agent doit faire, l'IA rédige la consigne</span>
+        <span className="text-xs text-encre/50">Décrivez son rôle pour préparer ses instructions</span>
       </div>
 
       <div className="mt-3 flex flex-col gap-2 md:flex-row">
@@ -251,26 +268,20 @@ function CreateurPrompt({ categories, onCree }) {
             </label>
             <button onClick={creer} disabled={!nom || !instructions || envoi}
               className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
-              {envoi ? 'Création…' : "Créer l'agent (draft)"}
+              {envoi ? 'Création…' : 'Créer en brouillon'}
             </button>
           </div>
           {ROLES_BRANCHABLES.has(categorie) ? (
             <p className="text-xs text-encre/50">
-              ✓ Une fois publié, ce rôle peut être <b>ajouté au pipeline</b> — il s'insère comme une
-              étape supplémentaire, sans jamais remplacer l'agent déjà en place.
+              Une fois publié, cet agent pourra être ajouté au parcours sinistre.
             </p>
           ) : (
             <p className="text-xs text-encre/50">
-              ℹ️ Rôle libre, <b>hors pipeline P5</b> : cet agent sera créé et visible ici, mais n'aura
-              pas de bouton « Brancher » et ne s'exécutera jamais dans le parcours du dossier.
+              Ce rôle reste indépendant du parcours sinistre.
             </p>
           )}
           <div className="rounded-md bg-ok-tint px-3 py-2 text-xs text-ok">
-            🔒 Garde-fou imposé : cet agent ne peut ni décider d'un montant, ni contourner la validation
-            humaine — quelle que soit la consigne saisie. Les rôles « garanties », « indemnité » et la porte
-            de validation ne sont pas créables depuis un prompt. Et une fois ajouté, il vient <b>compléter</b>
-            le pipeline — il ne supprime ni ne modifie jamais un agent existant. Pour ajuster un agent déjà en
-            place, utilisez son bouton « ✎ Instructions » dans la liste ci-dessous.
+            🔒 Les décisions financières restent soumises aux règles de gestion et à la validation humaine.
           </div>
         </div>
       )}
@@ -297,14 +308,14 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onAjouter, onSeuils, on
         <span className="text-xs text-encre/40">v{a.version}</span>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
           a.statut === 'live' ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/60'
-        }`}>{a.statut}</span>
-        {perso && <span className="rounded-full bg-terracotta-tint px-2 py-0.5 text-xs font-medium text-terracotta-deep">✦ perso</span>}
-        {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">dans le pipeline</span>}
+        }`}>{a.statut === 'live' ? 'Publié' : 'Brouillon'}</span>
+        {perso && <span className="rounded-full bg-terracotta-tint px-2 py-0.5 text-xs font-medium text-terracotta-deep">Personnalisé</span>}
+        {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">Dans le parcours</span>}
         {a.garde_fous?.deterministe && (
-          <span className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-semibold text-ok">déterministe — pas de LLM</span>
+          <span className="rounded bg-ok-tint px-1.5 py-0.5 text-[10px] font-semibold text-ok">Règles de gestion</span>
         )}
         {a.garde_fous?.non_desactivable && (
-          <span className="rounded bg-bad-tint px-1.5 py-0.5 text-[10px] font-semibold text-bad">🔒 non désactivable</span>
+          <span className="rounded bg-bad-tint px-1.5 py-0.5 text-[10px] font-semibold text-bad">🔒 Obligatoire</span>
         )}
         <div className="ml-auto flex gap-2">
           {a.statut === 'draft' && (
@@ -314,7 +325,7 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onAjouter, onSeuils, on
           )}
           {a.statut === 'live' && !dansPipeline && ['fnol', 'extraction', 'vision', 'garanties', 'indemnite', 'courrier'].includes(a.categorie) && (
             <button onClick={onAjouter} className="rounded-md border border-terracotta/40 px-3 py-1 text-xs font-semibold text-terracotta-deep hover:bg-terracotta-tint">
-              + Ajouter au pipeline
+              + Ajouter au parcours
             </button>
           )}
           <button onClick={() => setEditionInstructions(!editionInstructions)}
@@ -346,7 +357,7 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onAjouter, onSeuils, on
             className="rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme">
             Enregistrer (v{a.version + 1})
           </button>
-          <span className="pb-1 text-[10px] text-encre/40">changement de gouvernance → versionné + audité</span>
+          <span className="pb-1 text-[10px] text-encre/40">Modification enregistrée dans le journal d'audit</span>
         </div>
       )}
       {editionInstructions && (
@@ -365,7 +376,7 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onAjouter, onSeuils, on
               className="rounded-md px-3 py-1.5 text-xs text-encre/50 hover:bg-line">
               Annuler
             </button>
-            <span className="text-[10px] text-encre/40">versionné + audité — l'agent reste à la même place du pipeline</span>
+            <span className="text-[10px] text-encre/40">Nouvelle version enregistrée dans le journal d'audit</span>
           </div>
         </div>
       )}
@@ -420,15 +431,15 @@ function FormulaireTemplate({ template, onFermer, onCree }) {
           </label>
         )}
         <div className="mt-3 rounded-md bg-ok-tint p-2 text-xs text-ok">
-          🔒 Garde-fous hérités du template (non désactivables) :{' '}
-          {Object.keys(template.garde_fous_defaut ?? {}).join(', ') || 'aucun'}
+          🔒 Contrôles du modèle :{' '}
+          {Object.keys(template.garde_fous_defaut ?? {}).map(libelleGardeFou).join(', ') || 'aucun'}
         </div>
         {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60 hover:bg-surface-deep">Annuler</button>
           <button onClick={soumettre} disabled={!nom || envoi}
             className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
-            {envoi ? 'Création…' : "Créer l'agent (draft)"}
+            {envoi ? 'Création…' : 'Créer en brouillon'}
           </button>
         </div>
       </div>

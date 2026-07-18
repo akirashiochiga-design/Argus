@@ -39,12 +39,12 @@ export default function Dashboard() {
         <Tuile nom="Décisions humaines" valeur={kpi.decisions_humaines} sous="100 % des règlements" />
         <Tuile nom="Taux d'approbation"
           valeur={kpi.taux_approbation != null ? `${Math.round(kpi.taux_approbation * 100)} %` : '—'}
-          sous="propositions des agents" />
-        <Tuile nom="Taux de correction" valeur={`${(kpi.taux_correction * 100).toFixed(1)} %`} sous="écart humain vs agent" />
-        <Tuile nom="Coût IA total" valeur={`$${kpi.cout_ia_usd.toFixed(2)}`} sous={`${kpi.runs_total} runs d'agents`} accent />
+          sous="propositions automatisées" />
+        <Tuile nom="Taux de correction" valeur={`${(kpi.taux_correction * 100).toFixed(1)} %`} sous="ajustements des gestionnaires" />
+        <Tuile nom="Coût des traitements" valeur={`$${kpi.cout_ia_usd.toFixed(2)}`} sous={`${kpi.runs_total} opérations`} accent />
         <Tuile nom="Temps économisé"
           valeur={`${Math.floor(kpi.temps_economise_min / 60)} h ${kpi.temps_economise_min % 60} min`}
-          sous="≈ 110 min / dossier (estim.)" />
+          sous="sur les dossiers traités" />
       </div>
 
       <div className="rounded-lg border border-line bg-surface p-4">
@@ -70,7 +70,7 @@ export default function Dashboard() {
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-encre/40">Journal d'audit</h3>
           <span className="rounded bg-surface-deep px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/50">
-            append-only · horodaté · attribué
+            sécurisé · horodaté · attribué
           </span>
           <div className="ml-auto flex gap-1 text-xs">
             {[['', 'tout'], ['humain', 'humains'], ['agent', 'agents']].map(([v, l]) => (

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus — Script vidéo 2 minutes</title>
+  <style>
+    :root { --ink:#17202a; --cream:#f4f0e8; --paper:#fffdf8; --terra:#d97757; --line:#ddd5c8; --muted:#726b62; --ok:#26705a; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--cream); color:var(--ink); font:15px/1.45 Inter,Segoe UI,sans-serif; }
+    header { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:18px; padding:14px 28px; background:var(--ink); color:var(--cream); }
+    .brand { font-size:22px; font-weight:750; letter-spacing:-.5px; }
+    .brand i { color:var(--terra); font-style:normal; }
+    .timer { font:700 28px/1 Consolas,monospace; margin-left:auto; min-width:86px; }
+    button { border:1px solid transparent; border-radius:7px; padding:9px 14px; font-weight:650; cursor:pointer; }
+    .primary { background:var(--terra); color:white; }
+    .secondary { border-color:#ffffff33; background:#ffffff10; color:var(--cream); }
+    main { max-width:1180px; margin:0 auto; padding:26px; display:grid; grid-template-columns:1fr 330px; gap:24px; }
+    h1 { margin:0 0 5px; font-size:27px; letter-spacing:-.6px; }
+    .lead { color:var(--muted); margin:0 0 22px; }
+    .scene { display:grid; grid-template-columns:76px 1fr; gap:15px; padding:18px 0; border-top:1px solid var(--line); transition:.2s; }
+    .scene.active { margin:0 -14px; padding:18px 14px; background:var(--paper); border-radius:10px; border-top-color:transparent; outline:2px solid #d9775744; }
+    .time { color:var(--terra); font:700 14px Consolas,monospace; padding-top:2px; }
+    .scene h2 { font-size:17px; margin:0 0 6px; }
+    .action { margin:0 0 8px; color:var(--ok); font-weight:650; }
+    .voice { margin:0; font-size:16px; }
+    aside { position:sticky; top:84px; align-self:start; display:grid; gap:14px; }
+    .panel { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:17px; }
+    .panel h3 { margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:.7px; color:var(--muted); }
+    .panel ol,.panel ul { padding-left:20px; margin:0; }
+    .panel li { margin:7px 0; }
+    .difference { border-left:4px solid var(--terra); }
+    .difference strong { display:block; margin-bottom:5px; font-size:16px; }
+    .teleprompter { display:none; position:fixed; inset:0; z-index:20; background:#10161d; color:#f8f3e9; padding:8vh 12vw; overflow:auto; }
+    .teleprompter.show { display:block; }
+    .teleprompter .close { position:fixed; top:20px; right:24px; background:#ffffff15; color:white; }
+    .teleprompter p { max-width:1100px; margin:0 auto 12vh; font-size:clamp(28px,4vw,52px); line-height:1.35; font-weight:600; }
+    .teleprompter span { display:block; margin-bottom:14px; color:var(--terra); font:700 18px Consolas,monospace; }
+    @media (max-width:850px) { main { grid-template-columns:1fr; } aside { position:static; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">argus<i>.</i></div>
+    <button class="primary" id="start">Démarrer</button>
+    <button class="secondary" id="reset">Remettre à zéro</button>
+    <button class="secondary" id="prompt">Mode téléprompteur</button>
+    <div class="timer" id="timer">00:00</div>
+  </header>
+
+  <main>
+    <section>
+      <h1>Vidéo technique — conducteur 2 minutes</h1>
+      <p class="lead">Filmez uniquement l’interface. Parlez vite, sans détailler chaque champ.</p>
+
+      <article class="scene" data-start="0" data-end="12">
+        <div class="time">00:00–00:12</div>
+        <div>
+          <h2>1. Promesse produit</h2>
+          <p class="action">À l’écran : page Sinistres, vue globale des dossiers.</p>
+          <p class="voice">« Argus permet à une compagnie d’assurance de traiter un sinistre automobile de bout en bout, avec des agents spécialisés, une validation humaine obligatoire et une traçabilité complète. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="12" data-end="25">
+        <div class="time">00:12–00:25</div>
+        <div>
+          <h2>2. Connexion au système d’information</h2>
+          <p class="action">À l’écran : Intégrations → ouvrir “Connecter une base de données”, puis fermer.</p>
+          <p class="voice">« La plateforme s’insère dans le système d’information existant : ERP, core assurance et bases de données peuvent être configurés depuis un point unique. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="25" data-end="42">
+        <div class="time">00:25–00:42</div>
+        <div>
+          <h2>3. Entrée du sinistre</h2>
+          <p class="action">À l’écran : Sinistres → Déclarer → e-constat FTUSA → Créer le dossier.</p>
+          <p class="voice">« Le gestionnaire importe un e-constat ou saisit une déclaration libre, en français ou en darija. Les informations et les pièces sont immédiatement structurées dans un dossier exploitable. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="42" data-end="68">
+        <div class="time">00:42–01:08</div>
+        <div>
+          <h2>4. Traitement en direct</h2>
+          <p class="action">À l’écran : cliquer “Lancer le traitement” et laisser avancer les étapes.</p>
+          <p class="voice">« En un clic, le parcours démarre : extraction documentaire, analyse visuelle des dégâts, contrôle des garanties, puis calcul indemnitaire. Ici, le modèle analyse les pièces en direct, tandis que les décisions financières restent encadrées par les règles métier. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="68" data-end="91">
+        <div class="time">01:08–01:31</div>
+        <div>
+          <h2>5. Différence clé : humain dans la boucle</h2>
+          <p class="action">À l’écran : ouvrir Approbations, montrer le calcul, puis Approuver.</p>
+          <p class="voice">« C’est notre différence centrale : aucun règlement n’est envoyé sans décision explicite d’un gestionnaire. Il voit la couverture, chaque ligne du calcul et les pièces, puis peut approuver, corriger ou refuser. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="91" data-end="108">
+        <div class="time">01:31–01:48</div>
+        <div>
+          <h2>6. Gouvernance et audit</h2>
+          <p class="action">À l’écran : Supervision & Audit → parcourir les KPI puis le journal.</p>
+          <p class="voice">« Chaque exécution, changement d’état et décision humaine est horodaté et attribué. La supervision suit les dossiers, les approbations, les corrections, le coût et le temps économisé. »</p>
+        </div>
+      </article>
+
+      <article class="scene" data-start="108" data-end="120">
+        <div class="time">01:48–02:00</div>
+        <div>
+          <h2>7. Studio et conclusion</h2>
+          <p class="action">À l’écran : Studio → Générer les instructions d’un agent.</p>
+          <p class="voice">« Enfin, le Studio permet de créer et gouverner de nouveaux agents sans développement, sans jamais contourner les contrôles financiers. Argus accélère le traitement, sans sacrifier la maîtrise du risque. »</p>
+        </div>
+      </article>
+    </section>
+
+    <aside>
+      <div class="panel difference">
+        <strong>Message à marteler</strong>
+        L’IA extrait, analyse et explique. Les règles calculent. L’humain décide. Tout est tracé.
+      </div>
+      <div class="panel">
+        <h3>Avant d’enregistrer</h3>
+        <ol>
+          <li>Réinitialiser la plateforme depuis le menu du compte.</li>
+          <li>Fermer les notifications et applications personnelles.</li>
+          <li>Mettre le navigateur en plein écran avec F11.</li>
+          <li>Faire un essai du parcours une fois.</li>
+          <li>Garder la vidéo entre 1 min 50 et 2 min.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h3>Plan B si l’API tarde</h3>
+        <ul>
+          <li>Ne commentez pas l’attente.</li>
+          <li>Coupez 2–3 secondes au montage.</li>
+          <li>Poursuivez dès que l’étape suivante apparaît.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <div class="teleprompter" id="teleprompter">
+    <button class="close" id="close">Fermer</button>
+  </div>
+
+  <script>
+    const scenes = [...document.querySelectorAll('.scene')]
+    const timer = document.getElementById('timer')
+    const startButton = document.getElementById('start')
+    let startedAt = null
+    let elapsed = 0
+    let interval = null
+
+    function render() {
+      const seconds = Math.min(120, Math.floor(elapsed / 1000))
+      timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+      scenes.forEach(scene => scene.classList.toggle('active', seconds >= +scene.dataset.start && seconds < +scene.dataset.end))
+      if (seconds >= 120) pause()
+    }
+    function pause() {
+      clearInterval(interval)
+      interval = null
+      startButton.textContent = elapsed ? 'Reprendre' : 'Démarrer'
+    }
+    startButton.onclick = () => {
+      if (interval) return pause()
+      startedAt = Date.now() - elapsed
+      interval = setInterval(() => { elapsed = Date.now() - startedAt; render() }, 100)
+      startButton.textContent = 'Pause'
+    }
+    document.getElementById('reset').onclick = () => { pause(); elapsed = 0; render() }
+
+    const teleprompter = document.getElementById('teleprompter')
+    teleprompter.insertAdjacentHTML('beforeend', scenes.map(scene =>
+      `<p><span>${scene.querySelector('.time').textContent}</span>${scene.querySelector('.voice').textContent.replace(/^« | »$/g, '')}</p>`
+    ).join(''))
+    document.getElementById('prompt').onclick = () => teleprompter.classList.add('show')
+    document.getElementById('close').onclick = () => teleprompter.classList.remove('show')
+    render()
+  </script>
+</body>
+</html>

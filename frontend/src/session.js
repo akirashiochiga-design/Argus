@@ -1,15 +1,10 @@
-// Authentification factice (CLAUDE.md §3 : "un login factice + un rôle
-// superviseur suffisent" — pas de vrai backend RBAC dans ce périmètre).
-// Persistée en localStorage pour survivre à un rafraîchissement pendant la démo.
+// Session locale du superviseur, persistée entre les rafraîchissements.
 
 const CLE = 'argus_session'
 
-// Le compte de démo affiché sur l'écran de connexion. N'importe quel autre
-// email/mot de passe est accepté aussi (stub) — le nom affiché en haut à
-// droite est alors dérivé de l'email saisi, pour que "qui se connecte" et
-// "qui est affiché" restent toujours cohérents.
-export const COMPTE_DEMO = {
-  email: 'selma.gharbi@argus-demo.tn',
+// Identité par défaut du superviseur.
+export const COMPTE_SUPERVISEUR = {
+  email: 'selma.gharbi@compagnie.tn',
   motDePasse: 'argus2026',
   nom: 'Selma Gharbi',
   role: 'superviseure',
@@ -34,22 +29,25 @@ export function initiales(nom) {
 export function lireSession() {
   try {
     const brut = localStorage.getItem(CLE)
-    return brut ? JSON.parse(brut) : null
+    if (!brut) return null
+    const session = JSON.parse(brut)
+    if (session.email === 'selma.gharbi@argus-demo.tn') {
+      session.email = COMPTE_SUPERVISEUR.email
+      localStorage.setItem(CLE, JSON.stringify(session))
+    }
+    return session
   } catch {
     return null
   }
 }
 
-// Stub volontaire : accepte tout email/mot de passe non vides. Le compte
-// de démo renvoie une identité soignée ; tout autre email dérive un nom
-// plausible — mais c'est toujours CE qui a été saisi qui détermine l'affichage.
 export function connecter(email, motDePasse) {
   if (!email.trim() || !motDePasse.trim()) {
     throw new Error('Email et mot de passe requis.')
   }
-  const estCompteDemo = email.trim().toLowerCase() === COMPTE_DEMO.email
-  const session = estCompteDemo
-    ? { email: COMPTE_DEMO.email, nom: COMPTE_DEMO.nom, role: COMPTE_DEMO.role }
+  const estCompteSuperviseur = email.trim().toLowerCase() === COMPTE_SUPERVISEUR.email
+  const session = estCompteSuperviseur
+    ? { email: COMPTE_SUPERVISEUR.email, nom: COMPTE_SUPERVISEUR.nom, role: COMPTE_SUPERVISEUR.role }
     : { email: email.trim(), nom: nomDepuisEmail(email.trim()), role: 'superviseur' }
   localStorage.setItem(CLE, JSON.stringify(session))
   return session

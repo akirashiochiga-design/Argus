@@ -7,12 +7,14 @@ import Studio from './pages/Studio'
 import Pipeline from './pages/Pipeline'
 import Approbations from './pages/Approbations'
 import Dashboard from './pages/Dashboard'
+import Integrations from './pages/Integrations'
 
 const PAGES = [
-  { id: 'pipeline', label: 'Pipeline', composant: Pipeline },
+  { id: 'pipeline', label: 'Sinistres', composant: Pipeline },
   { id: 'approbations', label: 'Approbations', composant: Approbations },
   { id: 'studio', label: 'Studio', composant: Studio },
-  { id: 'dashboard', label: 'Dashboard & Audit', composant: Dashboard },
+  { id: 'integrations', label: 'Intégrations', composant: Integrations },
+  { id: 'dashboard', label: 'Supervision & Audit', composant: Dashboard },
 ]
 
 export default function App() {
@@ -20,8 +22,9 @@ export default function App() {
   const [page, setPage] = useState('pipeline')
   const [backendOk, setBackendOk] = useState(null)
   const [enAttente, setEnAttente] = useState(0)
-  const [reset, setReset] = useState(false)
-  const [rev, setRev] = useState(0) // force un remount des pages après reset
+  const [menuCompte, setMenuCompte] = useState(false)
+  const [reinitialisation, setReinitialisation] = useState(false)
+  const [revision, setRevision] = useState(0)
 
   const rafraichirCompteur = () =>
     api.listerTaches('en_attente').then((t) => setEnAttente(t.length)).catch(() => {})
@@ -33,22 +36,6 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
-  const resetDemo = async () => {
-    if (reset) return
-    if (!window.confirm('Réinitialiser la démo ? Les 3 dossiers calibrés reviennent à zéro.')) return
-    setReset(true)
-    try {
-      await api.reseed()
-      setRev((r) => r + 1)
-      setPage('pipeline')
-      await rafraichirCompteur()
-    } catch {
-      /* silencieux */
-    } finally {
-      setReset(false)
-    }
-  }
-
   if (!session) {
     return <Login onConnecte={setSession} />
   }
@@ -58,17 +45,37 @@ export default function App() {
     setSession(null)
   }
 
+  const reinitialiserPlateforme = async () => {
+    if (reinitialisation) return
+    const confirme = window.confirm(
+      "Réinitialiser toutes les données de la plateforme ? Les dossiers, décisions et modifications seront remplacés par l'état initial."
+    )
+    if (!confirme) return
+    setReinitialisation(true)
+    try {
+      await api.reseed()
+      setPage('pipeline')
+      setRevision((valeur) => valeur + 1)
+      setMenuCompte(false)
+      await rafraichirCompteur()
+    } catch (erreur) {
+      window.alert(`La réinitialisation a échoué : ${erreur.message}`)
+    } finally {
+      setReinitialisation(false)
+    }
+  }
+
   const Page = PAGES.find((p) => p.id === page).composant
 
   return (
     <div className="min-h-screen bg-creme text-encre">
-      <header className="sticky top-0 z-20 bg-encre text-creme">
+      <header className="sticky top-0 z-40 bg-encre text-creme">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-6 py-3">
           <div className="flex items-center gap-2.5">
             <Logo size={30} />
             <Wordmark className="text-xl" />
             <span className="ml-2 hidden text-xs font-normal text-creme/45 lg:inline">
-              l'usine à agents pour l'assurance
+              Gestion intelligente des sinistres
             </span>
           </div>
           <nav className="ml-4 flex gap-1">
@@ -90,14 +97,6 @@ export default function App() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={resetDemo}
-              disabled={reset}
-              title="Réinitialiser le dataset de démo"
-              className="rounded-md border border-creme/20 px-3 py-1.5 text-xs font-medium text-creme/80 transition hover:bg-creme/10 disabled:opacity-50"
-            >
-              {reset ? '↻ …' : '↻ Reset démo'}
-            </button>
             <span
               className={`flex items-center gap-2 text-xs ${
                 backendOk ? 'text-ok' : 'text-terracotta'
@@ -106,21 +105,55 @@ export default function App() {
               <span className={`h-2 w-2 rounded-full ${backendOk ? 'bg-ok' : 'bg-terracotta'} ${backendOk === null ? 'animate-pulse' : ''}`} />
               {backendOk === null ? '…' : backendOk ? 'connecté' : 'hors ligne'}
             </span>
-            <button
-              onClick={seDeconnecter}
-              title="Se déconnecter"
-              className="hidden items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs transition hover:bg-creme/15 md:flex"
-            >
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
-                {initiales(session.nom)}
-              </span>
-              <span className="text-creme/85">{libelleValidateur(session)}</span>
-            </button>
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => setMenuCompte((ouvert) => !ouvert)}
+                title="Ouvrir le menu du compte"
+                aria-expanded={menuCompte}
+                className="flex items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs transition hover:bg-creme/15"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
+                  {initiales(session.nom)}
+                </span>
+                <span className="text-creme/85">{libelleValidateur(session)}</span>
+                <span className="text-[9px] text-creme/45">{menuCompte ? '▲' : '▼'}</span>
+              </button>
+              {menuCompte && (
+                <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-lg border border-line bg-surface text-encre shadow-xl">
+                  <div className="border-b border-line px-4 py-3">
+                    <div className="text-sm font-semibold">{session.nom}</div>
+                    <div className="mt-0.5 truncate text-xs text-encre/50">{session.email}</div>
+                  </div>
+                  <div className="p-2">
+                    <button
+                      onClick={reinitialiserPlateforme}
+                      disabled={reinitialisation}
+                      className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-50"
+                    >
+                      {reinitialisation ? 'Réinitialisation…' : 'Réinitialiser la plateforme'}
+                    </button>
+                    <button
+                      onClick={seDeconnecter}
+                      className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-bad transition hover:bg-bad-tint"
+                    >
+                      Se déconnecter
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
+      {menuCompte && (
+        <button
+          aria-label="Fermer le menu du compte"
+          onClick={() => setMenuCompte(false)}
+          className="fixed inset-0 z-30 cursor-default"
+        />
+      )}
       <main className="mx-auto max-w-7xl px-6 py-6">
-        <Page key={`${page}-${rev}`} onNavigate={setPage} />
+        <Page key={`${page}-${revision}`} onNavigate={setPage} />
       </main>
     </div>
   )

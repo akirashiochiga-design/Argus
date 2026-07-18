@@ -8,9 +8,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session, select
 
 from .db import create_db_and_tables
+from .db import engine
+from .models import Template
 from .routers import admin, agents, audit, dashboard, dossiers, taches
+from .seed import seed
 
 load_dotenv()
 
@@ -40,8 +44,18 @@ if docs_path.exists():
 @app.on_event("startup")
 def on_startup() -> None:
     create_db_and_tables()
+    with Session(engine) as session:
+        base_vide = session.exec(select(Template)).first() is None
+    if base_vide:
+        seed()
 
 
 @app.get("/health")
 def health() -> dict:
     return {"statut": "ok", "service": "argus-backend"}
+
+
+# En production, FastAPI sert également l'application React compilée.
+frontend_path = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="frontend")

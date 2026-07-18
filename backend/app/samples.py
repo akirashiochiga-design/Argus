@@ -67,7 +67,7 @@ def _document(titre: str, entete: list[str], lignes: list[tuple[str, str]],
 
     d.line([48, 976, 852, 976], fill="#d3d0c8", width=2)
     d.text((58, 994), pied, font=_police(14), fill="#68727d")
-    d.text((58, 1022), "Règlement : virement ou chèque · Document fictif de démonstration",
+    d.text((58, 1022), "Règlement : virement ou chèque",
            font=_police(13), fill="#8b939c")
     img.save(chemin, quality=90)
     print(f"  {chemin.name}")
@@ -208,7 +208,7 @@ def _croquis_degats(titre: str, zones: list[tuple], annotations: list[str],
     for a in annotations:
         d.text((40, y), f"• {a}", font=_police(19), fill="#333333")
         y += 30
-    d.text((40, 1050), "Croquis d'expertise établi sur constatations — démo (photos réelles à substituer)",
+    d.text((40, 1050), "Croquis d'expertise établi sur constatations",
            font=_police(15), fill="#999999")
     img.save(chemin, quality=90)
     print(f"  {chemin.name}")

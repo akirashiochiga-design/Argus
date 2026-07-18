@@ -39,8 +39,7 @@ def build_templates() -> list[Template]:
         categorie="garanties",
         instructions_defaut=(
             "Applique le contrat au sinistre : garantie couverte ou non, franchise "
-            "et plafond applicables, motivation ligne à ligne avec clause citée. "
-            "Code déterministe — aucun appel LLM."
+            "et plafond applicables, motivation ligne à ligne avec clause citée."
         ),
         garde_fous_defaut={"deterministe": True},
     ),
@@ -50,8 +49,7 @@ def build_templates() -> list[Template]:
         instructions_defaut=(
             "Calcule le montant d'indemnité : base facture − vétusté (barème) − "
             "franchise, plafonné. Chaque ligne du calcul est sourcée. "
-            "Code déterministe — aucun appel LLM. La validation humaine est "
-            "obligatoire au-dessus du seuil, non désactivable."
+            "La validation humaine est obligatoire au-dessus du seuil."
         ),
         garde_fous_defaut={"deterministe": True, "hitl_obligatoire": True},
     ),
@@ -186,7 +184,7 @@ def build_agents(templates: list[Template]) -> list[Agent]:
             categorie="hitl",
             instructions=(
                 "Route la recommandation : en dessous du seuil, tâche 'proposé' ; "
-                "au-dessus, validation obligatoire. Jamais de LLM, jamais de bypass."
+                "au-dessus, validation obligatoire."
             ),
             seuils={"plafond_auto": 500, "seuil_validation": 1000},
             garde_fous={"deterministe": True, "non_desactivable": True},
@@ -198,8 +196,7 @@ def build_agents(templates: list[Template]) -> list[Agent]:
             instructions=(
                 "Rédige la lettre de décision pour l'assuré : explication claire, "
                 "clauses citées, dans la langue de l'assuré. Le montant est fourni "
-                "par le calcul déterministe et la décision humaine — tu ne le "
-                "modifies jamais."
+                "par le calcul indemnitaire et validé par le gestionnaire."
             ),
             garde_fous={"montant_impose": True, "pas_de_donnees_sensibles": True},
             statut="live",
@@ -250,9 +247,31 @@ def build_dossiers() -> list[Dossier]:
             pieces=[
                 {"type": "constat", "chemin": "docs/samples/constat.jpg", "montant": None},
                 {"type": "facture", "chemin": "docs/samples/facture.jpg", "montant": 2300.0},
-                {"type": "photo_degats", "chemin": "docs/samples/degats-1.jpg", "montant": None},
-                {"type": "photo_degats", "chemin": "docs/samples/degats-2.jpg", "montant": None},
-                {"type": "photo_degats", "chemin": "docs/samples/parebrise.jpg", "montant": None},
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/degats-1.jpg",
+                    "montant": None,
+                    "coherence_attendue": True,
+                },
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/degats-2.jpg",
+                    "montant": None,
+                    "coherence_attendue": True,
+                },
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/parebrise.jpg",
+                    "montant": None,
+                    # Vérité terrain du dataset, utilisée uniquement par le fallback
+                    # de démo si l'API vision est indisponible.
+                    "incoherente_declaration": True,
+                    "coherence_attendue": False,
+                    "motif_incoherence": (
+                        "La photo montre un pare-brise fissuré, sans rapport avec le choc "
+                        "avant droit déclaré (pare-chocs, phare et aile)."
+                    ),
+                },
             ],
         ),
         # Formule tiers, dégâts collision sans tiers identifié → non couvert → refus motivé
@@ -262,7 +281,12 @@ def build_dossiers() -> list[Dossier]:
             workflow_id=1,
             declaration_texte=DECLARATION_2,
             pieces=[
-                {"type": "photo_degats", "chemin": "docs/samples/degats-3.jpg", "montant": None},
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/degats-3.jpg",
+                    "montant": None,
+                    "coherence_attendue": True,
+                },
                 {"type": "devis", "chemin": "docs/samples/devis.jpg", "montant": 1750.0},
             ],
         ),
@@ -273,7 +297,12 @@ def build_dossiers() -> list[Dossier]:
             workflow_id=1,
             declaration_texte=DECLARATION_3,
             pieces=[
-                {"type": "photo_degats", "chemin": "docs/samples/parebrise.jpg", "montant": None},
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/parebrise.jpg",
+                    "montant": None,
+                    "coherence_attendue": True,
+                },
                 {"type": "devis", "chemin": "docs/samples/devis-parebrise.jpg", "montant": 420.0},
             ],
         ),
@@ -287,7 +316,17 @@ def build_dossiers() -> list[Dossier]:
             workflow_id=1,
             declaration_texte=DECLARATION_4,
             pieces=[
-                {"type": "photo_degats", "chemin": "docs/samples/degats-3.jpg", "montant": None},
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/degats-3.jpg",
+                    "montant": None,
+                    "incoherente_declaration": True,
+                    "coherence_attendue": False,
+                    "motif_incoherence": (
+                        "La photo montre des dégâts majeurs à l'avant du véhicule, alors que "
+                        "la déclaration mentionne seulement un pare-chocs arrière légèrement rayé."
+                    ),
+                },
             ],
         ),
     ]

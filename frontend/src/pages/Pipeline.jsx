@@ -50,36 +50,6 @@ export default function Pipeline({ onNavigate }) {
     }
   }
 
-  const reculer = async () => {
-    if (!selection || occupe) return
-    setOccupe(true)
-    setErreur(null)
-    try {
-      await api.reculerEtape(selection.dossier.id)
-      await chargerDetail(selection.dossier.id)
-      await chargerListe()
-    } catch (e) {
-      setErreur(e.message)
-    } finally {
-      setOccupe(false)
-    }
-  }
-
-  const rejouer = async () => {
-    if (!selection || occupe) return
-    setOccupe(true)
-    setErreur(null)
-    try {
-      await api.rejouerDossier(selection.dossier.id)
-      await chargerDetail(selection.dossier.id)
-      await chargerListe()
-    } catch (e) {
-      setErreur(e.message)
-    } finally {
-      setOccupe(false)
-    }
-  }
-
   const d = selection?.dossier
 
   return (
@@ -135,8 +105,6 @@ export default function Pipeline({ onNavigate }) {
             agents={agents}
             occupe={occupe}
             onExecuter={executer}
-            onReculer={reculer}
-            onRejouer={rejouer}
             onNavigate={onNavigate}
           />
         ) : (
@@ -160,14 +128,11 @@ export default function Pipeline({ onNavigate }) {
 
 /* ================= détail d'un dossier ================= */
 
-function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRejouer, onNavigate }) {
+function DetailDossier({ selection, agents, occupe, onExecuter, onNavigate }) {
   const { dossier: d, police, workflow, runs } = selection
   const etapes = workflow?.etapes ?? []
   const dernierRun = runs[runs.length - 1]
   const termine = ['regle', 'refuse', 'cloture'].includes(d.etat)
-  const debut = d.etape_courante === 0 && runs.length === 0
-  const peutReculer = runs.length > 0
-
   return (
     <div className="grid gap-4">
       {/* entête */}
@@ -184,13 +149,13 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
           <div className="ml-auto flex items-center gap-5">
             {d.montant_recommande != null && (
               <div className="text-right">
-                <div className="text-[11px] uppercase tracking-wide text-encre/40">recommandé · calcul</div>
+                <div className="text-[11px] uppercase tracking-wide text-encre/40">Montant proposé</div>
                 <div className="text-xl font-bold">{dt(d.montant_recommande)}</div>
               </div>
             )}
             {d.montant_valide != null && (
               <div className="text-right">
-                <div className="text-[11px] uppercase tracking-wide text-ok">validé · humain</div>
+                <div className="text-[11px] uppercase tracking-wide text-ok">Montant validé</div>
                 <div className="text-xl font-bold text-ok">{dt(d.montant_valide)}</div>
               </div>
             )}
@@ -204,34 +169,18 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
         )}
       </div>
 
-      {/* frise du pipeline */}
+      {/* frise du parcours */}
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold">{workflow?.nom ?? 'Pipeline'}</h3>
+          <h3 className="font-semibold">{workflow?.nom ?? 'Parcours de traitement'}</h3>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={onReculer}
-              disabled={occupe || !peutReculer}
-              title="Annuler la dernière étape"
-              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-40"
-            >
-              ◀ Reculer
-            </button>
-            <button
-              onClick={onRejouer}
-              disabled={occupe || debut}
-              title="Remettre ce dossier au début"
-              className="rounded-md border border-line px-3 py-2 text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-40"
-            >
-              ↺ Rejouer
-            </button>
             {!termine && d.etat !== 'attente_validation' && (
               <button
                 onClick={onExecuter}
                 disabled={occupe}
                 className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
               >
-                {occupe ? '⏳ Exécution…' : '▶ Exécuter le pipeline'}
+                {occupe ? '⏳ Traitement…' : '▶ Lancer le traitement'}
               </button>
             )}
           </div>
@@ -242,7 +191,7 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-warn/40 bg-warn-tint px-4 py-3">
             <span className="text-xl">🛡️</span>
             <div className="text-sm text-encre/80">
-              <b>Pipeline suspendu — validation humaine requise.</b> Aucun règlement ne part sans
+              <b>Traitement suspendu — validation requise.</b> Aucun règlement ne part sans
               décision explicite d'un gestionnaire.
             </div>
             <button
@@ -256,7 +205,7 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
       </div>
 
       {dernierRun && !termine && (
-        <SortieRun run={dernierRun} agents={agents} pieces={d.pieces} titre="Dernière sortie d'agent" />
+        <SortieRun run={dernierRun} agents={agents} pieces={d.pieces} titre="Dernière étape exécutée" />
       )}
 
       {termine && d.courrier?.corps && <Courrier courrier={d.courrier} etat={d.etat} />}
@@ -264,7 +213,7 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onReculer, onRej
       {runs.length > 0 && (
         <details className="rounded-lg border border-line bg-surface p-4" open={termine}>
           <summary className="cursor-pointer font-semibold">
-            Trace d'exécution — {runs.length} run{runs.length > 1 ? 's' : ''} d'agents
+            Historique du traitement — {runs.length} étape{runs.length > 1 ? 's' : ''}
           </summary>
           <div className="mt-3 grid gap-3">
             {runs.map((r) => (
@@ -303,7 +252,7 @@ function Frise({ etapes, agents, dossier, runs, occupe }) {
               <span className="text-xl">{porte ? '🛡️' : AGENT_ICONE[agent?.categorie] ?? '⚙️'}</span>
               <span className="text-[11px] font-medium leading-tight">{agent?.nom ?? '—'}</span>
               <span className="text-[10px] text-encre/40">
-                {enAttente ? 'attente humain' : faite ? '✓ terminé' : courante ? 'prochain' : 'à venir'}
+                {enAttente ? 'validation requise' : faite ? '✓ terminé' : courante ? 'prochain' : 'à venir'}
               </span>
             </div>
             {i < etapes.length - 1 && (
@@ -325,15 +274,9 @@ function SortieRun({ run, agents, pieces, titre, compact }) {
     <div className={`rounded-lg border border-line bg-surface p-4 ${compact ? '' : ''}`}>
       <div className="mb-2 flex items-center gap-2">
         <span>{AGENT_ICONE[agent?.categorie] ?? '⚙️'}</span>
-        <span className="text-sm font-semibold">{titre ?? agent?.nom ?? `agent ${run.agent_id}`}</span>
+        <span className="text-sm font-semibold">{titre ?? agent?.nom ?? `Étape ${run.agent_id}`}</span>
         {titre && <span className="text-xs text-encre/40">({agent?.nom})</span>}
         <BadgeMode mode={s.mode} />
-        {run.confiance != null && (
-          <span className="text-xs text-encre/40">confiance {(run.confiance * 100).toFixed(0)} %</span>
-        )}
-        <span className="ml-auto text-xs text-encre/40">
-          {run.duree_ms} ms{run.cout > 0 && ` · $${run.cout.toFixed(4)}`}
-        </span>
       </div>
       <CorpsSortie categorie={agent?.categorie} s={s} pieces={pieces} />
     </div>
@@ -347,7 +290,7 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
         <Champ nom="Type de sinistre" valeur={f.type_sinistre} fort />
         <Champ nom="Langue détectée" valeur={f.langue} />
-        <Champ nom="Complétude" valeur={`${Math.round(f.completude * 100)} %`} />
+        <Champ nom="Taux de complétude" valeur={`${Math.round(f.completude * 100)} %`} />
         <Champ nom="Tiers identifié" valeur={f.tiers_identifie ? 'oui' : 'non'} />
         <Champ nom="Constat" valeur={f.constat_present ? 'présent' : 'absent'} />
         <Champ nom="Champs manquants" valeur={f.champs_manquants?.join(', ') || 'aucun'} />
@@ -543,7 +486,7 @@ function FormulaireDeclaration({ onFermer, onCree }) {
       <div className="w-full max-w-xl rounded-xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold">Déclarer un sinistre</h3>
         <p className="mt-1 text-sm text-encre/50">
-          Texte libre, français ou darija — l'agent FNOL structure la déclaration.
+          Saisissez la déclaration en français ou en darija.
         </p>
 
         <button
@@ -564,8 +507,7 @@ function FormulaireDeclaration({ onFermer, onCree }) {
         />
         {pieceFtusa && (
           <p className="mt-1.5 text-xs text-encre/50">
-            📎 Constat importé (e-constat) — aucun devis chiffré joint : ce dossier ira à la
-            porte « pièce manquante » lors du calcul de l'indemnité.
+            📎 Constat importé — un devis chiffré sera requis avant le calcul de l'indemnité.
           </p>
         )}
         <div className="mt-3 flex gap-3">
@@ -585,10 +527,6 @@ function FormulaireDeclaration({ onFermer, onCree }) {
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60 hover:bg-surface-deep">
             Annuler
-          </button>
-          <button onClick={() => { setTexte(EXEMPLE_DECLARATION); setPieceFtusa(null) }}
-            className="rounded-md px-4 py-2 text-sm text-terracotta-deep hover:bg-terracotta-tint">
-            Remplir l'exemple
           </button>
           <button onClick={soumettre} disabled={!texte || !police || envoi}
             className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">

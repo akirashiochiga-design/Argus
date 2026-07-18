@@ -10,7 +10,9 @@ réellement dès qu'une clé API est présente.
 - `degats-1.jpg`, `degats-2.jpg` — dégâts avant droit (pare-chocs, phare, aile), cohérents avec SIN-2026-001.
 - `parebrise.jpg` — pare-brise fissuré. Elle est volontairement aussi jointe à SIN-2026-001 :
   c'est la pièce incohérente utilisée pour démontrer l'agent « cohérence déclaration / photos ».
-- `degats-3.jpg` — véhicule fortement endommagé (dossier SIN-2026-002).
+- `degats-3.jpg` — véhicule fortement endommagé : cohérent avec le choc frontal de
+  SIN-2026-002, mais volontairement incohérent avec la légère rayure arrière déclarée
+  dans SIN-2026-004.
 
 Sources : Pexels, photos 10747780, 7857825, 11627936 et 19773544,
 utilisées conformément à la licence Pexels.

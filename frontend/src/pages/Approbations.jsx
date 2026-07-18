@@ -36,11 +36,11 @@ export default function Approbations({ onNavigate }) {
       const refus = decision === 'refuser' || (tache.type === 'validation_refus' && decision === 'approuver')
       let texte
       if (decision === 'sans_suite') {
-        texte = `Dossier ${tache.dossier_ref} clôturé sans suite — courrier de clôture généré et tracé.`
+        texte = `Dossier ${tache.dossier_ref} clôturé sans suite — courrier de clôture enregistré.`
       } else if (refus) {
-        texte = `Dossier ${tache.dossier_ref} refusé — courrier de refus généré et tracé.`
+        texte = `Dossier ${tache.dossier_ref} refusé — courrier de refus enregistré.`
       } else {
-        texte = `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier envoyé.`
+        texte = `Dossier ${tache.dossier_ref} réglé (${dt(montant ?? tache.montant)}) — courrier émis.`
       }
       setMessage({ ton: decision === 'sans_suite' ? 'neutre' : refus ? 'neutre' : 'succes', texte })
       await charger()
@@ -83,8 +83,7 @@ export default function Approbations({ onNavigate }) {
 
       {enAttente.length === 0 && (
         <div className="rounded-lg border border-dashed border-line bg-surface p-10 text-center text-sm text-encre/50">
-          Aucune validation en attente. Exécutez un dossier dans le Pipeline : il s'arrêtera ici
-          dès qu'une décision d'argent est en jeu.
+          Aucune validation en attente.
         </div>
       )}
 
@@ -107,7 +106,7 @@ export default function Approbations({ onNavigate }) {
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                   t.decision === 'refuser' || t.type === 'validation_refus' ? 'bg-bad-tint text-bad' : 'bg-ok-tint text-ok'
                 }`}>
-                  {t.decision}
+                  {t.decision === 'approuver' ? 'Approuvé' : t.decision === 'refuser' ? 'Refusé' : 'Sans suite'}
                 </span>
                 <span className="tabular-nums">{dt(t.montant)}</span>
                 {t.motif && <span className="truncate text-xs italic text-encre/40">« {t.motif} »</span>}
@@ -169,7 +168,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
           : refus ? 'bg-bad-tint text-bad'
           : p.sous_seuil ? 'bg-surface-deep text-encre/70' : 'bg-warn-tint text-warn'
         }`}>
-          {demandePiece ? '📎 pièce manquante' : refus ? 'refus à confirmer' : p.sous_seuil ? 'sous le seuil — proposé' : 'validation obligatoire'}
+          {demandePiece ? '📎 pièce manquante' : refus ? 'refus à confirmer' : p.sous_seuil ? 'proposition sous seuil' : 'validation obligatoire'}
         </span>
         {p.gravite && <span className="text-xs text-encre/50">gravité : {p.gravite}</span>}
         <div className="ml-auto text-right">
@@ -226,7 +225,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
         </div>
         <div className="rounded-md bg-surface-deep p-3">
           <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-encre/40">
-            Détail du calcul (déterministe)
+            Détail du calcul indemnitaire
           </div>
           <table className="w-full text-sm">
             <tbody>

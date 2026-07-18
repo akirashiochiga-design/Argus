@@ -82,7 +82,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         montant = float(plafond)
 
     montant = max(0.0, round(montant, 2))
-    detail.append({"etape": "MONTANT RECOMMANDÉ", "valeur": montant, "source": "calcul déterministe — aucun LLM"})
+    detail.append({"etape": "MONTANT RECOMMANDÉ", "valeur": montant, "source": "barème et garanties contractuelles"})
 
     return {
         "montant_recommande": montant,
