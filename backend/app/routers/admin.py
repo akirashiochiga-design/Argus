@@ -7,6 +7,6 @@ router = APIRouter(tags=["admin"])
 
 
 @router.post("/admin/reseed")
-def reseed(inclure_dossiers: bool = False) -> dict:
-    seed(inclure_dossiers=inclure_dossiers)
+def reseed() -> dict:
+    seed()
     return {"statut": "ok", "message": "Données restaurées à l'état de référence"}

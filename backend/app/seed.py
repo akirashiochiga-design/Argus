@@ -1,16 +1,12 @@
-"""Dataset de démo calibré (CLAUDE.md section 7).
+"""Données de référence nécessaires au fonctionnement d'Argus.
 
 Usage :  python -m app.seed   (depuis backend/)
 Réinitialise complètement argus.db — c'est le bouton "reset démo".
-
-Calibrage du dossier vedette SIN-2026-001 :
-  facture 2 300 DT − vétusté 10 % (véhicule 2022, barème 3-5 ans) = 2 070
-  − franchise collision 220 DT = 1 850 DT  ← le chiffre du pitch.
 """
 from sqlmodel import SQLModel, Session
 
 from .db import DB_PATH, create_db_and_tables, engine
-from .models import Agent, Dossier, Police, Template, Workflow
+from .models import Agent, Police, Template, Workflow
 
 # Barème de vétusté (valeurs plausibles — à confirmer avec l'encadrant Maghrebia)
 BAREME_VETUSTE = [
@@ -261,135 +257,7 @@ def build_agents(templates: list[Template]) -> list[Agent]:
     ]
 
 
-DECLARATION_1 = (
-    "Bonjour, hier soir vers 19h30 je rentrais du travail sur l'avenue Habib "
-    "Bourguiba à l'Ariana. Une voiture qui sortait d'un parking m'a percuté à "
-    "l'avant droit. Le pare-chocs et le phare sont cassés, l'aile est enfoncée. "
-    "On a rempli un constat amiable sur place, l'autre conducteur a reconnu son "
-    "tort. J'ai des photos des dégâts et la facture du garage. Ma police est la "
-    "PA-2024-1183. Ahmed Ben Salah."
-)
-
-DECLARATION_2 = (
-    "Aslema, ena Fatma Trabelsi, police PA-2023-0754. El bare7 fi soir kont "
-    "rekiya fi parking devant el dar, sob7 l9it el karhba mkhabta mel guedem, "
-    "el capot ou el pare-chocs mkassrin. Ma3rafnech chkoun 3malha, ma famech "
-    "constat. 3andi taswir. Chnoua na3mel ?"
-)
-
-DECLARATION_3 = (
-    "Bonjour, ce matin sur la route de La Marsa un camion a projeté un gravier "
-    "qui a fissuré mon pare-brise côté conducteur. La fissure fait environ 30 cm. "
-    "Je vous joins la photo et le devis du poseur. Police PA-2025-0533, "
-    "Nour Chaabane."
-)
-
-DECLARATION_4 = (
-    "Bonjour, mon véhicule a été accroché hier après-midi sur le parking du "
-    "supermarché — le pare-chocs arrière est rayé et légèrement enfoncé. Je "
-    "n'ai pas encore de devis du garage, je vous l'enverrai dès que je "
-    "l'aurai. Police PA-2025-0212. Mohamed Gharbi."
-)
-
-
-def build_dossiers() -> list[Dossier]:
-    return [
-        # LE dossier de la démo live : tous risques, collision → ~1 850 DT
-        # + une photo de pare-brise incohérente détectée par le contrôle intégré
-        Dossier(
-            ref="SIN-2026-001",
-            police_id=1,
-            workflow_id=1,
-            declaration_texte=DECLARATION_1,
-            pieces=[
-                {"type": "constat", "chemin": "docs/samples/constat.jpg", "montant": None},
-                {"type": "facture", "chemin": "docs/samples/facture.jpg", "montant": 2300.0},
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/degats-1.jpg",
-                    "montant": None,
-                    "coherence_attendue": True,
-                },
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/degats-2.jpg",
-                    "montant": None,
-                    "coherence_attendue": True,
-                },
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/parebrise.jpg",
-                    "montant": None,
-                    # Vérité terrain du dataset, utilisée uniquement par le fallback
-                    # de démo si l'API vision est indisponible.
-                    "incoherente_declaration": True,
-                    "coherence_attendue": False,
-                    "motif_incoherence": (
-                        "La photo montre un pare-brise fissuré, sans rapport avec le choc "
-                        "avant droit déclaré (pare-chocs, phare et aile)."
-                    ),
-                },
-            ],
-        ),
-        # Formule tiers, dégâts collision sans tiers identifié → non couvert → refus motivé
-        Dossier(
-            ref="SIN-2026-002",
-            police_id=2,
-            workflow_id=1,
-            declaration_texte=DECLARATION_2,
-            pieces=[
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/degats-3.jpg",
-                    "montant": None,
-                    "coherence_attendue": True,
-                },
-                {"type": "devis", "chemin": "docs/samples/devis.jpg", "montant": 1750.0},
-            ],
-        ),
-        # Bris de glace, petit montant → sous le seuil, règlement "proposé"
-        Dossier(
-            ref="SIN-2026-003",
-            police_id=6,
-            workflow_id=1,
-            declaration_texte=DECLARATION_3,
-            pieces=[
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/parebrise.jpg",
-                    "montant": None,
-                    "coherence_attendue": True,
-                },
-                {"type": "devis", "chemin": "docs/samples/devis-parebrise.jpg", "montant": 420.0},
-            ],
-        ),
-        # Capacité d'adaptation : couvert, mais AUCUNE pièce chiffrée jointe
-        # (l'assuré n'a pas encore de devis) → l'agent 5 ne devine pas un
-        # montant, il route vers "demande_piece". Laissé à l'état "reçu" :
-        # à exécuter en direct pendant la démo pour montrer cette porte.
-        Dossier(
-            ref="SIN-2026-004",
-            police_id=3,
-            workflow_id=1,
-            declaration_texte=DECLARATION_4,
-            pieces=[
-                {
-                    "type": "photo_degats",
-                    "chemin": "docs/samples/degats-3.jpg",
-                    "montant": None,
-                    "incoherente_declaration": True,
-                    "coherence_attendue": False,
-                    "motif_incoherence": (
-                        "La photo montre des dégâts majeurs à l'avant du véhicule, alors que "
-                        "la déclaration mentionne seulement un pare-chocs arrière légèrement rayé."
-                    ),
-                },
-            ],
-        ),
-    ]
-
-
-def seed(inclure_dossiers: bool = True) -> None:
+def seed() -> None:
     # Réinitialiser les tables plutôt que supprimer le fichier : sous Windows,
     # les requêtes de polling de l'interface peuvent conserver un handle ouvert.
     engine.dispose()
@@ -443,15 +311,8 @@ def seed(inclure_dossiers: bool = True) -> None:
         )
         session.commit()
 
-        if inclure_dossiers:
-            for d in build_dossiers():
-                session.add(d)
-            session.commit()
-
     print(f"Seed OK -> {DB_PATH}")
-    print(f"  3 templates, 6 polices, 8 agents, 2 workflows, {4 if inclure_dossiers else 0} dossiers")
-    print("  Dossier demo SIN-2026-001 : facture 2300 - vetuste 10% - franchise 220 = 1850 DT")
-    print("  Dossier demo SIN-2026-004 : aucune piece chiffree -> porte 'demande_piece' (adaptation)")
+    print("  3 templates, 6 polices, 8 agents, 2 workflows, 0 dossier")
 
 
 if __name__ == "__main__":
