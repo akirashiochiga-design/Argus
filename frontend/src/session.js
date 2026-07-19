@@ -4,9 +4,9 @@ const CLE = 'argus_session'
 
 // Identité par défaut du superviseur.
 export const COMPTE_SUPERVISEUR = {
-  email: 'selma.gharbi@compagnie.tn',
+  email: 'zak.chammam@compagnie.tn',
   motDePasse: 'argus2026',
-  nom: 'Selma Gharbi',
+  nom: 'Zak Chammam',
   role: 'responsable sinistres',
 }
 
@@ -31,8 +31,12 @@ export function lireSession() {
     const brut = localStorage.getItem(CLE)
     if (!brut) return null
     const session = JSON.parse(brut)
-    if (session.email === 'selma.gharbi@argus-demo.tn') {
+    if (
+      session.email === 'selma.gharbi@argus-demo.tn'
+      || session.email === 'selma.gharbi@compagnie.tn'
+    ) {
       session.email = COMPTE_SUPERVISEUR.email
+      session.nom = COMPTE_SUPERVISEUR.nom
     }
     if (session.role === 'superviseur' || session.role === 'superviseure') {
       session.role = 'responsable sinistres'
