@@ -80,18 +80,20 @@ Argus sépare explicitement les responsabilités :
 
 - Studio de création, publication et configuration d'agents
 - Parcours visuel d'un dossier et exécution étape par étape
-- Extraction de documents et analyse d'images avec l'API Anthropic
+- Extraction de documents et analyse d'images avec Gemini, avec secours Anthropic
 - Moteur de garanties et calcul indemnitaire par règles métier
 - File d'approbation humaine
 - Courrier de décision
 - Dashboard de supervision et journal d'audit
 - Interface de configuration des ERP et bases de données
+- Marketplace de démonstration : catalogue, filtres, achat et publication simulés
 - Déploiement frontend et backend sous une URL unique
 
-Les connecteurs ERP réels, la marketplace, le multi-tenant et le déploiement
-chez l'assureur font partie des prochaines étapes. L'écran d'intégrations de
-ce prototype présente le parcours de configuration, sans connexion à un ERP
-de production.
+Les transactions réelles de la marketplace, la certification des agents, les
+connecteurs ERP de production, le multi-tenant et le déploiement chez l'assureur
+font partie des prochaines étapes. Les écrans Marketplace et Intégrations de ce
+prototype simulent ces parcours sans achat réel ni connexion à un ERP de
+production.
 
 ## Architecture
 
@@ -156,6 +158,7 @@ sous une URL unique.
 - [Brand book](docs/Argus-Brand-Book.html)
 - [Script de présentation technique](docs/script-video-2-minutes.html)
 - [Guide de démonstration](docs/demo.md)
+- [Speech démo, marché et business model](docs/pitch-speech-6-7-demo.md)
 
 ## Équipe
 
