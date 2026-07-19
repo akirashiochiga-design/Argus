@@ -19,9 +19,11 @@ const PAGES = [
   { id: 'dashboard', label: 'Supervision & Audit', composant: Dashboard },
 ]
 
+const PAGE_ACCUEIL = 'integrations'
+
 export default function App() {
   const [session, setSession] = useState(() => lireSession())
-  const [page, setPage] = useState('dashboard')
+  const [page, setPage] = useState(PAGE_ACCUEIL)
   const [backendOk, setBackendOk] = useState(null)
   const [enAttente, setEnAttente] = useState(0)
   const [menuCompte, setMenuCompte] = useState(false)
@@ -40,7 +42,7 @@ export default function App() {
 
   useEffect(() => {
     const afficherAccueil = () => {
-      setPage('dashboard')
+      setPage(PAGE_ACCUEIL)
       setMenuCompte(false)
     }
 
@@ -54,7 +56,7 @@ export default function App() {
       <Login
         onConnecte={(nouvelleSession) => {
           setSession(nouvelleSession)
-          setPage('dashboard')
+          setPage(PAGE_ACCUEIL)
         }}
       />
     )
