@@ -21,7 +21,7 @@ const PAGES = [
 
 export default function App() {
   const [session, setSession] = useState(() => lireSession())
-  const [page, setPage] = useState('pipeline')
+  const [page, setPage] = useState('dashboard')
   const [backendOk, setBackendOk] = useState(null)
   const [enAttente, setEnAttente] = useState(0)
   const [menuCompte, setMenuCompte] = useState(false)
@@ -39,7 +39,14 @@ export default function App() {
   }, [])
 
   if (!session) {
-    return <Login onConnecte={setSession} />
+    return (
+      <Login
+        onConnecte={(nouvelleSession) => {
+          setSession(nouvelleSession)
+          setPage('dashboard')
+        }}
+      />
+    )
   }
 
   const seDeconnecter = () => {
