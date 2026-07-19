@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api'
-import { deconnecter, initiales, lireSession, libelleValidateur } from './session'
+import { initiales, lireSession, libelleValidateur } from './session'
 import { Logo, Wordmark } from './ui'
 import Login from './pages/Login'
 import Studio from './pages/Studio'
@@ -26,10 +26,6 @@ export default function App() {
   const [page, setPage] = useState(PAGE_ACCUEIL)
   const [backendOk, setBackendOk] = useState(null)
   const [enAttente, setEnAttente] = useState(0)
-  const [menuCompte, setMenuCompte] = useState(false)
-  const [reinitialisation, setReinitialisation] = useState(false)
-  const [revision, setRevision] = useState(0)
-  const menuCompteDisponibleApres = useRef(Date.now() + 1000)
 
   const rafraichirCompteur = () =>
     api.listerTaches('en_attente').then((t) => setEnAttente(t.length)).catch(() => {})
@@ -44,8 +40,6 @@ export default function App() {
   useEffect(() => {
     const afficherAccueil = () => {
       setPage(PAGE_ACCUEIL)
-      setMenuCompte(false)
-      menuCompteDisponibleApres.current = Date.now() + 1000
     }
 
     afficherAccueil()
@@ -62,39 +56,6 @@ export default function App() {
         }}
       />
     )
-  }
-
-  const seDeconnecter = () => {
-    deconnecter()
-    setSession(null)
-  }
-
-  const basculerMenuCompte = () => {
-    if (Date.now() < menuCompteDisponibleApres.current) {
-      setMenuCompte(false)
-      return
-    }
-    setMenuCompte((ouvert) => !ouvert)
-  }
-
-  const reinitialiserPlateforme = async () => {
-    if (reinitialisation) return
-    const confirme = window.confirm(
-      "Restaurer les données de référence ? Les dossiers, décisions et modifications en cours seront remplacés."
-    )
-    if (!confirme) return
-    setReinitialisation(true)
-    try {
-      await api.reseed()
-      setPage('pipeline')
-      setRevision((valeur) => valeur + 1)
-      setMenuCompte(false)
-      await rafraichirCompteur()
-    } catch (erreur) {
-      window.alert(`La réinitialisation a échoué : ${erreur.message}`)
-    } finally {
-      setReinitialisation(false)
-    }
   }
 
   const Page = PAGES.find((p) => p.id === page).composant
@@ -114,10 +75,7 @@ export default function App() {
             {PAGES.map((p) => (
               <button
                 key={p.id}
-                onClick={() => {
-                  setPage(p.id)
-                  setMenuCompte(false)
-                }}
+                onClick={() => setPage(p.id)}
                 className={`relative rounded-md px-3 py-1.5 text-sm transition ${
                   page === p.id ? 'bg-creme/12 font-medium' : 'text-creme/70 hover:bg-creme/8'
                 }`}
@@ -140,55 +98,17 @@ export default function App() {
               <span className={`h-2 w-2 rounded-full ${backendOk ? 'bg-ok' : 'bg-terracotta'} ${backendOk === null ? 'animate-pulse' : ''}`} />
               {backendOk === null ? '…' : backendOk ? 'connecté' : 'hors ligne'}
             </span>
-            <div className="relative hidden md:block">
-              <button
-                onClick={basculerMenuCompte}
-                title="Ouvrir le menu du compte"
-                aria-expanded={menuCompte}
-                className="flex items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs transition hover:bg-creme/15"
-              >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
-                  {initiales(session.nom)}
-                </span>
-                <span className="text-creme/85">{libelleValidateur(session)}</span>
-                <span className="text-[9px] text-creme/45">{menuCompte ? '▲' : '▼'}</span>
-              </button>
-              {menuCompte && (
-                <div className="absolute right-0 top-full mt-2 w-64 overflow-hidden rounded-lg border border-line bg-surface text-encre shadow-xl">
-                  <div className="border-b border-line px-4 py-3">
-                    <div className="text-sm font-semibold">{session.nom}</div>
-                    <div className="mt-0.5 truncate text-xs text-encre/50">{session.email}</div>
-                  </div>
-                  <div className="p-2">
-                    <button
-                      onClick={reinitialiserPlateforme}
-                      disabled={reinitialisation}
-                      className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-50"
-                    >
-                      {reinitialisation ? 'Restauration…' : 'Restaurer les données de référence'}
-                    </button>
-                    <button
-                      onClick={seDeconnecter}
-                      className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-bad transition hover:bg-bad-tint"
-                    >
-                      Se déconnecter
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div className="hidden items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs md:flex">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
+                {initiales(session.nom)}
+              </span>
+              <span className="text-creme/85">{libelleValidateur(session)}</span>
             </div>
           </div>
         </div>
       </header>
-      {menuCompte && (
-        <button
-          aria-label="Fermer le menu du compte"
-          onClick={() => setMenuCompte(false)}
-          className="fixed inset-0 z-30 cursor-default"
-        />
-      )}
       <main className="mx-auto max-w-7xl px-6 py-6">
-        <Page key={`${page}-${revision}`} onNavigate={setPage} />
+        <Page key={page} onNavigate={setPage} />
       </main>
     </div>
   )
