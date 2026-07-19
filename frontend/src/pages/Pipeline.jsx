@@ -493,21 +493,16 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
         }`}>
           {c.coherence_declaration ? '✓ photos cohérentes avec la déclaration' : '⚠ photos incohérentes avec la déclaration'}
         </span>
-        <p className="mt-1 text-encre/50">{c.commentaire}</p>
-        {c.verification_vehicule && (
-          <div className={`mt-2 rounded-md px-3 py-2 text-xs ${
-            c.verification_vehicule.statut === 'coherent'
-              ? 'bg-ok-tint text-ok'
-              : c.verification_vehicule.statut === 'incoherent'
-                ? 'bg-bad-tint text-bad'
-                : 'bg-surface-deep text-encre/60'
-          }`}>
-            <b>Véhicule : </b>
-            {c.verification_vehicule.statut === 'coherent' ? 'identité cohérente' :
-              c.verification_vehicule.statut === 'incoherent' ? 'incohérence détectée' :
-                'identité non vérifiable'}
-            {' — '}{c.verification_vehicule.motif}
-          </div>
+        {!c.coherence_declaration && (
+          <>
+            <p className="mt-1 text-encre/50">{c.commentaire}</p>
+            {c.verification_vehicule && (
+              <div className="mt-2 rounded-md bg-bad-tint px-3 py-2 text-xs text-bad">
+                <b>Véhicule : </b>incohérence détectée
+                {' — '}{c.verification_vehicule.motif}
+              </div>
+            )}
+          </>
         )}
       </div>
     )
