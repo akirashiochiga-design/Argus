@@ -38,6 +38,17 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const afficherAccueil = () => {
+      setPage('dashboard')
+      setMenuCompte(false)
+    }
+
+    afficherAccueil()
+    window.addEventListener('pageshow', afficherAccueil)
+    return () => window.removeEventListener('pageshow', afficherAccueil)
+  }, [])
+
   if (!session) {
     return (
       <Login
@@ -91,7 +102,10 @@ export default function App() {
             {PAGES.map((p) => (
               <button
                 key={p.id}
-                onClick={() => setPage(p.id)}
+                onClick={() => {
+                  setPage(p.id)
+                  setMenuCompte(false)
+                }}
                 className={`relative rounded-md px-3 py-1.5 text-sm transition ${
                   page === p.id ? 'bg-creme/12 font-medium' : 'text-creme/70 hover:bg-creme/8'
                 }`}
