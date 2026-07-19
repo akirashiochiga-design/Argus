@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { ETAT_STYLE, heure } from '../ui'
 
+const EVENEMENTS = {
+  run_agent: "Exécution d'une étape",
+  creation_agent: 'Création de module',
+  decision_humaine: 'Décision gestionnaire',
+  changement_etat: "Changement d'état",
+  synchronisation_donnees: 'Synchronisation SI',
+  connexion_systeme: 'Connexion au SI',
+  creation_dossier: 'Création de dossier',
+}
+
 export default function Dashboard() {
   const [kpi, setKpi] = useState(null)
   const [audit, setAudit] = useState([])
@@ -36,13 +46,13 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Tuile nom="Dossiers traités" valeur={kpi.dossiers_traites} sous={`sur ${kpi.dossiers_total} dossiers`} />
-        <Tuile nom="Décisions humaines" valeur={kpi.decisions_humaines} sous="100 % des règlements" />
+        <Tuile nom="Décisions gestionnaires" valeur={kpi.decisions_humaines} sous="validations enregistrées" />
         <Tuile nom="Taux d'approbation"
           valeur={kpi.taux_approbation != null ? `${Math.round(kpi.taux_approbation * 100)} %` : '—'}
-          sous="propositions automatisées" />
+          sous="propositions transmises" />
         <Tuile nom="Taux de correction" valeur={`${(kpi.taux_correction * 100).toFixed(1)} %`} sous="ajustements des gestionnaires" />
-        <Tuile nom="Coût des traitements" valeur={`$${kpi.cout_ia_usd.toFixed(2)}`} sous={`${kpi.runs_total} opérations`} accent />
-        <Tuile nom="Temps économisé"
+        <Tuile nom="Coût de traitement" valeur={`$${kpi.cout_ia_usd.toFixed(2)}`} sous={`${kpi.runs_total} opérations`} accent />
+        <Tuile nom="Temps de gestion évité"
           valeur={`${Math.floor(kpi.temps_economise_min / 60)} h ${kpi.temps_economise_min % 60} min`}
           sous="sur les dossiers traités" />
       </div>
@@ -69,11 +79,8 @@ export default function Dashboard() {
       <div className="rounded-lg border border-line bg-surface p-4">
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-encre/40">Journal d'audit</h3>
-          <span className="rounded bg-surface-deep px-1.5 py-0.5 text-[10px] font-semibold uppercase text-encre/50">
-            sécurisé · horodaté · attribué
-          </span>
           <div className="ml-auto flex gap-1 text-xs">
-            {[['', 'tout'], ['humain', 'humains'], ['agent', 'agents']].map(([v, l]) => (
+            {[['', 'tout'], ['humain', 'gestionnaires'], ['agent', 'traitements']].map(([v, l]) => (
               <button key={v} onClick={() => changerFiltre(v)}
                 className={`rounded-full px-3 py-1 ${filtre === v ? 'bg-encre text-creme' : 'bg-surface-deep text-encre/60 hover:bg-line'}`}>
                 {l}
@@ -103,7 +110,7 @@ export default function Dashboard() {
                       {e.acteur.replace(/^(humain|agent):/, '')}
                     </span>
                   </td>
-                  <td className="py-1.5 pr-3 text-xs font-semibold text-encre/75">{e.type}</td>
+                  <td className="py-1.5 pr-3 text-xs font-semibold text-encre/75">{EVENEMENTS[e.type] ?? e.type.replaceAll('_', ' ')}</td>
                   <td className="py-1.5 pr-3 font-mono text-xs text-encre/50">{e.objet}</td>
                   <td className="py-1.5 text-xs text-encre/50">
                     {e.motif && <span className="italic">« {e.motif} » </span>}

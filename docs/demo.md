@@ -14,9 +14,9 @@
       automatiquement (`degats-1/2/3.jpg`, `parebrise.jpg` — vue de dessus, zone
       endommagée hachurée). Ça suffit pour la démo. Les remplacer par de vraies
       photos si vous en trouvez (regénérer les croquis : `python -m app.samples`).
-- [ ] Clé API configurée dans `backend/.env` : `ANTHROPIC_API_KEY=sk-ant-...`.
-      **Modèle : Haiku 4.5** (le moins cher, ~1-2 cents/dossier, vision comprise).
-      Tous les agents LLM appellent Claude en direct — badges **IA** dans l'UI.
+- [ ] Clé API configurée dans `backend/.env` : `GEMINI_API_KEY=...`.
+      **Modèle : Gemini 2.5 Flash** (quota gratuit, vision comprise).
+      Tous les agents LLM appellent Gemini en direct — badges **IA** dans l'UI.
 - [ ] Répétition générale : `cd backend && .venv/Scripts/python test_e2e.py`
       → doit afficher `TOUS LES TESTS PASSENT`.
 - [ ] Faire relire les déclarations darija du seed par un locuteur (fichier `backend/app/seed.py`).

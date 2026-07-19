@@ -8,11 +8,13 @@ import Pipeline from './pages/Pipeline'
 import Approbations from './pages/Approbations'
 import Dashboard from './pages/Dashboard'
 import Integrations from './pages/Integrations'
+import Marketplace from './pages/Marketplace'
 
 const PAGES = [
   { id: 'pipeline', label: 'Sinistres', composant: Pipeline },
   { id: 'approbations', label: 'Approbations', composant: Approbations },
   { id: 'studio', label: 'Studio', composant: Studio },
+  { id: 'marketplace', label: 'Marketplace', composant: Marketplace },
   { id: 'integrations', label: 'Intégrations', composant: Integrations },
   { id: 'dashboard', label: 'Supervision & Audit', composant: Dashboard },
 ]
@@ -48,7 +50,7 @@ export default function App() {
   const reinitialiserPlateforme = async () => {
     if (reinitialisation) return
     const confirme = window.confirm(
-      "Réinitialiser toutes les données de la plateforme ? Les dossiers, décisions et modifications seront remplacés par l'état initial."
+      "Restaurer les données de référence ? Les dossiers, décisions et modifications en cours seront remplacés."
     )
     if (!confirme) return
     setReinitialisation(true)
@@ -75,7 +77,7 @@ export default function App() {
             <Logo size={30} />
             <Wordmark className="text-xl" />
             <span className="ml-2 hidden text-xs font-normal text-creme/45 lg:inline">
-              Gestion intelligente des sinistres
+              Gestion des sinistres auto
             </span>
           </div>
           <nav className="ml-4 flex gap-1">
@@ -130,7 +132,7 @@ export default function App() {
                       disabled={reinitialisation}
                       className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-encre/70 transition hover:bg-surface-deep disabled:opacity-50"
                     >
-                      {reinitialisation ? 'Réinitialisation…' : 'Réinitialiser la plateforme'}
+                      {reinitialisation ? 'Restauration…' : 'Restaurer les données de référence'}
                     </button>
                     <button
                       onClick={seDeconnecter}

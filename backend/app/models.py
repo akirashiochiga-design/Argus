@@ -40,7 +40,10 @@ class Agent(SQLModel, table=True):
 class Workflow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str
+    description: str = ""
     statut: str = "live"
+    est_defaut: bool = False
+    cree_le: datetime = Field(default_factory=now)
     # [{"ordre": 0, "agent_id": 1, "type": "agent"}, ..., {"ordre": 5, "agent_id": 6, "type": "porte_humaine"}]
     etapes: list = Field(default_factory=list, sa_column=Column(JSON))
 
@@ -121,3 +124,12 @@ class EvenementAudit(SQLModel, table=True):
     apres: dict = Field(default_factory=dict, sa_column=Column(JSON))
     motif: Optional[str] = None
     horodatage: datetime = Field(default_factory=now)
+
+
+class IntegrationConnexion(SQLModel, table=True):
+    """État d'une connexion validée à un système externe."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    identifiant: str = Field(index=True)
+    statut: str = "connecte"
+    connecte_le: datetime = Field(default_factory=now)

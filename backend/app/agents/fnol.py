@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from .. import llm
 from ..models import Agent, Dossier
+from . import runtime
 
 SCHEMA = {
     "type": "object",
@@ -34,6 +35,7 @@ SCHEMA = {
 }
 
 MOTS_DARIJA = ("aslema", "salem", "ena", "el ", "3and", "mkass", "karhba", "chnoua", "bare7", "l9it")
+OBJECTIF = "Structurer la déclaration initiale et contrôler sa complétude"
 
 
 def _fallback(dossier: Dossier) -> dict:
@@ -64,16 +66,29 @@ def _fallback(dossier: Dossier) -> dict:
 
 def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     prompt = (
-        f"Déclaration de sinistre (police {dossier.police_id}) :\n\n{dossier.declaration_texte}\n\n"
-        f"Pièces jointes annoncées : {[p['type'] for p in dossier.pieces]}"
+        f"Déclaration de sinistre :\n\n{dossier.declaration_texte}\n\n"
+        "Consulte la police et l'inventaire des pièces avec les outils disponibles, "
+        "puis structure uniquement les faits confirmés."
     )
     try:
-        resultat = llm.generer_json(agent.instructions, prompt, SCHEMA)
+        resultat = runtime.executer(
+            agent, dossier, session, OBJECTIF, prompt, SCHEMA
+        )
         donnees = resultat["donnees"]
-        meta = {"cout": resultat["cout"], "duree_ms": resultat["duree_ms"], "mode": "llm"}
-    except llm.LLMIndisponible:
+        meta = {
+            "cout": resultat["cout"],
+            "duree_ms": resultat["duree_ms"],
+            "mode": resultat["mode"],
+            "trace": resultat["trace"],
+        }
+    except llm.LLMIndisponible as e:
         donnees = _fallback(dossier)
-        meta = {"cout": 0.0, "duree_ms": 5}
+        meta = {
+            "cout": 0.0,
+            "duree_ms": 5,
+            "mode": "regles_locales",
+            "trace": runtime.trace_repli("fnol", OBJECTIF, str(e)),
+        }
 
     return {
         "donnees_fnol": donnees,

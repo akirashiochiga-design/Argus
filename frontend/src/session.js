@@ -7,7 +7,7 @@ export const COMPTE_SUPERVISEUR = {
   email: 'selma.gharbi@compagnie.tn',
   motDePasse: 'argus2026',
   nom: 'Selma Gharbi',
-  role: 'superviseure',
+  role: 'responsable sinistres',
 }
 
 function nomDepuisEmail(email) {
@@ -33,8 +33,11 @@ export function lireSession() {
     const session = JSON.parse(brut)
     if (session.email === 'selma.gharbi@argus-demo.tn') {
       session.email = COMPTE_SUPERVISEUR.email
-      localStorage.setItem(CLE, JSON.stringify(session))
     }
+    if (session.role === 'superviseur' || session.role === 'superviseure') {
+      session.role = 'responsable sinistres'
+    }
+    localStorage.setItem(CLE, JSON.stringify(session))
     return session
   } catch {
     return null
@@ -48,7 +51,7 @@ export function connecter(email, motDePasse) {
   const estCompteSuperviseur = email.trim().toLowerCase() === COMPTE_SUPERVISEUR.email
   const session = estCompteSuperviseur
     ? { email: COMPTE_SUPERVISEUR.email, nom: COMPTE_SUPERVISEUR.nom, role: COMPTE_SUPERVISEUR.role }
-    : { email: email.trim(), nom: nomDepuisEmail(email.trim()), role: 'superviseur' }
+    : { email: email.trim(), nom: nomDepuisEmail(email.trim()), role: 'responsable sinistres' }
   localStorage.setItem(CLE, JSON.stringify(session))
   return session
 }

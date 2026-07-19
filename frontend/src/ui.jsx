@@ -56,19 +56,8 @@ export const AGENT_ICONE = {
   garanties: '📐', indemnite: '🧮', hitl: '🛡️', courrier: '✉️', assistant: '✦',
 }
 
-export function BadgeMode({ mode }) {
-  if (!mode) return null
-  const styles = {
-    llm: 'bg-terracotta-tint text-terracotta-deep',
-    mixte: 'bg-terracotta-tint text-terracotta-deep',
-    deterministe: 'bg-ok-tint text-ok',
-  }
-  const libelles = { llm: 'Assisté par IA', mixte: 'IA assistée', deterministe: 'Règles métier' }
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[mode] ?? ''}`}>
-      {libelles[mode] ?? mode}
-    </span>
-  )
+export function BadgeMode() {
+  return null
 }
 
 export const dt = (montant) =>

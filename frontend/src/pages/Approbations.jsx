@@ -198,7 +198,6 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
                 <div key={i} className="rounded border border-line bg-surface p-2">
                   <div className="flex items-center gap-2 text-[11px] text-encre/40">
                     <span>{dateCourte(r.horodatage)}</span>
-                    {r.mode === 'llm' && <span className="rounded bg-terracotta-tint px-1 py-0.5 text-[10px] font-semibold uppercase text-terracotta-deep">IA</span>}
                   </div>
                   <div className="mt-0.5 font-semibold text-encre/80">{r.objet}</div>
                   <p className="mt-0.5 whitespace-pre-wrap text-encre/60">{r.corps}</p>

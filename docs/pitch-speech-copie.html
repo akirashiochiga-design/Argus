@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Argus — texte à copier</title>
+  <style>
+    body {
+      margin: 0;
+      background: #eeeae1;
+      color: #17150f;
+      font: 17px/1.65 "Segoe UI", Arial, sans-serif;
+    }
+    main {
+      width: min(820px, calc(100% - 40px));
+      margin: 36px auto;
+      padding: 56px 64px;
+      background: white;
+      box-shadow: 0 3px 24px #0002;
+    }
+    h1 { margin-top: 0; font-size: 30px; }
+    h2 { margin-top: 42px; font-size: 22px; }
+    h3 { margin-top: 28px; font-size: 18px; }
+    p { margin: 0 0 18px; }
+    .note { color: #756f61; font-style: italic; }
+    .actions {
+      position: sticky;
+      top: 12px;
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 20px;
+    }
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 10px 16px;
+      color: white;
+      background: #d97757;
+      font: 600 14px "Segoe UI", Arial, sans-serif;
+      cursor: pointer;
+    }
+    .question { margin-bottom: 5px; font-weight: 700; }
+    @media print {
+      body { background: white; }
+      main { width: auto; margin: 0; padding: 20mm; box-shadow: none; }
+      .actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="actions"><button id="copy">Copier tout le texte</button></div>
+
+  <article id="document">
+    <h1>Speech Argus — démo, marché et business model</h1>
+
+    <h2>Démo</h2>
+
+    <p>Plutôt que de vous l'expliquer, je vous montre.</p>
+
+    <p>En trente secondes, voici toute la boucle Argus. Ici, l'assureur supervise ses dossiers, ses coûts et chaque décision.</p>
+
+    <p>Argus se branche à son système existant, sans le remplacer.</p>
+
+    <p>Dans la Marketplace, l'assureur peut acheter des agents spécialisés ou publier les siens.</p>
+
+    <p>Dans le Studio, le métier crée ses agents, avec des garde-fous verrouillés.</p>
+
+    <p>Dès qu'un montant est engagé, l'IA s'arrête : un gestionnaire approuve, modifie ou refuse.</p>
+
+    <p>Et sur chaque dossier, on retrouve le parcours complet : sept étapes, 1 850 dinars validés, et un historique d'exécution horodaté, donc totalement auditable.</p>
+
+    <p class="note">Environ 97 mots : 32 à 36 secondes. Parcours la navigation de droite à gauche et termine sur l'historique du traitement.</p>
+
+    <h2>Slide 6 — Le marché</h2>
+
+    <p>Pourquoi commencer par les sinistres ? Parce que c'est là que l'assureur dépense le plus : environ 70 % de ses coûts. En Tunisie, il y a 22 assureurs : le marché est assez concentré pour qu'on puisse signer vite. Ensuite, on peut répliquer la même plateforme dans les 14 pays de la zone CIMA, puis dans le Golfe, où les primes représentent 48 milliards de dollars.</p>
+
+    <h2>Slide 7 — Business model</h2>
+
+    <p>On facture 13 000 dinars par mois, plus 50 000 dinars pour l'intégration au départ. Prenons un assureur qui gère 100 000 sinistres par an : ses frais de gestion tournent autour de 17 millions de dinars. S'il en automatise seulement un quart, il économise environ 4,25 millions. La première année, Argus lui coûte 206 000 dinars. Même avec des hypothèses prudentes, le retour est très clair.</p>
+
+    <h2>Q&amp;A technique</h2>
+
+    <h3>Stack et architecture</h3>
+
+    <p class="question">Quelle est votre stack ?</p>
+    <p>Frontend React, Vite et Tailwind. Backend Python et FastAPI. Base SQLite via SQLModel et SQLAlchemy. Un seul Dockerfile compile le frontend puis le sert depuis FastAPI, donc toute la plateforme est accessible derrière une seule URL et déployable sur Railway.</p>
+
+    <p class="question">Pourquoi SQLite et pas PostgreSQL ?</p>
+    <p>C'est un choix délibéré pour le prototype, pas une limite d'architecture. SQLModel nous permet de passer à PostgreSQL sans réécrire la logique métier. SQLite suffit pour ce pilote mono-tenant ; PostgreSQL devient nécessaire avec plusieurs utilisateurs concurrents et de vrais volumes de production.</p>
+
+    <p class="question">Quel modèle d'IA utilisez-vous ?</p>
+    <p>Gemini 2.5 Flash par défaut, pour le texte, la vision et les appels d'outils. Le code prend aussi en charge Claude comme fournisseur de secours. Le modèle est configurable par variable d'environnement : la plateforme n'est pas dépendante d'un seul fournisseur.</p>
+
+    <p class="question">Pourquoi pas LangChain, LangGraph ou CrewAI ?</p>
+    <p>Nous avons choisi une machine à états explicite. Chaque étape est une fonction Python testable isolément. Pour un système financier, cette simplicité apporte de la lisibilité, de la reproductibilité et facilite l'audit.</p>
+
+    <p class="question">Comment fonctionne l'orchestration ?</p>
+    <p>Un workflow est une liste ordonnée d'agents. Chaque appel exécute une seule étape, enregistre son résultat et son événement d'audit, puis avance le dossier. À la porte humaine, le dossier passe en attente de validation et ne peut plus avancer sans décision explicite d'un gestionnaire.</p>
+
+    <h3>Gouvernance et fiabilité</h3>
+
+    <p class="question">L'IA peut-elle se tromper sur le montant ?</p>
+    <p>Le LLM peut se tromper lors d'une extraction, mais il ne calcule jamais l'indemnité et ne valide jamais un paiement. Le montant est produit par du code déterministe à partir des garanties, de la vétusté et de la franchise, puis contrôlé par un humain avant tout règlement.</p>
+
+    <p class="question">Comment empêchez-vous le contournement de la validation humaine ?</p>
+    <p>Le champ du montant validé n'est écrit que par la fonction de décision humaine, jamais par un agent. L'état « réglé » n'est atteignable qu'après une tâche explicitement décidée par un gestionnaire. C'est un invariant du moteur, pas une simple consigne donnée au modèle.</p>
+
+    <p class="question">Que se passe-t-il si l'API du LLM tombe ?</p>
+    <p>Les agents disposent d'un mode dégradé déterministe ou heuristique. Le calcul et la gouvernance restent locaux, donc une panne du fournisseur d'IA ne peut ni autoriser un paiement ni casser toute la chaîne de traitement.</p>
+
+    <p class="question">Comment fonctionne l'audit ?</p>
+    <p>Chaque exécution, décision humaine, changement d'état et modification de configuration produit un événement horodaté avec l'acteur, l'objet, l'état avant, l'état après et le motif. La table est append-only dans l'API : aucun endpoint de modification ou de suppression n'est exposé.</p>
+
+    <h3>Données, produit et roadmap</h3>
+
+    <p class="question">Où sont stockées les données sensibles ?</p>
+    <p>Les données sont locales dans ce prototype. Seules les informations nécessaires à chaque traitement sont transmises au modèle. Pour la production, les prochaines étapes sont le masquage systématique des données personnelles, la résidence des données et, si nécessaire, l'utilisation d'un modèle souverain.</p>
+
+    <p class="question">Pourquoi pas un simple workflow BPM ?</p>
+    <p>Un BPM sait appliquer des règles, mais il ne sait pas naturellement lire une déclaration en darija, une facture photographiée ou des images de dégâts. Argus combine cette compréhension des données non structurées avec la rigueur d'un moteur de règles et d'une validation humaine.</p>
+
+    <p class="question">La marketplace existe-t-elle déjà ?</p>
+    <p>L'expérience est démontrable dans ce prototype : on peut parcourir et filtrer les agents, simuler un achat ou une installation, et soumettre un agent à la publication. Les transactions, la certification et la distribution entre organisations sont simulées. La boucle créer, gouverner, exécuter et auditer reste, elle, réellement connectée au backend.</p>
+
+    <p class="question">Pourquoi seulement l'assurance automobile ?</p>
+    <p>Nous avons volontairement choisi un seul parcours complet et démontrable plutôt que plusieurs branches incomplètes. L'architecture des agents, des workflows et des garde-fous est réutilisable pour l'habitation, la santé et d'autres processus assurantiels.</p>
+  </article>
+</main>
+<script>
+  document.getElementById('copy').addEventListener('click', async () => {
+    const button = document.getElementById('copy');
+    await navigator.clipboard.writeText(document.getElementById('document').innerText);
+    button.textContent = 'Texte copié ✓';
+    setTimeout(() => button.textContent = 'Copier tout le texte', 1800);
+  });
+</script>
+</body>
+</html>

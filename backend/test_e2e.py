@@ -6,10 +6,11 @@ vérifie chaque invariant (montants, états, audit, studio). Sort en erreur
 au premier écart — si ce script passe, la démo passe.
 """
 import json
+import os
 import sys
 import urllib.request
 
-BASE = "http://localhost:8000"
+BASE = os.getenv("ARGUS_TEST_URL", "http://localhost:8001")
 ECHECS = []
 
 
@@ -44,16 +45,31 @@ def executer_pipeline(dossier_id: int, max_etapes: int = 8) -> dict:
 
 
 print("=== 0. Reset démo ===")
-r = appel("POST", "/admin/reseed")
+r = appel("POST", "/admin/reseed?inclure_dossiers=true")
 verifier("reseed", r.get("statut") == "ok")
 
 print("=== 1. Dossier vedette SIN-2026-001 : 1 850 DT, validation obligatoire ===")
 r = executer_pipeline(1)
 verifier("pipeline suspendu à la porte humaine", r.get("resultat") == "porte_humaine")
-d = appel("GET", "/dossiers/1")["dossier"]
+detail_dossier_1 = appel("GET", "/dossiers/1")
+d = detail_dossier_1["dossier"]
 verifier("montant recommandé = 1850.0", d["montant_recommande"] == 1850.0, str(d["montant_recommande"]))
 verifier("état = attente_validation", d["etat"] == "attente_validation", d["etat"])
 verifier("couvert = true", d["position_couverture"]["couvert"] is True)
+runs_outilles = [
+    run for run in detail_dossier_1["runs"]
+    if (run.get("sorties", {}).get("trace") or {}).get("actions")
+]
+verifier("FNOL et Vision produisent une trace d'actions", len(runs_outilles) >= 2)
+run_vision = next(
+    run for run in detail_dossier_1["runs"]
+    if run.get("sorties", {}).get("analyse_gravite")
+)
+verifier(
+    "la vision de gravité reste limitée à son rôle",
+    "verification_vehicule" not in run_vision["sorties"]["analyse_gravite"]
+    and "coherence_declaration" not in run_vision["sorties"]["analyse_gravite"],
+)
 taches = appel("GET", "/taches?etat=en_attente")
 t1 = next(t for t in taches if t["dossier_ref"] == "SIN-2026-001")
 verifier("tâche au-dessus du seuil (validation obligatoire)", t1["proposition"]["sous_seuil"] is False)
@@ -98,25 +114,41 @@ print("=== 4. Garde-fou : impossible d'exécuter un dossier réglé ===")
 r = appel("POST", "/dossiers/1/executer")
 verifier("409 sur dossier réglé", r.get("__erreur__") == 409)
 
-print("=== 5. Studio : créer -> publier -> AJOUTER (pas remplacer), et modifier un seuil ===")
+print("=== 5. Studio : créer un module puis l'utiliser dans un nouveau traitement ===")
 wf_avant = appel("GET", "/workflows")[0]
 nb_etapes_avant = len(wf_avant["etapes"])
-a = appel("POST", "/agents", {"nom": "Règlement auto — bris de glace", "template_id": 3,
+a = appel("POST", "/agents", {"nom": "Qualification bris de glace", "template_id": 1,
                               "seuils": {"seuil_validation": 300}})
 verifier("agent créé en draft", a.get("statut") == "draft", str(a))
-r = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
-verifier("ajouter un draft est refusé (409)", r.get("__erreur__") == 409)
+ids_personnalises = [
+    a["id"] if etape["agent_id"] == 2 else etape["agent_id"]
+    for etape in wf_avant["etapes"]
+]
+r = appel("POST", "/workflows", {
+    "nom": "Traitement avec module brouillon",
+    "agent_ids": ids_personnalises,
+})
+verifier("un module brouillon est refusé", r.get("__erreur__") == 422)
 a2 = appel("POST", f"/agents/{a['id']}/publier")
 verifier("agent publié live", a2["statut"] == "live")
-w = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
-verifier("agent présent dans le pipeline", any(e["agent_id"] == a["id"] for e in w.get("etapes", [])))
-verifier("le pipeline compte UNE étape de PLUS qu'avant (ajout, pas remplacement)",
-         len(w["etapes"]) == nb_etapes_avant + 1, f"{len(w['etapes'])} vs {nb_etapes_avant}")
-verifier("l'agent d'origine 'Calcul indemnité auto' (id 5) est toujours présent",
-         any(e["agent_id"] == 5 for e in w["etapes"]))
-r = appel("POST", "/workflows/1/ajouter-etape", {"agent_id": a["id"]})
-verifier("ajouter deux fois le même agent est refusé (409)", r.get("__erreur__") == 409)
-h = appel("PATCH", "/agents/6", {"seuils": {"seuil_validation": 300, "plafond_auto": 200}})
+w = appel("POST", "/workflows", {
+    "nom": "Traitement bris de glace personnalisé",
+    "description": "Parcours utilisant le module publié depuis le Studio",
+    "agent_ids": ids_personnalises,
+})
+verifier("module présent dans le nouveau traitement", any(e["agent_id"] == a["id"] for e in w.get("etapes", [])))
+verifier("le traitement conserve un ordre complet", len(w["etapes"]) == nb_etapes_avant)
+wf_original = appel("GET", "/workflows")[0]
+verifier("le traitement d'origine reste inchangé", any(e["agent_id"] == 2 for e in wf_original["etapes"]))
+actif = appel("POST", f"/workflows/{w['id']}/activer")
+verifier("le nouveau traitement est actif", actif.get("est_defaut") is True)
+r = appel("POST", "/workflows", {
+    "nom": "Traitement bris de glace personnalisé",
+    "agent_ids": ids_personnalises,
+})
+verifier("deux traitements ne peuvent pas porter le même nom", r.get("__erreur__") == 409)
+agent_hitl = next(agent for agent in appel("GET", "/agents") if agent["categorie"] == "hitl")
+h = appel("PATCH", f"/agents/{agent_hitl['id']}", {"seuils": {"seuil_validation": 300, "plafond_auto": 200}})
 verifier("seuil HITL modifié, version incrémentée", h["seuils"]["seuil_validation"] == 300 and h["version"] == 2)
 avant_instr = appel("GET", "/agents")
 agent5_avant = next(x for x in avant_instr if x["id"] == 5)
@@ -154,12 +186,12 @@ verifier("4 dossiers traités", kpi["dossiers_traites"] == 4, str(kpi["dossiers_
 verifier("taux de correction > 0 (décision 'modifier')", kpi["taux_correction"] > 0)
 
 print("=== 8. Retour arrière & rejeu (contrôles de démo) ===")
-appel("POST", "/admin/reseed")
+appel("POST", "/admin/reseed?inclure_dossiers=true")
 executer_pipeline(1)  # dossier 1 -> attente_validation (6 runs)
 avant = appel("GET", "/dossiers/1")["dossier"]
 verifier("dossier 1 en attente avant recul", avant["etat"] == "attente_validation")
 r = appel("POST", "/dossiers/1/reculer")
-verifier("reculer annule la porte humaine", r["agent_annule"] == "Porte de validation humaine")
+verifier("reculer annule la validation", r["agent_annule"] == "Validation gestionnaire")
 d = appel("GET", "/dossiers/1")["dossier"]
 verifier("état revenu à en_cours", d["etat"] == "en_cours")
 verifier("plus de tâche en attente après recul",
@@ -186,7 +218,7 @@ r = appel("POST", "/studio/agents-personnalises",
 verifier("catégorie argent refusée (400)", r.get("__erreur__") == 400)
 
 print("=== 10. Capacité d'adaptation : pièce manquante -> demande_piece -> sans_suite ===")
-appel("POST", "/admin/reseed")
+appel("POST", "/admin/reseed?inclure_dossiers=true")
 d4 = next(x for x in appel("GET", "/dossiers") if x["ref"] == "SIN-2026-004")
 verifier("SIN-2026-004 démarre sans pièce chiffrée", d4["montant_estime"] is None)
 executer_pipeline(d4["id"])
@@ -204,7 +236,7 @@ verifier("montant validé reste vide", d["montant_valide"] is None)
 verifier("courrier de clôture généré", "clôturé" in d["courrier"].get("objet", "").lower(), d["courrier"])
 
 print("=== 11. Relance de l'assuré avant clôture sans suite ===")
-appel("POST", "/admin/reseed")
+appel("POST", "/admin/reseed?inclure_dossiers=true")
 d4b = next(x for x in appel("GET", "/dossiers") if x["ref"] == "SIN-2026-004")
 executer_pipeline(d4b["id"])
 t6 = next(t for t in appel("GET", "/taches?etat=en_attente") if t["dossier_ref"] == "SIN-2026-004")

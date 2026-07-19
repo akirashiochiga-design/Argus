@@ -6,9 +6,11 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from .. import llm
+from ..agents.tools import noms_pour
 from ..audit import tracer
 from ..db import get_session
 from ..models import Agent, Dossier, Template, Workflow
+from ..workflow_service import TraitementInvalide, valider_etapes
 
 router = APIRouter(tags=["studio"])
 
@@ -17,11 +19,11 @@ router = APIRouter(tags=["studio"])
 # PAS proposées : on ne laisse pas créer par prompt un agent qui décide d'un
 # montant ou contourne la validation humaine — c'est la gouvernance du produit.
 CATEGORIES_PERSONNALISEES = {
-    "fnol": "Compréhension d'une déclaration (texte)",
-    "extraction": "Lecture de documents (OCR / vision)",
-    "vision": "Analyse d'images (gravité, dégâts)",
+    "fnol": "Qualification de déclaration",
+    "extraction": "Extraction documentaire",
+    "vision": "Analyse des dégâts",
     "courrier": "Rédaction d'un message à l'assuré",
-    "assistant": "Assistant métier (usage libre, hors pipeline)",
+    "assistant": "Assistant métier (hors parcours sinistre)",
 }
 
 
@@ -77,7 +79,7 @@ def creer_agent(corps: CreationAgent, session: Session = Depends(get_session)) -
 def publier_agent(agent_id: int, session: Session = Depends(get_session)) -> Agent:
     agent = session.get(Agent, agent_id)
     if not agent:
-        raise HTTPException(404, "Agent introuvable")
+        raise HTTPException(404, "Module introuvable")
     avant = agent.statut
     agent.statut = "live"
     tracer(session, "humain:superviseur", "humain", "publication_agent", f"agent:{agent.id}",
@@ -92,7 +94,7 @@ def modifier_agent(agent_id: int, corps: ModificationAgent, session: Session = D
     """Modifier instructions/seuils → nouvelle version, tracée dans l'audit."""
     agent = session.get(Agent, agent_id)
     if not agent:
-        raise HTTPException(404, "Agent introuvable")
+        raise HTTPException(404, "Module introuvable")
     avant = {"version": agent.version, "seuils": agent.seuils, "instructions": agent.instructions[:80]}
     if corps.instructions is not None:
         agent.instructions = corps.instructions
@@ -113,6 +115,119 @@ class Affectation(BaseModel):
     agent_id: int
 
 
+class TraitementEntrant(BaseModel):
+    nom: str
+    description: str = ""
+    agent_ids: list[int]
+
+
+class EtapesTraitement(BaseModel):
+    agent_ids: list[int]
+
+
+def _etapes_valides(session: Session, agent_ids: list[int]) -> list[dict]:
+    try:
+        return valider_etapes(session, agent_ids)
+    except TraitementInvalide as e:
+        raise HTTPException(422, str(e)) from e
+
+
+@router.post("/workflows", status_code=201)
+def creer_workflow(
+    corps: TraitementEntrant,
+    session: Session = Depends(get_session),
+) -> Workflow:
+    nom = corps.nom.strip()
+    if len(nom) < 3:
+        raise HTTPException(422, "Le nom du traitement doit contenir au moins 3 caractères")
+    if session.exec(select(Workflow).where(Workflow.nom == nom)).first():
+        raise HTTPException(409, "Un traitement porte déjà ce nom")
+    etapes = _etapes_valides(session, corps.agent_ids)
+    workflow = Workflow(
+        nom=nom,
+        description=corps.description.strip(),
+        statut="live",
+        est_defaut=False,
+        etapes=etapes,
+    )
+    session.add(workflow)
+    session.flush()
+    tracer(
+        session,
+        "humain:responsable_sinistres",
+        "humain",
+        "creation_workflow",
+        f"workflow:{workflow.id}",
+        apres={"nom": workflow.nom, "nb_etapes": len(etapes)},
+    )
+    session.commit()
+    session.refresh(workflow)
+    return workflow
+
+
+@router.patch("/workflows/{workflow_id}/etapes")
+def modifier_etapes_workflow(
+    workflow_id: int,
+    corps: EtapesTraitement,
+    session: Session = Depends(get_session),
+) -> Workflow:
+    workflow = session.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(404, "Traitement introuvable")
+    dossiers_commences = session.exec(
+        select(Dossier).where(
+            Dossier.workflow_id == workflow.id,
+            Dossier.etape_courante > 0,
+        )
+    ).first()
+    if dossiers_commences:
+        raise HTTPException(
+            409,
+            "Ce traitement est déjà utilisé par des dossiers en cours et ne peut plus être réordonné",
+        )
+    etapes = _etapes_valides(session, corps.agent_ids)
+    avant = {"agent_ids": [etape["agent_id"] for etape in workflow.etapes]}
+    workflow.etapes = etapes
+    session.add(workflow)
+    tracer(
+        session,
+        "humain:responsable_sinistres",
+        "humain",
+        "modification_workflow",
+        f"workflow:{workflow.id}",
+        avant=avant,
+        apres={"agent_ids": corps.agent_ids},
+    )
+    session.commit()
+    session.refresh(workflow)
+    return workflow
+
+
+@router.post("/workflows/{workflow_id}/activer")
+def activer_workflow(
+    workflow_id: int,
+    session: Session = Depends(get_session),
+) -> Workflow:
+    workflow = session.get(Workflow, workflow_id)
+    if not workflow:
+        raise HTTPException(404, "Traitement introuvable")
+    _etapes_valides(session, [etape["agent_id"] for etape in workflow.etapes])
+    for autre in session.exec(select(Workflow)).all():
+        autre.est_defaut = autre.id == workflow.id
+        session.add(autre)
+    tracer(
+        session,
+        "humain:responsable_sinistres",
+        "humain",
+        "activation_workflow",
+        f"workflow:{workflow.id}",
+        apres={"nom": workflow.nom, "est_defaut": True},
+    )
+    session.commit()
+    session.refresh(workflow)
+    return workflow
+
+
 @router.post("/workflows/{workflow_id}/ajouter-etape")
 def ajouter_etape(workflow_id: int, corps: Affectation, session: Session = Depends(get_session)) -> Workflow:
     """Ajoute un agent (live) comme NOUVELLE étape du pipeline.
@@ -131,11 +246,11 @@ def ajouter_etape(workflow_id: int, corps: Affectation, session: Session = Depen
     workflow = session.get(Workflow, workflow_id)
     agent = session.get(Agent, corps.agent_id)
     if not workflow or not agent:
-        raise HTTPException(404, "Workflow ou agent introuvable")
+        raise HTTPException(404, "Parcours ou module introuvable")
     if agent.statut != "live":
-        raise HTTPException(409, "Seul un agent 'live' peut être ajouté au pipeline")
+        raise HTTPException(409, "Seul un module publié peut être ajouté au parcours")
     if any(e["agent_id"] == agent.id for e in workflow.etapes):
-        raise HTTPException(409, "Cet agent est déjà dans le pipeline")
+        raise HTTPException(409, "Ce module est déjà présent dans le parcours")
 
     # deepcopy obligatoire : muter les dicts en place empêcherait SQLAlchemy
     # de détecter le changement de la colonne JSON (pas d'UPDATE émis)
@@ -152,8 +267,7 @@ def ajouter_etape(workflow_id: int, corps: Affectation, session: Session = Depen
         position = next((i for i, e in enumerate(etapes) if e["type"] == "porte_humaine"), len(etapes))
 
     etapes.insert(position, {"agent_id": agent.id, "type": "agent"})
-    for i, e in enumerate(etapes):
-        e["ordre"] = i
+    etapes = _etapes_valides(session, [etape["agent_id"] for etape in etapes])
     workflow.etapes = etapes
 
     for dossier in session.exec(select(Dossier).where(Dossier.workflow_id == workflow.id)).all():
@@ -199,12 +313,11 @@ def generer_instructions(corps: BriefAgent) -> dict:
     la consigne. Repli déterministe si pas de clé API (la démo ne casse pas).
     """
     system = (
-        "Tu es l'assistant du studio Argus, une plateforme d'agents d'IA pour "
-        "l'assurance. À partir d'un brief court, rédige les instructions système "
-        "d'un agent : rôle, entrées attendues, sorties attendues, ton. 6 à 10 "
+        "À partir d'un besoin métier court, rédige les instructions opérationnelles "
+        "du module : rôle, entrées attendues, sorties attendues et ton. 6 à 10 "
         "lignes, en français, concis et opérationnel. Rappelle en dernière ligne "
-        "le garde-fou : l'agent ne décide jamais d'un montant ni d'un paiement, "
-        "l'humain valide toute décision d'argent. Ne réponds QUE par les instructions."
+        "la règle : le module ne décide jamais d'un montant ni d'un paiement, "
+        "un gestionnaire valide toute décision financière. Ne réponds QUE par les instructions."
     )
     try:
         r = llm.generer_texte(system, f"Brief : {corps.brief}", max_tokens=600)
@@ -216,8 +329,8 @@ def generer_instructions(corps: BriefAgent) -> dict:
             "Sorties : un résultat structuré, avec un indice de confiance.\n"
             "Ton : factuel, en français, sans jargon.\n"
             "Signale explicitement toute information manquante plutôt que de l'inventer.\n"
-            "Garde-fou : cet agent ne décide jamais d'un montant ni d'un paiement ; "
-            "toute décision engageant de l'argent est validée par un humain."
+            "Règle : ce module ne décide jamais d'un montant ni d'un paiement ; "
+            "toute décision financière est validée par un gestionnaire."
         )
         return {"instructions": instructions, "cout": 0.0}
 
@@ -234,7 +347,12 @@ def creer_agent_personnalise(corps: AgentPersonnalise, session: Session = Depend
         instructions=corps.instructions,
         seuils=corps.seuils,
         # garde-fous non négociables, quelle que soit la consigne saisie
-        garde_fous={"pas_de_decision_argent": True, "origine": "prompt_studio"},
+        garde_fous={
+            "pas_de_decision_argent": True,
+            "origine": "prompt_studio",
+            "outils_autorises": noms_pour(corps.categorie),
+            "max_iterations_agent": 4,
+        },
         statut="draft",
     )
     session.add(agent)

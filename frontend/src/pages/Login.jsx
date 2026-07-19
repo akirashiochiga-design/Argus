@@ -27,7 +27,7 @@ export default function Login({ onConnecte }) {
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo size={56} className="text-creme" />
           <Wordmark className="text-4xl text-creme" />
-          <p className="text-sm text-creme/50">Gestion intelligente des sinistres</p>
+          <p className="text-sm text-creme/50">Plateforme de gestion des sinistres auto</p>
         </div>
 
         <form onSubmit={soumettre} className="rounded-xl border border-creme/15 bg-creme/[0.04] p-6">

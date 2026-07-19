@@ -18,6 +18,7 @@ from sqlmodel import Session
 from . import agents, llm
 from .audit import tracer
 from .models import Agent, Dossier, Police, Run, Tache, Workflow
+from .workflow_service import TraitementInvalide, valider_etapes
 
 # Champs de sortie d'agent que l'orchestrateur reporte sur le dossier
 CHAMPS_DOSSIER = (
@@ -62,7 +63,11 @@ def avancer(session: Session, dossier: Dossier) -> dict:
 
     workflow = session.get(Workflow, dossier.workflow_id)
     if not workflow or dossier.etape_courante >= len(workflow.etapes):
-        raise OrchestrationErreur(409, "Aucune étape restante dans le workflow")
+        raise OrchestrationErreur(409, "Aucune étape restante dans le traitement")
+    try:
+        valider_etapes(session, [etape["agent_id"] for etape in workflow.etapes])
+    except TraitementInvalide as e:
+        raise OrchestrationErreur(409, f"Traitement incomplet : {e}") from e
 
     etape = workflow.etapes[dossier.etape_courante]
     agent = session.get(Agent, etape["agent_id"])
@@ -101,9 +106,22 @@ def avancer(session: Session, dossier: Dossier) -> dict:
         if champ in sorties and sorties[champ] is not None:
             setattr(dossier, champ, sorties[champ])
 
-    tracer(session, acteur, "agent", "run_agent", f"dossier:{dossier.ref}",
-           avant=instantane_avant,
-           apres={k: v for k, v in sorties.items() if k in (*CHAMPS_DOSSIER, "tache_id", "routage", "montant_recommande")})
+    apres_audit = {
+        k: v for k, v in sorties.items()
+        if k in (*CHAMPS_DOSSIER, "tache_id", "routage", "montant_recommande")
+    }
+    trace = sorties.get("trace") or {}
+    if trace:
+        actions = trace.get("actions") or []
+        apres_audit["objectif_agent"] = trace.get("objectif")
+        apres_audit["nb_actions"] = len(actions)
+        apres_audit["outils_utilises"] = list(dict.fromkeys(
+            action.get("outil") for action in actions if action.get("outil")
+        ))
+    tracer(
+        session, acteur, "agent", "run_agent", f"dossier:{dossier.ref}",
+        avant=instantane_avant, apres=apres_audit,
+    )
 
     # ---- Transition ----
     if etape["type"] == "porte_humaine":
@@ -119,7 +137,7 @@ def avancer(session: Session, dossier: Dossier) -> dict:
     terminee = dossier.etape_courante >= len(workflow.etapes)
     if terminee:
         etat_final = _etat_final(session, dossier)
-        _changer_etat(session, dossier, etat_final, acteur, motif="pipeline terminé")
+        _changer_etat(session, dossier, etat_final, acteur, motif="parcours terminé")
     else:
         _changer_etat(session, dossier, "en_cours", acteur)
 
@@ -167,7 +185,7 @@ def reculer(session: Session, dossier: Dossier) -> dict:
         select(Run).where(Run.dossier_id == dossier.id).order_by(Run.id)
     ).all()
     if not runs:
-        raise OrchestrationErreur(409, "Rien à annuler — le dossier est au début du pipeline")
+        raise OrchestrationErreur(409, "Rien à annuler — le dossier n'a pas encore été traité")
 
     dernier = runs[-1]
     agent = session.get(Agent, dernier.agent_id)
@@ -315,7 +333,7 @@ def decider(session: Session, tache: Tache, decision: str, validateur: str,
 
     # Le pipeline repart (étape courrier) — l'état final sera posé à la fin
     _changer_etat(session, dossier, "en_cours", f"humain:{validateur}",
-                  motif=f"décision '{decision}' — reprise du pipeline")
+                  motif=f"décision '{decision}' — reprise du traitement")
     session.commit()
     session.refresh(tache)
     session.refresh(dossier)

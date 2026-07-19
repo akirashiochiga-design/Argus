@@ -98,7 +98,7 @@ de production.
 - **Frontend** — React, Vite et Tailwind CSS
 - **Backend** — Python et FastAPI
 - **Données** — SQLite pour le prototype
-- **IA** — API Anthropic, texte et vision
+- **IA** — API Gemini, texte, vision et outils métier
 - **Orchestration** — machine à états explicite
 - **Déploiement** — image Docker unique, compatible Railway
 
@@ -111,10 +111,10 @@ cd backend
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt
 .venv/Scripts/python -m app.seed
-.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
+.venv/Scripts/python -m uvicorn app.main:app --reload --port 8001
 ```
 
-Le backend est disponible sur `http://localhost:8000`.
+Le backend est disponible sur `http://localhost:8001`.
 
 ### 2. Frontend
 
@@ -131,12 +131,12 @@ Le frontend est disponible sur `http://localhost:5173`.
 Créer un fichier `.env` non versionné :
 
 ```env
-ANTHROPIC_API_KEY=your_anthropic_api_key
-ARGUS_MODEL=claude-haiku-4-5
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
-Le modèle peut être remplacé par une autre référence Anthropic compatible via
-`ARGUS_MODEL`.
+La clé gratuite se crée dans [Google AI Studio](https://aistudio.google.com/app/apikey).
+Une configuration Anthropic existante reste utilisable en secours.
 
 ## Déployer
 
@@ -144,7 +144,7 @@ Le `Dockerfile` à la racine compile le frontend puis le sert avec FastAPI. Sur
 Railway :
 
 1. créer un projet depuis ce dépôt GitHub ;
-2. ajouter `ANTHROPIC_API_KEY` dans les variables du service ;
+2. ajouter `GEMINI_API_KEY` dans les variables du service ;
 3. générer un domaine dans **Settings → Networking**.
 
 Railway détecte automatiquement `railway.json` et publie toute la plateforme

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
-import { AGENT_ICONE, BadgeEtat, BadgeMode, GaleriePieces, dt } from '../ui'
+import { AGENT_ICONE, BadgeEtat, GaleriePieces, dt } from '../ui'
 
 const DELAI_ANIMATION_MS = 650
 
@@ -8,6 +8,7 @@ export default function Pipeline({ onNavigate }) {
   const [dossiers, setDossiers] = useState([])
   const [selection, setSelection] = useState(null) // {dossier, police, workflow, runs}
   const [agents, setAgents] = useState({})
+  const [workflows, setWorkflows] = useState([])
   const [occupe, setOccupe] = useState(false)
   const [formulaire, setFormulaire] = useState(false)
   const [erreur, setErreur] = useState(null)
@@ -23,6 +24,7 @@ export default function Pipeline({ onNavigate }) {
       liste.forEach((a) => (parId[a.id] = a))
       setAgents(parId)
     })
+    api.listerWorkflows().then(setWorkflows).catch((e) => setErreur(e.message))
   }, [])
 
   useEffect(() => {
@@ -50,6 +52,21 @@ export default function Pipeline({ onNavigate }) {
     }
   }
 
+  const choisirTraitement = async (workflowId) => {
+    if (!selection || occupe) return
+    setOccupe(true)
+    setErreur(null)
+    try {
+      await api.choisirTraitement(selection.dossier.id, workflowId)
+      await chargerDetail(selection.dossier.id)
+      await chargerListe()
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setOccupe(false)
+    }
+  }
+
   const d = selection?.dossier
 
   return (
@@ -66,6 +83,11 @@ export default function Pipeline({ onNavigate }) {
           </button>
         </div>
         <div className="grid gap-2">
+          {dossiers.length === 0 && (
+            <div className="rounded-lg border border-dashed border-line bg-surface p-4 text-sm text-encre/50">
+              Aucun dossier synchronisé.
+            </div>
+          )}
           {dossiers.map((x) => (
             <button
               key={x.id}
@@ -103,12 +125,16 @@ export default function Pipeline({ onNavigate }) {
           <DetailDossier
             selection={selection}
             agents={agents}
+            workflows={workflows}
             occupe={occupe}
             onExecuter={executer}
+            onChoisirTraitement={choisirTraitement}
             onNavigate={onNavigate}
           />
         ) : (
-          <p className="text-sm text-encre/50">Sélectionnez un dossier.</p>
+          <div className="rounded-lg border border-line bg-surface p-6 text-sm text-encre/55">
+            Connectez puis synchronisez la base assurance depuis l’onglet Intégrations.
+          </div>
         )}
       </div>
 
@@ -128,11 +154,33 @@ export default function Pipeline({ onNavigate }) {
 
 /* ================= détail d'un dossier ================= */
 
-function DetailDossier({ selection, agents, occupe, onExecuter, onNavigate }) {
+function traitementRecommande(dossier, workflows) {
+  const contenu = [
+    dossier.declaration_texte,
+    ...(dossier.pieces ?? []).map((piece) => `${piece.type ?? ''} ${piece.nom ?? ''}`),
+  ].join(' ')
+  const brisDeGlace = /\b(pare[- ]?brise|vitre|vitrage|bris de glace)\b/i.test(contenu)
+  if (brisDeGlace) {
+    return workflows.find((traitement) => /bris de glace/i.test(traitement.nom))
+  }
+  return workflows.find((traitement) => traitement.est_defaut) ?? workflows[0]
+}
+
+function DetailDossier({
+  selection,
+  agents,
+  workflows,
+  occupe,
+  onExecuter,
+  onChoisirTraitement,
+  onNavigate,
+}) {
   const { dossier: d, police, workflow, runs } = selection
   const etapes = workflow?.etapes ?? []
   const dernierRun = runs[runs.length - 1]
   const termine = ['regle', 'refuse', 'cloture'].includes(d.etat)
+  const recommande = traitementRecommande(d, workflows)
+  const peutChanger = d.etat === 'recu' && d.etape_courante === 0 && runs.length === 0
   return (
     <div className="grid gap-4">
       {/* entête */}
@@ -171,7 +219,48 @@ function DetailDossier({ selection, agents, occupe, onExecuter, onNavigate }) {
 
       {/* frise du parcours */}
       <div className="rounded-lg border border-line bg-surface p-4">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-2 flex items-center gap-2">
+          <h3 className="font-semibold">Traitement du dossier</h3>
+          {!peutChanger && (
+            <span className="text-xs text-encre/40">choix verrouillé après lancement</span>
+          )}
+        </div>
+        <div className="grid gap-2 md:grid-cols-2">
+          {workflows.map((traitement) => {
+            const selectionne = workflow?.id === traitement.id
+            const estRecommande = recommande?.id === traitement.id
+            return (
+              <button
+                key={traitement.id}
+                onClick={() => !selectionne && onChoisirTraitement(traitement.id)}
+                disabled={!peutChanger || occupe}
+                className={`rounded-lg border p-3 text-left transition ${
+                  selectionne
+                    ? 'border-terracotta bg-terracotta-tint/35'
+                    : 'border-line bg-surface-deep hover:border-terracotta/40'
+                } disabled:cursor-default disabled:opacity-80`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold">{traitement.nom}</span>
+                  {estRecommande && (
+                    <span className="rounded-full bg-ok-tint px-2 py-0.5 text-[10px] font-semibold text-ok">
+                      Recommandé
+                    </span>
+                  )}
+                  {selectionne && (
+                    <span className="ml-auto text-xs font-semibold text-terracotta-deep">
+                      Sélectionné
+                    </span>
+                  )}
+                </div>
+                {traitement.description && (
+                  <p className="mt-1 text-xs text-encre/50">{traitement.description}</p>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <div className="mb-4 mt-4 flex flex-wrap items-center gap-2">
           <h3 className="font-semibold">{workflow?.nom ?? 'Parcours de traitement'}</h3>
           <div className="ml-auto flex items-center gap-2">
             {!termine && d.etat !== 'attente_validation' && (
@@ -276,10 +365,63 @@ function SortieRun({ run, agents, pieces, titre, compact }) {
         <span>{AGENT_ICONE[agent?.categorie] ?? '⚙️'}</span>
         <span className="text-sm font-semibold">{titre ?? agent?.nom ?? `Étape ${run.agent_id}`}</span>
         {titre && <span className="text-xs text-encre/40">({agent?.nom})</span>}
-        <BadgeMode mode={s.mode} />
       </div>
+      <TraceActions trace={s.trace} compact={compact} />
       <CorpsSortie categorie={agent?.categorie} s={s} pieces={pieces} />
     </div>
+  )
+}
+
+const LIBELLES_OUTILS = {
+  consulter_police: 'Consulter la police',
+  inventorier_pieces: 'Inventorier les pièces',
+  consulter_vehicule_assure: 'Consulter le véhicule assuré',
+  consulter_circonstances: 'Consulter les circonstances',
+  regles_locales: 'Appliquer le barème interne',
+}
+
+function resumeResultat(resultat = {}) {
+  if (resultat.erreur) return resultat.erreur
+  if (resultat.motif) return resultat.motif
+  if (resultat.vehicule) {
+    const v = resultat.vehicule
+    return [v.marque, v.modele, v.annee].filter(Boolean).join(' ')
+  }
+  if (resultat.marque || resultat.modele) {
+    return [resultat.marque, resultat.modele, resultat.annee].filter(Boolean).join(' ')
+  }
+  if (resultat.nombre != null) return `${resultat.nombre} pièce${resultat.nombre > 1 ? 's' : ''}`
+  if (resultat.type_sinistre) return `Sinistre ${resultat.type_sinistre}`
+  return 'Informations consultées'
+}
+
+function TraceActions({ trace, compact }) {
+  const actions = trace?.actions ?? []
+  if (actions.length === 0) return null
+  return (
+    <details className="mb-3 rounded-md border border-line bg-surface-deep px-3 py-2" open={!compact}>
+      <summary className="cursor-pointer text-xs font-semibold text-encre/70">
+        Journal de traitement — {actions.length} étape{actions.length > 1 ? 's' : ''}
+      </summary>
+      <div className="mt-2 border-l-2 border-terracotta/25 pl-3">
+        <p className="mb-2 text-xs text-encre/50">Objectif : {trace.objectif}</p>
+        {actions.map((action, index) => (
+          <div key={`${action.outil}-${index}`} className="mb-2 flex items-start gap-2 text-xs last:mb-0">
+            <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+              action.statut === 'refuse' ? 'bg-bad-tint text-bad' : 'bg-ok-tint text-ok'
+            }`}>
+              {index + 1}
+            </span>
+            <div>
+              <div className="font-semibold text-encre/75">
+                {LIBELLES_OUTILS[action.outil] ?? action.outil}
+              </div>
+              <div className="text-encre/45">{resumeResultat(action.resultat)}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
 
@@ -289,8 +431,8 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
     return (
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm md:grid-cols-3">
         <Champ nom="Type de sinistre" valeur={f.type_sinistre} fort />
-        <Champ nom="Langue détectée" valeur={f.langue} />
-        <Champ nom="Taux de complétude" valeur={`${Math.round(f.completude * 100)} %`} />
+        <Champ nom="Langue de la déclaration" valeur={f.langue} />
+        <Champ nom="Complétude du dossier" valeur={`${Math.round(f.completude * 100)} %`} />
         <Champ nom="Tiers identifié" valeur={f.tiers_identifie ? 'oui' : 'non'} />
         <Champ nom="Constat" valeur={f.constat_present ? 'présent' : 'absent'} />
         <Champ nom="Champs manquants" valeur={f.champs_manquants?.join(', ') || 'aucun'} />
@@ -336,15 +478,37 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
       <div className="text-sm">
         <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
         <span className={`rounded-full px-2.5 py-0.5 font-semibold ${couleurs[g.classe]}`}>gravité : {g.classe}</span>
-        {g.coherence_declaration != null && (
-          <span className={`ml-2 rounded-full px-2.5 py-0.5 font-semibold ${
-            g.coherence_declaration ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
-          }`}>
-            {g.coherence_declaration ? '✓ photos cohérentes' : '⚠ photos incohérentes avec la déclaration'}
-          </span>
-        )}
         <span className="ml-3 text-encre/60">zones : {g.zones?.join(', ') || '—'}</span>
         <p className="mt-1 text-encre/50">{g.commentaire}</p>
+      </div>
+    )
+  }
+  if (categorie === 'vision' && s.analyse_coherence) {
+    const c = s.analyse_coherence
+    return (
+      <div className="text-sm">
+        <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
+        <span className={`rounded-full px-2.5 py-0.5 font-semibold ${
+          c.coherence_declaration ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
+        }`}>
+          {c.coherence_declaration ? '✓ photos cohérentes avec la déclaration' : '⚠ photos incohérentes avec la déclaration'}
+        </span>
+        <p className="mt-1 text-encre/50">{c.commentaire}</p>
+        {c.verification_vehicule && (
+          <div className={`mt-2 rounded-md px-3 py-2 text-xs ${
+            c.verification_vehicule.statut === 'coherent'
+              ? 'bg-ok-tint text-ok'
+              : c.verification_vehicule.statut === 'incoherent'
+                ? 'bg-bad-tint text-bad'
+                : 'bg-surface-deep text-encre/60'
+          }`}>
+            <b>Véhicule : </b>
+            {c.verification_vehicule.statut === 'coherent' ? 'identité cohérente' :
+              c.verification_vehicule.statut === 'incoherent' ? 'incohérence détectée' :
+                'identité non vérifiable'}
+            {' — '}{c.verification_vehicule.motif}
+          </div>
+        )}
       </div>
     )
   }
@@ -390,8 +554,8 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
   }
   if (categorie === 'hitl') return <p className="text-sm text-encre/80">🛡️ {s.routage}</p>
   if (categorie === 'courrier' && s.courrier)
-    return <p className="text-sm text-encre/60">Courrier généré : « {s.courrier.objet} »</p>
-  return <pre className="max-h-40 overflow-auto rounded bg-surface-deep p-2 text-xs">{JSON.stringify(s, null, 2)}</pre>
+    return <p className="text-sm text-encre/60">Courrier de décision : « {s.courrier.objet} »</p>
+  return <p className="text-sm text-encre/50">Détail non disponible pour cette étape.</p>
 }
 
 const Champ = ({ nom, valeur, fort }) => (
@@ -406,8 +570,7 @@ function Courrier({ courrier, etat }) {
     <div className="rounded-lg border border-line bg-surface p-4">
       <div className="mb-2 flex items-center gap-2">
         <span>✉️</span>
-        <span className="font-semibold">Courrier généré</span>
-        <BadgeMode mode={courrier.mode} />
+        <span className="font-semibold">Courrier de décision</span>
         <span className="ml-auto"><BadgeEtat etat={etat} /></span>
       </div>
       <div className="rounded-md border border-line bg-surface-deep p-4">
@@ -434,7 +597,7 @@ const EXEMPLE_DECLARATION =
 // "pièce manquante" sur ce même dossier.
 const CONSTAT_FTUSA_SIMULE = {
   texte:
-    "Constat électronique reçu via e-constat (FTUSA), référence CE-2026-88213 : collision entre 2 " +
+    "Constat électronique reçu, référence CE-2026-88213 : collision entre 2 " +
     "véhicules le 17/07/2026 à 18h20, avenue Mohamed V, Tunis. Véhicule A (assuré) : Volkswagen Golf 8, " +
     "immatriculation 225 TU 4817. Le véhicule B a heurté l'arrière du véhicule A à l'arrêt à un feu rouge ; " +
     "torts reconnus par B (case 8 cochée). Police PA-2024-1183, Ahmed Ben Salah. Le devis de réparation " +
@@ -495,7 +658,7 @@ function FormulaireDeclaration({ onFermer, onCree }) {
           className="mt-3 flex w-full items-center gap-2 rounded-md border border-dashed border-terracotta/40 bg-terracotta-tint/40 px-3 py-2 text-sm font-medium text-terracotta-deep transition hover:bg-terracotta-tint disabled:opacity-60"
         >
           <span>📡</span>
-          {recuperation ? 'Récupération en cours…' : 'Récupérer via e-constat FTUSA'}
+          {recuperation ? 'Import en cours…' : 'Importer un constat électronique'}
         </button>
 
         <textarea

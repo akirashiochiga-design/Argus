@@ -1,36 +1,69 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../api'
 
-const CONNECTEURS = [
+const ERP = [
   { id: 'sage', nom: 'Sage X3', type: 'ERP Finance', couleur: 'bg-[#00A376]', initiales: 'S' },
   { id: 'sap', nom: 'SAP S/4HANA', type: 'ERP & Comptabilité', couleur: 'bg-[#0A6ED1]', initiales: 'SAP' },
   { id: 'oracle', nom: 'Oracle Financials', type: 'Gestion financière', couleur: 'bg-[#C74634]', initiales: 'O' },
   { id: 'guidewire', nom: 'Guidewire ClaimCenter', type: 'Core assurance', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
-  { id: 'database', nom: 'Base de données', type: 'SQL Server · PostgreSQL', couleur: 'bg-[#334155]', initiales: 'DB' },
 ]
 
+const formule = (valeur) => valeur === 'tous_risques' ? 'Tous risques' : 'Tiers'
+
 export default function Integrations() {
-  const [configures, setConfigures] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('argus_integrations') || '["sage"]')
-    } catch {
-      return ['sage']
-    }
-  })
-  const [selection, setSelection] = useState(null)
-  const [enregistrement, setEnregistrement] = useState(false)
+  const [statut, setStatut] = useState(null)
+  const [apercu, setApercu] = useState(null)
+  const [chargement, setChargement] = useState(true)
+  const [action, setAction] = useState(null)
   const [message, setMessage] = useState(null)
 
-  const enregistrer = () => {
-    setEnregistrement(true)
-    setTimeout(() => {
-      const suivants = [...new Set([...configures, selection.id])]
-      setConfigures(suivants)
-      localStorage.setItem('argus_integrations', JSON.stringify(suivants))
-      setEnregistrement(false)
-      setSelection(null)
-      setMessage(`${selection.nom} est prêt à échanger des données avec Argus.`)
-    }, 700)
+  const charger = async () => {
+    try {
+      const [etat, donnees] = await Promise.all([
+        api.statutBaseAssurance(),
+        api.apercuBaseAssurance(),
+      ])
+      setStatut(etat)
+      setApercu(donnees)
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setChargement(false)
+    }
   }
+
+  useEffect(() => {
+    charger()
+    const timer = setInterval(() => {
+      api.statutBaseAssurance().then(setStatut).catch(() => {})
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const connecter = async () => {
+    setAction('connexion')
+    setMessage(null)
+    try {
+      await api.connecterBaseAssurance()
+      const resultat = await api.synchroniserBaseAssurance()
+      await charger()
+      setMessage({
+        ton: 'succes',
+        texte: `Connexion établie — ${resultat.polices_creees + resultat.polices_mises_a_jour} police(s) et ${resultat.sinistres_crees} sinistre(s) importés.`,
+      })
+    } catch (erreur) {
+      await charger()
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(null)
+    }
+  }
+
+  if (chargement) return <p className="text-sm text-encre/50">Vérification de la source de données…</p>
+
+  const derniere = statut?.derniere_synchronisation
+  const compteurs = statut?.compteurs ?? {}
+  const connecte = statut?.statut === 'connecte'
 
   return (
     <div className="grid gap-6">
@@ -38,32 +71,176 @@ export default function Integrations() {
         <div>
           <h2 className="text-lg font-semibold">Intégrations</h2>
           <p className="mt-1 text-sm text-encre/50">
-            Centralisez les dossiers, règlements et écritures comptables avec vos systèmes métier.
+            Connectez Argus aux contrats, véhicules et sinistres du système d&apos;information assurance.
           </p>
         </div>
         <button
-          onClick={() => setSelection(CONNECTEURS.find((connecteur) => connecteur.id === 'database'))}
-          className="ml-auto rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme transition hover:bg-encre/85"
+          onClick={connecter}
+          disabled={action !== null}
+          className="ml-auto rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
         >
-          + Connecter une base de données
+          {action === 'connexion'
+            ? 'Connexion et import…'
+            : statut?.statut === 'connecte'
+              ? 'Actualiser les données'
+              : 'Se connecter'}
         </button>
       </div>
 
       {message && (
-        <div className="flex items-center gap-2 rounded-lg border border-ok/30 bg-ok-tint px-4 py-3 text-sm text-ok">
-          <span>✓</span>
-          <span>{message}</span>
-          <button onClick={() => setMessage(null)} className="ml-auto text-ok/60">×</button>
+        <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
+          message.ton === 'erreur'
+            ? 'border-bad/30 bg-bad-tint text-bad'
+            : 'border-ok/30 bg-ok-tint text-ok'
+        }`}>
+          <span>{message.ton === 'erreur' ? '!' : '✓'}</span>
+          <span>{message.texte}</span>
+          <button onClick={() => setMessage(null)} className="ml-auto opacity-60">×</button>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {CONNECTEURS.map((connecteur) => {
-          const configure = configures.includes(connecteur.id)
-          return (
-            <div key={connecteur.id} className="rounded-xl border border-line bg-surface p-5 shadow-sm">
+      <section className="rounded-xl border border-line bg-surface p-5 shadow-sm">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#334155] text-xs font-bold text-white">
+            DB
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-semibold">{statut?.source ?? 'Base assurance'}</h3>
+              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                connecte ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
+              }`}>
+                <span className={`h-2 w-2 rounded-full ${connecte ? 'bg-ok' : 'bg-bad'}`} />
+                {connecte ? 'Connectée' : 'Indisponible'}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-encre/50">
+              {statut?.organisation} · {statut?.fichier} · schéma v{statut?.schema_version}
+            </p>
+            <p className="mt-1 text-xs text-encre/40">
+              {connecte
+                ? 'Accès en lecture seule, synchronisation contrôlée vers Argus.'
+                : 'Base source disponible, non reliée à la plateforme.'}
+            </p>
+          </div>
+          <div className="ml-auto text-right text-xs text-encre/45">
+            <div>Dernier test : {statut?.latence_ms ?? 0} ms</div>
+            <div>{statut?.tables?.length ?? 0} tables validées</div>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          {[
+            ['Polices actives', compteurs.polices ?? 0],
+            ['Sinistres disponibles', compteurs.sinistres ?? 0],
+            ['Pièces rattachées', compteurs.pieces ?? 0],
+          ].map(([libelle, valeur]) => (
+            <div key={libelle} className="rounded-lg bg-surface-deep p-3">
+              <div className="text-2xl font-semibold">{valeur}</div>
+              <div className="text-xs text-encre/45">{libelle}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="border-b border-line px-5 py-4">
+            <h3 className="font-semibold">Contrats détectés</h3>
+            <p className="text-xs text-encre/45">Aperçu anonymisé lu directement dans le SI source</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-deep text-encre/45">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Police</th>
+                  <th className="px-4 py-2 font-medium">Assuré</th>
+                  <th className="px-4 py-2 font-medium">Véhicule</th>
+                  <th className="px-4 py-2 font-medium">Formule</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(apercu?.apercu_polices ?? []).map((police) => (
+                  <tr key={police.numero} className="border-t border-line">
+                    <td className="px-4 py-3 font-semibold">{police.numero}</td>
+                    <td className="px-4 py-3">{police.assure}</td>
+                    <td className="px-4 py-3">{police.vehicule}</td>
+                    <td className="px-4 py-3">{formule(police.formule)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="border-b border-line px-5 py-4">
+            <h3 className="font-semibold">Sinistres disponibles</h3>
+            <p className="text-xs text-encre/45">Dossiers prêts à être intégrés au parcours de traitement</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-deep text-encre/45">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Référence</th>
+                  <th className="px-4 py-2 font-medium">Police</th>
+                  <th className="px-4 py-2 font-medium">Type</th>
+                  <th className="px-4 py-2 font-medium">Pièces</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(apercu?.apercu_sinistres ?? []).map((sinistre) => (
+                  <tr key={sinistre.reference} className="border-t border-line">
+                    <td className="px-4 py-3 font-semibold">{sinistre.reference}</td>
+                    <td className="px-4 py-3">{sinistre.police_numero}</td>
+                    <td className="px-4 py-3 capitalize">{sinistre.type_sinistre.replace('_', ' ')}</td>
+                    <td className="px-4 py-3">{sinistre.nombre_pieces}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-line bg-surface p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <h3 className="font-semibold">Dernière synchronisation</h3>
+            <p className="mt-0.5 text-sm text-encre/50">
+              Import idempotent : une même police ou un même sinistre ne sont jamais dupliqués.
+            </p>
+          </div>
+          <span className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${
+            derniere ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/45'
+          }`}>
+            {derniere ? 'Synchronisé' : 'Aucun import'}
+          </span>
+        </div>
+        {derniere && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            {[
+              ['Polices créées', derniere.polices_creees],
+              ['Polices mises à jour', derniere.polices_mises_a_jour],
+              ['Sinistres créés', derniere.sinistres_crees],
+              ['Durée', `${derniere.duree_ms} ms`],
+            ].map(([libelle, valeur]) => (
+              <div key={libelle} className="rounded-lg bg-surface-deep p-3">
+                <div className="font-semibold">{valeur}</div>
+                <div className="text-xs text-encre/45">{libelle}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-3 font-semibold">Connecteurs ERP</h3>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {ERP.map((connecteur) => (
+            <div key={connecteur.id} className="rounded-xl border border-line bg-surface p-5">
               <div className="flex items-start gap-3">
-                <div className={`flex h-11 w-11 items-center justify-center rounded-lg text-xs font-bold text-white ${connecteur.couleur}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white ${connecteur.couleur}`}>
                   {connecteur.initiales}
                 </div>
                 <div>
@@ -71,95 +248,11 @@ export default function Integrations() {
                   <div className="text-xs text-encre/45">{connecteur.type}</div>
                 </div>
               </div>
-              <div className="mt-5 flex items-center justify-between">
-                <span className={`flex items-center gap-1.5 text-xs font-medium ${configure ? 'text-ok' : 'text-encre/40'}`}>
-                  <span className={`h-2 w-2 rounded-full ${configure ? 'bg-ok' : 'bg-encre/20'}`} />
-                  {configure ? 'Configuré' : 'Disponible'}
-                </span>
-                <button
-                  onClick={() => setSelection(connecteur)}
-                  className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-encre/70 transition hover:border-terracotta/40 hover:bg-terracotta-tint"
-                >
-                  {configure ? 'Modifier' : connecteur.id === 'database' ? 'Connecter' : 'Configurer'}
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      <div className="rounded-xl border border-line bg-surface p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <h3 className="font-semibold">Flux de synchronisation</h3>
-            <p className="mt-0.5 text-sm text-encre/50">Échanges préparés pour les systèmes configurés.</p>
-          </div>
-          <span className="ml-auto rounded-full bg-ok-tint px-3 py-1 text-xs font-semibold text-ok">
-            {configures.length} intégration{configures.length > 1 ? 's' : ''} active{configures.length > 1 ? 's' : ''}
-          </span>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {[
-            ['Dossiers sinistres', 'Import des références et pièces'],
-            ['Règlements validés', 'Transmission après approbation'],
-            ['Écritures comptables', 'Rapprochement et suivi financier'],
-          ].map(([titre, detail]) => (
-            <div key={titre} className="rounded-lg bg-surface-deep p-3">
-              <div className="text-sm font-semibold">{titre}</div>
-              <div className="mt-0.5 text-xs text-encre/45">{detail}</div>
+              <div className="mt-5 text-xs font-medium text-encre/40">Non connecté</div>
             </div>
           ))}
         </div>
-      </div>
-
-      {selection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-encre/55 p-4" onClick={() => setSelection(null)}>
-          <div className="w-full max-w-lg rounded-xl bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white ${selection.couleur}`}>
-                {selection.initiales}
-              </div>
-              <div>
-                <h3 className="font-semibold">Configurer {selection.nom}</h3>
-                <p className="text-xs text-encre/45">Connexion sécurisée au système métier</p>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-3">
-              <label className="text-sm">
-                <span className="text-xs uppercase tracking-wide text-encre/40">Adresse du serveur</span>
-                <input defaultValue={selection.id === 'database' ? 'sqlserver.compagnie.tn:1433' : `https://${selection.id}.compagnie.tn/api`}
-                  className="mt-1 w-full rounded-md border border-line bg-creme p-2.5 text-sm focus:border-terracotta focus:outline-none" />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm">
-                  <span className="text-xs uppercase tracking-wide text-encre/40">
-                    {selection.id === 'database' ? "Nom d'utilisateur" : 'Identifiant client'}
-                  </span>
-                  <input placeholder={selection.id === 'database' ? 'argus_service' : 'ARGUS_PROD'}
-                    className="mt-1 w-full rounded-md border border-line bg-creme p-2.5 text-sm" />
-                </label>
-                <label className="text-sm">
-                  <span className="text-xs uppercase tracking-wide text-encre/40">Clé d'accès</span>
-                  <input type="password" placeholder="••••••••••••" className="mt-1 w-full rounded-md border border-line bg-creme p-2.5 text-sm" />
-                </label>
-              </div>
-              <label className="flex items-center gap-2 rounded-md bg-surface-deep px-3 py-2 text-sm text-encre/70">
-                <input type="checkbox" defaultChecked className="accent-terracotta" />
-                Synchroniser automatiquement les règlements validés
-              </label>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setSelection(null)} className="rounded-md px-4 py-2 text-sm text-encre/55 hover:bg-surface-deep">
-                Annuler
-              </button>
-              <button onClick={enregistrer} disabled={enregistrement}
-                className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white hover:bg-terracotta-deep disabled:opacity-50">
-                {enregistrement ? 'Vérification…' : 'Enregistrer la connexion'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </section>
     </div>
   )
 }

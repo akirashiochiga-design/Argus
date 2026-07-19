@@ -1,10 +1,10 @@
 // Unique point de contact avec le backend — tout le front passe par ici.
-const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')
+const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8001' : '')
 
 export const assetUrl = (chemin) => {
   if (!chemin) return ''
   if (/^https?:\/\//i.test(chemin)) return chemin
-  return `${BASE_URL}/${chemin.replace(/^\/+/, '')}?v=photos-reelles-1`
+  return `${BASE_URL}/${chemin.replace(/^\/+/, '')}?v=photos-reelles-3`
 }
 
 async function request(path, options = {}) {
@@ -34,6 +34,13 @@ export const api = {
   modifierAgent: (id, corps) =>
     request(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(corps) }),
   listerWorkflows: () => request('/workflows'),
+  creerWorkflow: (corps) => post('/workflows', corps),
+  modifierEtapesWorkflow: (id, agentIds) =>
+    request(`/workflows/${id}/etapes`, {
+      method: 'PATCH',
+      body: JSON.stringify({ agent_ids: agentIds }),
+    }),
+  activerWorkflow: (id) => post(`/workflows/${id}/activer`),
   ajouterEtape: (workflowId, agentId) =>
     post(`/workflows/${workflowId}/ajouter-etape`, { agent_id: agentId }),
   // Studio — agent personnalisé depuis un prompt
@@ -44,6 +51,11 @@ export const api = {
   listerDossiers: () => request('/dossiers'),
   lireDossier: (id) => request(`/dossiers/${id}`),
   declarerSinistre: (corps) => post('/dossiers', corps),
+  choisirTraitement: (id, workflowId) =>
+    request(`/dossiers/${id}/traitement`, {
+      method: 'PATCH',
+      body: JSON.stringify({ workflow_id: workflowId }),
+    }),
   executerEtape: (id) => post(`/dossiers/${id}/executer`),
   reculerEtape: (id) => post(`/dossiers/${id}/reculer`),
   rejouerDossier: (id) => post(`/dossiers/${id}/rejouer`),
@@ -54,6 +66,12 @@ export const api = {
   // Audit & dashboard
   lireAudit: (params = {}) => request(`/audit?${new URLSearchParams(params)}`),
   lireKpi: () => request('/dashboard/kpi'),
+  // Intégration base assurance
+  statutBaseAssurance: () => request('/integrations/database/statut'),
+  connecterBaseAssurance: () => post('/integrations/database/connecter'),
+  testerBaseAssurance: () => post('/integrations/database/test'),
+  apercuBaseAssurance: () => request('/integrations/database/apercu'),
+  synchroniserBaseAssurance: () => post('/integrations/database/synchroniser'),
   // Démo
   reseed: () => post('/admin/reseed'),
 }

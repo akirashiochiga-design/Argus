@@ -50,7 +50,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
             "confiance": 0.3, "cout": 0.0, "duree_ms": 1, "mode": "deterministe",
         }
 
-    detail.append({"etape": "base indemnisable", "valeur": base, "source": "total extrait de la facture/devis (agent extraction)"})
+    detail.append({"etape": "base indemnisable", "valeur": base, "source": "montant issu du devis ou de la facture"})
 
     # Vétusté — sur les garanties concernées uniquement (pas le bris de glace)
     bareme = agent.garde_fous.get("bareme_vetuste", [])
@@ -65,7 +65,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
         detail.append({
             "etape": f"vétusté {int(taux * 100)} % (véhicule {annee}, {age} ans)",
             "valeur": -deduction,
-            "source": "barème de vétusté (configuration de l'agent, v" + str(agent.version) + ")",
+            "source": "barème de vétusté contractuel, version " + str(agent.version),
         })
     else:
         detail.append({"etape": "vétusté", "valeur": 0.0, "source": f"non applicable à la garantie '{position['garantie']}'"})

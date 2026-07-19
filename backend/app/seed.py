@@ -7,7 +7,7 @@ Calibrage du dossier vedette SIN-2026-001 :
   facture 2 300 DT − vétusté 10 % (véhicule 2022, barème 3-5 ans) = 2 070
   − franchise collision 220 DT = 1 850 DT  ← le chiffre du pitch.
 """
-from sqlmodel import Session
+from sqlmodel import SQLModel, Session
 
 from .db import DB_PATH, create_db_and_tables, engine
 from .models import Agent, Dossier, Police, Template, Workflow
@@ -23,35 +23,45 @@ BAREME_VETUSTE = [
 def build_templates() -> list[Template]:
   return [
     Template(
-        nom="Agent FNOL bilingue",
-        categorie="fnol",
+        nom="Contrôle des pièces obligatoires",
+        categorie="extraction",
         instructions_defaut=(
-            "Tu reçois une déclaration de sinistre auto en texte libre, en français "
-            "ou en darija tunisienne. Structure-la : type de sinistre, date, lieu, "
-            "circonstances, parties impliquées, pièces annoncées. Liste les champs "
-            "manquants et donne un score de complétude. Ne jamais inventer une "
-            "information absente du texte."
+            "Vérifie que le dossier contient les justificatifs attendus selon le type "
+            "de sinistre. Dresse la liste des pièces présentes, manquantes ou illisibles "
+            "et prépare les éléments à demander au déclarant."
         ),
-        garde_fous_defaut={"pas_de_decision_argent": True, "langues": ["fr", "darija"]},
+        garde_fous_defaut={
+            "pas_de_decision_argent": True,
+            "outils_autorises": ["inventorier_pieces", "consulter_circonstances"],
+            "max_iterations_agent": 4,
+        },
     ),
     Template(
-        nom="Moteur de garanties",
-        categorie="garanties",
+        nom="Détection de dommages antérieurs",
+        categorie="vision",
         instructions_defaut=(
-            "Applique le contrat au sinistre : garantie couverte ou non, franchise "
-            "et plafond applicables, motivation ligne à ligne avec clause citée."
+            "Analyse les photos pour distinguer les dégâts récents des traces d'usure "
+            "ou de réparations anciennes. Signale les indices observés et le niveau "
+            "de confiance, sans se prononcer sur un montant."
         ),
-        garde_fous_defaut={"deterministe": True},
+        garde_fous_defaut={
+            "pas_de_decision_argent": True,
+            "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
+            "max_iterations_agent": 4,
+        },
     ),
     Template(
-        nom="Recommandation de règlement",
-        categorie="indemnite",
+        nom="Demande de complément à l'assuré",
+        categorie="courrier",
         instructions_defaut=(
-            "Calcule le montant d'indemnité : base facture − vétusté (barème) − "
-            "franchise, plafonné. Chaque ligne du calcul est sourcée. "
-            "La validation humaine est obligatoire au-dessus du seuil."
+            "Rédige un message clair et courtois demandant uniquement les informations "
+            "ou justificatifs manquants identifiés dans le dossier. Mentionne le numéro "
+            "du dossier et les modalités de transmission."
         ),
-        garde_fous_defaut={"deterministe": True, "hitl_obligatoire": True},
+        garde_fous_defaut={
+            "pas_de_decision_argent": True,
+            "pas_de_donnees_sensibles": True,
+        },
     ),
 ]
 
@@ -132,14 +142,23 @@ def build_polices() -> list[Police]:
 
 
 def build_agents(templates: list[Template]) -> list[Agent]:
-    """Les 7 agents du pipeline P5, instanciés depuis les templates quand il y en a un."""
+    """Les 8 modules du traitement standard."""
     return [
         Agent(
-            nom="FNOL auto",
+            nom="Qualification initiale",
             categorie="fnol",
-            template_id=1,
-            instructions=templates[0].instructions_defaut,
-            garde_fous=templates[0].garde_fous_defaut,
+            instructions=(
+                "À partir de la déclaration reçue en français ou en darija tunisienne, "
+                "identifier le type de sinistre, la date, le lieu, les circonstances, "
+                "les parties impliquées et les pièces annoncées. Signaler les champs "
+                "manquants sans compléter une information absente."
+            ),
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "langues": ["fr", "darija"],
+                "outils_autorises": ["consulter_police", "inventorier_pieces"],
+                "max_iterations_agent": 4,
+            },
             statut="live",
         ),
         Agent(
@@ -154,33 +173,71 @@ def build_agents(templates: list[Template]) -> list[Agent]:
             statut="live",
         ),
         Agent(
-            nom="Gravité vision",
+            nom="Analyse des dégâts",
             categorie="vision",
             instructions=(
                 "Analyse les photos de dégâts : classe leger/moyen/lourd, zones "
-                "touchées, cohérence avec les circonstances déclarées, confiance."
+                "touchées et confiance. Ne réalise aucun contrôle de cohérence avec "
+                "la déclaration : cette responsabilité appartient à un module séparé."
             ),
-            garde_fous={"pas_de_decision_argent": True},
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "mission": "gravite",
+                "outils_autorises": [
+                    "consulter_vehicule_assure",
+                    "consulter_circonstances",
+                    "inventorier_pieces",
+                ],
+                "max_iterations_agent": 4,
+            },
             statut="live",
         ),
         Agent(
-            nom="Moteur de garanties auto",
+            nom="Cohérence photo",
+            categorie="vision",
+            instructions=(
+                "Compare les photos de dégâts avec les circonstances déclarées. "
+                "Signale toute incohérence de zone, de type de dommage ou de véhicule, "
+                "avec les éléments visuels observés et un niveau de confiance."
+            ),
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "mission": "coherence",
+                "outils_autorises": [
+                    "consulter_vehicule_assure",
+                    "consulter_circonstances",
+                    "inventorier_pieces",
+                ],
+                "max_iterations_agent": 4,
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Contrôle des garanties",
             categorie="garanties",
-            template_id=2,
-            instructions=templates[1].instructions_defaut,
-            garde_fous=templates[1].garde_fous_defaut,
+            instructions=(
+                "Applique le contrat au sinistre : garantie couverte ou non, franchise "
+                "et plafond applicables, motivation ligne à ligne avec clause citée."
+            ),
+            garde_fous={"deterministe": True},
             statut="live",
         ),
         Agent(
-            nom="Calcul indemnité auto",
+            nom="Évaluation indemnitaire",
             categorie="indemnite",
-            template_id=3,
-            instructions=templates[2].instructions_defaut,
-            garde_fous={**templates[2].garde_fous_defaut, "bareme_vetuste": BAREME_VETUSTE},
+            instructions=(
+                "Calcule le montant d'indemnité : base facture, vétusté selon le barème, "
+                "franchise et plafond contractuel. Chaque ligne du calcul est sourcée."
+            ),
+            garde_fous={
+                "deterministe": True,
+                "hitl_obligatoire": True,
+                "bareme_vetuste": BAREME_VETUSTE,
+            },
             statut="live",
         ),
         Agent(
-            nom="Porte de validation humaine",
+            nom="Validation gestionnaire",
             categorie="hitl",
             instructions=(
                 "Route la recommandation : en dessous du seuil, tâche 'proposé' ; "
@@ -191,7 +248,7 @@ def build_agents(templates: list[Template]) -> list[Agent]:
             statut="live",
         ),
         Agent(
-            nom="Rédaction courrier décision",
+            nom="Courrier de décision",
             categorie="courrier",
             instructions=(
                 "Rédige la lettre de décision pour l'assuré : explication claire, "
@@ -238,7 +295,7 @@ DECLARATION_4 = (
 def build_dossiers() -> list[Dossier]:
     return [
         # LE dossier de la démo live : tous risques, collision → ~1 850 DT
-        # + une photo de pare-brise (incohérente) pour démontrer la création d'agent
+        # + une photo de pare-brise incohérente détectée par le contrôle intégré
         Dossier(
             ref="SIN-2026-001",
             police_id=1,
@@ -332,10 +389,11 @@ def build_dossiers() -> list[Dossier]:
     ]
 
 
-def seed() -> None:
-    engine.dispose()  # libère les connexions (Windows refuse de supprimer un fichier ouvert)
-    if DB_PATH.exists():
-        DB_PATH.unlink()
+def seed(inclure_dossiers: bool = True) -> None:
+    # Réinitialiser les tables plutôt que supprimer le fichier : sous Windows,
+    # les requêtes de polling de l'interface peuvent conserver un handle ouvert.
+    engine.dispose()
+    SQLModel.metadata.drop_all(engine)
     create_db_and_tables()
 
     templates = build_templates()
@@ -351,28 +409,47 @@ def seed() -> None:
             session.add(a)
         session.commit()
 
-        # Le pipeline P5 : 5 agents, la porte humaine, puis le courrier
+        # Le pipeline P5 enrichi : gravité et cohérence sont deux contrôles distincts
         workflow = Workflow(
-            nom="Sinistre auto — déclaration → règlement (P5)",
+            nom="Sinistre auto — de la déclaration au règlement",
+            description="Traitement complet pour les collisions et dommages matériels.",
+            est_defaut=True,
             etapes=[
                 {"ordre": 0, "agent_id": agents[0].id, "type": "agent"},          # FNOL
                 {"ordre": 1, "agent_id": agents[1].id, "type": "agent"},          # extraction
                 {"ordre": 2, "agent_id": agents[2].id, "type": "agent"},          # gravité vision
-                {"ordre": 3, "agent_id": agents[3].id, "type": "agent"},          # garanties (déterministe)
-                {"ordre": 4, "agent_id": agents[4].id, "type": "agent"},          # indemnité (déterministe)
-                {"ordre": 5, "agent_id": agents[5].id, "type": "porte_humaine"},  # HITL
-                {"ordre": 6, "agent_id": agents[6].id, "type": "agent"},          # courrier
+                {"ordre": 3, "agent_id": agents[3].id, "type": "agent"},          # cohérence photo
+                {"ordre": 4, "agent_id": agents[4].id, "type": "agent"},          # garanties (déterministe)
+                {"ordre": 5, "agent_id": agents[5].id, "type": "agent"},          # indemnité (déterministe)
+                {"ordre": 6, "agent_id": agents[6].id, "type": "porte_humaine"},  # HITL
+                {"ordre": 7, "agent_id": agents[7].id, "type": "agent"},          # courrier
             ],
         )
         session.add(workflow)
+        session.add(
+            Workflow(
+                nom="Bris de glace",
+                description="Traitement allégé des déclarations liées au vitrage automobile.",
+                est_defaut=False,
+                etapes=[
+                    {"ordre": 0, "agent_id": agents[0].id, "type": "agent"},
+                    {"ordre": 1, "agent_id": agents[1].id, "type": "agent"},
+                    {"ordre": 2, "agent_id": agents[4].id, "type": "agent"},
+                    {"ordre": 3, "agent_id": agents[5].id, "type": "agent"},
+                    {"ordre": 4, "agent_id": agents[6].id, "type": "porte_humaine"},
+                    {"ordre": 5, "agent_id": agents[7].id, "type": "agent"},
+                ],
+            )
+        )
         session.commit()
 
-        for d in build_dossiers():
-            session.add(d)
-        session.commit()
+        if inclure_dossiers:
+            for d in build_dossiers():
+                session.add(d)
+            session.commit()
 
     print(f"Seed OK -> {DB_PATH}")
-    print("  3 templates, 6 polices, 7 agents, 1 workflow P5, 4 dossiers")
+    print(f"  3 templates, 6 polices, 8 agents, 2 workflows, {4 if inclure_dossiers else 0} dossiers")
     print("  Dossier demo SIN-2026-001 : facture 2300 - vetuste 10% - franchise 220 = 1850 DT")
     print("  Dossier demo SIN-2026-004 : aucune piece chiffree -> porte 'demande_piece' (adaptation)")
 

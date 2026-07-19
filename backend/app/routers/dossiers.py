@@ -7,6 +7,7 @@ from ..audit import tracer
 from ..db import get_session
 from ..models import Dossier, Police, Run, Workflow
 from ..orchestrator import OrchestrationErreur, avancer, reculer
+from ..workflow_service import TraitementInvalide, traitement_actif, valider_etapes
 
 router = APIRouter(tags=["dossiers"])
 
@@ -15,6 +16,10 @@ class DeclarationEntrante(BaseModel):
     declaration_texte: str
     police_numero: str
     pieces: list[dict] = []
+
+
+class ChoixTraitement(BaseModel):
+    workflow_id: int
 
 
 @router.get("/dossiers")
@@ -58,7 +63,7 @@ def declarer_sinistre(corps: DeclarationEntrante, session: Session = Depends(get
     police = session.exec(select(Police).where(Police.numero == corps.police_numero)).first()
     if not police:
         raise HTTPException(404, f"Police {corps.police_numero} introuvable")
-    workflow = session.exec(select(Workflow)).first()
+    workflow = traitement_actif(session)
     numero = session.exec(select(Dossier)).all()
     dossier = Dossier(
         ref=f"SIN-2026-{len(numero) + 1:03d}",
@@ -71,6 +76,41 @@ def declarer_sinistre(corps: DeclarationEntrante, session: Session = Depends(get
     session.flush()
     tracer(session, acteur="humain:declarant", acteur_type="humain", type="creation_dossier",
            objet=f"dossier:{dossier.ref}", apres={"police": police.numero, "etat": "recu"})
+    session.commit()
+    session.refresh(dossier)
+    return dossier
+
+
+@router.patch("/dossiers/{dossier_id}/traitement")
+def choisir_traitement(
+    dossier_id: int,
+    corps: ChoixTraitement,
+    session: Session = Depends(get_session),
+) -> Dossier:
+    dossier = session.get(Dossier, dossier_id)
+    if not dossier:
+        raise HTTPException(404, "Dossier introuvable")
+    if dossier.etape_courante > 0 or dossier.etat != "recu":
+        raise HTTPException(409, "Le traitement ne peut plus être changé après son lancement")
+    workflow = session.get(Workflow, corps.workflow_id)
+    if not workflow or workflow.statut != "live":
+        raise HTTPException(404, "Traitement indisponible")
+    try:
+        valider_etapes(session, [etape["agent_id"] for etape in workflow.etapes])
+    except TraitementInvalide as e:
+        raise HTTPException(422, str(e)) from e
+    avant = dossier.workflow_id
+    dossier.workflow_id = workflow.id
+    session.add(dossier)
+    tracer(
+        session,
+        acteur="humain:responsable_sinistres",
+        acteur_type="humain",
+        type="affectation_workflow",
+        objet=f"dossier:{dossier.ref}",
+        avant={"workflow_id": avant},
+        apres={"workflow_id": workflow.id, "nom": workflow.nom},
+    )
     session.commit()
     session.refresh(dossier)
     return dossier

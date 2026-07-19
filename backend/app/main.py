@@ -12,8 +12,9 @@ from sqlmodel import Session, select
 
 from .db import create_db_and_tables
 from .db import engine
+from .external_insurance_seed import ensure_external_db
 from .models import Template
-from .routers import admin, agents, audit, dashboard, dossiers, taches
+from .routers import admin, agents, audit, dashboard, dossiers, integrations, taches
 from .seed import seed
 
 load_dotenv()
@@ -34,6 +35,7 @@ app.include_router(taches.router)
 app.include_router(audit.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
+app.include_router(integrations.router)
 
 # Servir les fichiers statiques (images, documents)
 docs_path = Path(__file__).parent.parent.parent / "docs"
@@ -44,6 +46,7 @@ if docs_path.exists():
 @app.on_event("startup")
 def on_startup() -> None:
     create_db_and_tables()
+    ensure_external_db()
     with Session(engine) as session:
         base_vide = session.exec(select(Template)).first() is None
     if base_vide:
