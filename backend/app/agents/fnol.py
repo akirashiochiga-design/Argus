@@ -64,6 +64,28 @@ def _fallback(dossier: Dossier) -> dict:
     }
 
 
+def _reconcilier_pieces(donnees: dict, dossier: Dossier) -> dict:
+    """La présence réelle d'une pièce jointe prime sur le texte de déclaration."""
+    types_pieces = {
+        str(piece.get("type", "")).strip().lower()
+        for piece in dossier.pieces
+        if piece.get("type")
+    }
+    donnees["pieces_annoncees"] = list(dict.fromkeys([
+        *donnees.get("pieces_annoncees", []),
+        *types_pieces,
+    ]))
+    if "constat" in types_pieces:
+        donnees["constat_present"] = True
+        donnees["champs_manquants"] = [
+            champ
+            for champ in donnees.get("champs_manquants", [])
+            if "constat" not in champ.lower()
+        ]
+        donnees["completude"] = max(float(donnees.get("completude", 0)), 0.8)
+    return donnees
+
+
 def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     prompt = (
         f"Déclaration de sinistre :\n\n{dossier.declaration_texte}\n\n"
@@ -90,6 +112,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
             "trace": runtime.trace_repli("fnol", OBJECTIF, str(e)),
         }
 
+    donnees = _reconcilier_pieces(donnees, dossier)
     return {
         "donnees_fnol": donnees,
         "confiance": donnees["completude"],
