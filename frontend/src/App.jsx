@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { deconnecter, initiales, lireSession, libelleValidateur } from './session'
 import { Logo, Wordmark } from './ui'
@@ -29,6 +29,7 @@ export default function App() {
   const [menuCompte, setMenuCompte] = useState(false)
   const [reinitialisation, setReinitialisation] = useState(false)
   const [revision, setRevision] = useState(0)
+  const menuCompteDisponibleApres = useRef(Date.now() + 1000)
 
   const rafraichirCompteur = () =>
     api.listerTaches('en_attente').then((t) => setEnAttente(t.length)).catch(() => {})
@@ -44,6 +45,7 @@ export default function App() {
     const afficherAccueil = () => {
       setPage(PAGE_ACCUEIL)
       setMenuCompte(false)
+      menuCompteDisponibleApres.current = Date.now() + 1000
     }
 
     afficherAccueil()
@@ -65,6 +67,14 @@ export default function App() {
   const seDeconnecter = () => {
     deconnecter()
     setSession(null)
+  }
+
+  const basculerMenuCompte = () => {
+    if (Date.now() < menuCompteDisponibleApres.current) {
+      setMenuCompte(false)
+      return
+    }
+    setMenuCompte((ouvert) => !ouvert)
   }
 
   const reinitialiserPlateforme = async () => {
@@ -132,7 +142,7 @@ export default function App() {
             </span>
             <div className="relative hidden md:block">
               <button
-                onClick={() => setMenuCompte((ouvert) => !ouvert)}
+                onClick={basculerMenuCompte}
                 title="Ouvrir le menu du compte"
                 aria-expanded={menuCompte}
                 className="flex items-center gap-2 rounded-full bg-creme/10 px-3 py-1 text-xs transition hover:bg-creme/15"
