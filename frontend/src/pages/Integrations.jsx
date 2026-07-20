@@ -643,7 +643,7 @@ function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours, 
   const [docs, setDocs] = useState([])
   const [envoi, setEnvoi] = useState(false)
   const [form, setForm] = useState({
-    dossier_ref: refsSinistres[0] || 'EXT-SIN-2026-1001',
+    dossier_ref: refsSinistres[0] || 'EXT-SIN-2026-1002',
     type: 'photo_expertise',
     chemin: PIECES_SHAREPOINT[0].chemin,
   })

@@ -90,7 +90,6 @@ def ensure_external_db() -> Path:
             """INSERT OR IGNORE INTO assures
                (id, nom_complet, cin, telephone, ville) VALUES (?, ?, ?, ?, ?)""",
             [
-                (101, "Ahmed Ben Salem", "07451823", "+216 22 145 670", "Tunis"),
                 (102, "Inès Trabelsi", "08963214", "+216 55 208 419", "Sfax"),
                 (103, "Youssef Gharbi", "06745198", "+216 98 330 512", "Sousse"),
                 (104, "Amira Jlassi", "09521476", "+216 29 415 008", "Nabeul"),
@@ -101,7 +100,6 @@ def ensure_external_db() -> Path:
                (id, assure_id, marque, modele, immatriculation, annee)
                VALUES (?, ?, ?, ?, ?, ?)""",
             [
-                (201, 101, "Peugeot", "3008", "231 TU 8472", 2023),
                 (202, 102, "Renault", "Clio 5", "224 TU 1693", 2021),
                 (203, 103, "Volkswagen", "Golf 8", "238 TU 5501", 2024),
                 (204, 104, "Hyundai", "i20", "219 TU 7340", 2020),
@@ -113,7 +111,6 @@ def ensure_external_db() -> Path:
                 date_effet, date_echeance, statut)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
-                (301, "EXT-AUTO-1001", 101, 201, "tous_risques", 1, "2026-01-01", "2026-12-31", "active"),
                 (302, "EXT-AUTO-1002", 102, 202, "tiers", 1, "2026-02-10", "2027-02-09", "active"),
                 (303, "EXT-AUTO-1003", 103, 203, "tous_risques", 1, "2025-11-15", "2026-11-14", "active"),
                 (304, "EXT-AUTO-1004", 104, 204, "tous_risques", 0, "2026-03-01", "2027-02-28", "suspendue"),
@@ -123,10 +120,6 @@ def ensure_external_db() -> Path:
             """INSERT OR IGNORE INTO garanties
                (police_id, code, plafond, franchise) VALUES (?, ?, ?, ?)""",
             [
-                (301, "collision", 45000, 300),
-                (301, "bris_glace", 3000, 100),
-                (301, "vol_incendie", 50000, 0),
-                (301, "rc", 100000, 0),
                 (302, "rc", 100000, 0),
                 (303, "collision", 40000, 250),
                 (303, "bris_glace", 3500, 80),
@@ -142,17 +135,6 @@ def ensure_external_db() -> Path:
                 type_sinistre, statut_source, montant_estime_source)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             [
-                (
-                    401,
-                    "EXT-SIN-2026-1001",
-                    301,
-                    "2026-07-17",
-                    "Collision à faible vitesse sur l'avenue de Carthage. "
-                    "Le pare-chocs avant droit et le phare sont endommagés.",
-                    "collision",
-                    "declare",
-                    2600,
-                ),
                 (
                     402,
                     "EXT-SIN-2026-1002",
@@ -180,9 +162,6 @@ def ensure_external_db() -> Path:
                (id, sinistre_id, type_piece, chemin, montant_document)
                VALUES (?, ?, ?, ?, ?)""",
             [
-                (501, 401, "constat", "docs/samples/constat.jpg", None),
-                (502, 401, "facture", "docs/samples/facture.jpg", 2600),
-                (503, 401, "photo_degats", "docs/samples/degats-1.jpg", None),
                 (504, 402, "devis", "docs/samples/devis.jpg", 1800),
                 (505, 402, "photo_degats", "docs/samples/degats-2.jpg", None),
                 (506, 403, "devis", "docs/samples/devis-parebrise.jpg", 850),

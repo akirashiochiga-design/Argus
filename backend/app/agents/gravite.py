@@ -152,7 +152,8 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     schema = SCHEMA_COHERENCE if mission == "coherence" else SCHEMA_GRAVITE
     photos = [
         p["chemin"] for p in dossier.pieces
-        if p["type"] == "photo_degats" and (llm.RACINE / p.get("chemin", "")).exists()
+        if p["type"] in ("photo_degats", "photo_expertise")
+        and (llm.RACINE / p.get("chemin", "")).exists()
     ]
     circonstances = (dossier.donnees_fnol or {}).get("circonstances", dossier.declaration_texte[:300])
 
