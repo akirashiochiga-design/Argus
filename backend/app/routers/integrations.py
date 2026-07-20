@@ -48,6 +48,14 @@ class DocumentSharePointIn(BaseModel):
     chemin: str = "docs/samples/degats-3.jpg"
     nom_source: str | None = None
     montant: float | None = None
+    police_numero: str | None = None
+    assure: str | None = None
+    declaration: str | None = None
+
+
+class RetourSharePointIn(BaseModel):
+    dossier_id: int
+    validateur: str = "superviseur"
 
 
 def _erreur_connexion(erreur: Exception) -> HTTPException:
@@ -173,10 +181,28 @@ def lister_documents_sharepoint() -> dict:
     return sharepoint.lister_documents()
 
 
+@router.get("/sharepoint/bibliotheque")
+def lister_bibliotheque_sharepoint() -> dict:
+    return sharepoint.lister_bibliotheque()
+
+
 @router.post("/sharepoint/documents")
 def ajouter_document_sharepoint(corps: DocumentSharePointIn) -> dict:
     try:
         return sharepoint.ajouter_document(corps.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+
+
+@router.post("/sharepoint/retours")
+def deposer_retour_sharepoint(
+    corps: RetourSharePointIn,
+    session: Session = Depends(get_session),
+) -> dict:
+    try:
+        return sharepoint.deposer_retour(session, corps.dossier_id, corps.validateur)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     except FileNotFoundError as e:

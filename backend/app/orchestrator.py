@@ -13,10 +13,11 @@ Invariants codés en dur :
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from . import agents, llm
 from .audit import tracer
+from .connectors.documents_local import deposer_retour
 from .models import Agent, Dossier, Police, Run, Tache, Workflow
 from .workflow_service import TraitementInvalide, valider_etapes
 
@@ -135,17 +136,41 @@ def avancer(session: Session, dossier: Dossier) -> dict:
 
     dossier.etape_courante += 1
     terminee = dossier.etape_courante >= len(workflow.etapes)
+    retour_sharepoint = None
     if terminee:
         etat_final = _etat_final(session, dossier)
         _changer_etat(session, dossier, etat_final, acteur, motif="parcours terminé")
+        # Redépôt automatique dans SharePoint une fois le dossier traité
+        try:
+            tache_hitl = session.exec(
+                select(Tache)
+                .where(Tache.dossier_id == dossier.id, Tache.etat == "decidee")
+                .order_by(Tache.id.desc())
+            ).first()
+            validateur = (tache_hitl.validateur if tache_hitl else None) or "systeme"
+            retour_sharepoint = deposer_retour(
+                session,
+                dossier.id,
+                validateur=validateur,
+                commit=False,
+            )
+        except (ValueError, FileNotFoundError):
+            retour_sharepoint = None
     else:
         _changer_etat(session, dossier, "en_cours", acteur)
 
     session.commit()
     session.refresh(dossier)
     session.refresh(run)
-    return {"resultat": "termine" if terminee else "etape_executee",
-            "run": run.model_dump(), "dossier": dossier.model_dump(), "agent": agent.nom}
+    payload = {
+        "resultat": "termine" if terminee else "etape_executee",
+        "run": run.model_dump(),
+        "dossier": dossier.model_dump(),
+        "agent": agent.nom,
+    }
+    if retour_sharepoint is not None:
+        payload["retour_sharepoint"] = retour_sharepoint
+    return payload
 
 
 def _etat_final(session: Session, dossier: Dossier) -> str:

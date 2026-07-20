@@ -87,11 +87,12 @@ function PlateformeAssureur() {
     if (!confirme) return
     setReinitialisation(true)
     try {
-      await api.reseed()
+      const resultat = await api.reseed()
       setPage('pipeline')
       setRevision((valeur) => valeur + 1)
       setMenuCompte(false)
       await rafraichirCompteur()
+      window.alert(resultat.message || 'Données restaurées — pipeline vide.')
     } catch (erreur) {
       window.alert(`La réinitialisation a échoué : ${erreur.message}`)
     } finally {

@@ -103,9 +103,11 @@ export default function Integrations() {
       await charger()
       let texte
       if (identifiant === 'sharepoint_demo') {
-        texte = resultat.dossiers_introuvables?.length
-          ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents de Norix.`
-          : `${resultat.documents_importes} document(s) importé(s), ${resultat.documents_ignores} déjà présent(s).`
+        const crees = resultat.dossiers_crees ?? 0
+        const docs = resultat.documents_importes ?? 0
+        texte = crees
+          ? `${crees} dossier(s) extrait(s) de SharePoint · ${docs} pièce(s).`
+          : `${docs} pièce(s) rattachée(s), ${resultat.documents_ignores ?? 0} déjà présente(s).`
       } else {
         texte = `ERP synchronisé — ${resultat.ecritures_envoyees} écriture(s).`
       }
@@ -259,7 +261,9 @@ export default function Integrations() {
           <LigneConnecteur
             slug="sharepoint"
             titre="SharePoint Sinistres"
-            detail={sharepoint ? `${sharepoint.documents_disponibles} document(s)` : 'Documents entrants'}
+            detail={sharepoint
+              ? `${sharepoint.dossiers_disponibles ?? 0} dossier(s) · ${sharepoint.documents_disponibles ?? 0} pièce(s)`
+              : 'Extraction de dossiers'}
             connecte={sharepoint?.statut === 'connecte'}
             enCours={action === 'sharepoint_demo'}
             bloque={action !== null}
@@ -331,7 +335,6 @@ export default function Integrations() {
           onErreur={(texte) => setMessage({ ton: 'erreur', texte })}
           onSync={() => activerConnecteur('sharepoint_demo')}
           syncEnCours={action === 'sharepoint_demo'}
-          refsSinistres={sinistres.map((s) => s.reference)}
         />
       )}
       {panneau === 'erp' && (
@@ -658,29 +661,40 @@ function PanneauCoreSinistre({ onFermer, onChange, onErreur, onSync, syncEnCours
   )
 }
 
-function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours, refsSinistres }) {
-  const [docs, setDocs] = useState([])
+function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours }) {
+  const [bibliotheque, setBibliotheque] = useState(null)
+  const [dossiersNorix, setDossiersNorix] = useState([])
+  const [mode, setMode] = useState('extraire')
   const [envoi, setEnvoi] = useState(false)
   const [form, setForm] = useState({
-    dossier_ref: refsSinistres[0] || 'EXT-SIN-2026-1002',
+    dossier_ref: 'SP-2026-0142',
     type: 'photo_expertise',
     chemin: PIECES_SHAREPOINT[0].chemin,
+    police_numero: 'PA-2024-1183',
   })
 
+  const charger = async () => {
+    const [biblio, dossiers] = await Promise.all([
+      api.listerBibliothequeSharePoint(),
+      api.listerDossiers(),
+    ])
+    setBibliotheque(biblio)
+    setDossiersNorix(dossiers)
+  }
+
   useEffect(() => {
-    api.listerDocumentsSharePoint()
-      .then((d) => setDocs(d.documents || []))
-      .catch((e) => onErreur(e.message))
+    charger().catch((e) => onErreur(e.message))
   }, [])
 
-  const soumettre = async (e) => {
+  const soumettrePiece = async (e) => {
     e.preventDefault()
     setEnvoi(true)
     try {
       const doc = await api.ajouterDocumentSharePoint(form)
-      const maj = await api.listerDocumentsSharePoint()
-      setDocs(maj.documents || [])
-      await onChange(`Document « ${doc.nom_source} » déposé pour ${doc.dossier_ref}. Synchronisez pour l’attacher au dossier Norix.`)
+      await charger()
+      await onChange(
+        `Pièce « ${doc.nom_source} » ajoutée au dossier SharePoint ${doc.dossier_ref}. Extraire pour l’ouvrir dans Norix.`,
+      )
     } catch (erreur) {
       onErreur(erreur.message)
     } finally {
@@ -688,53 +702,181 @@ function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours, 
     }
   }
 
+  const deposerRetour = async (dossier) => {
+    setEnvoi(true)
+    try {
+      const resultat = await api.deposerRetourSharePoint({
+        dossier_id: dossier.id,
+        validateur: 'superviseur',
+      })
+      await charger()
+      if (resultat.statut === 'ignore') {
+        await onChange(`Retour déjà présent dans SharePoint pour ${dossier.ref}.`)
+      } else {
+        await onChange(`Dossier ${dossier.ref} redéposé dans SharePoint (Traités).`)
+      }
+    } catch (erreur) {
+      onErreur(erreur.message)
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  const dossiersSp = bibliotheque?.dossiers ?? []
+  const retours = bibliotheque?.retours ?? []
+  const traitesNorix = dossiersNorix.filter(
+    (d) => ['regle', 'refuse', 'cloture'].includes(d.etat) || d.montant_valide != null,
+  )
+
   return (
     <Overlay
       titre="SharePoint Sinistres"
-      sousTitre="Bibliothèque documentaire — déposez une pièce puis synchronisez"
+      sousTitre="Extraire des dossiers vers Norix · retour automatique une fois traités"
       onFermer={onFermer}
       pied={(
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60">Fermer</button>
           <button type="button" onClick={onSync} disabled={syncEnCours} className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {syncEnCours ? 'Synchronisation…' : 'Synchroniser vers Norix'}
+            {syncEnCours ? 'Extraction…' : 'Extraire vers Norix'}
           </button>
         </div>
       )}
     >
-      <form className="mb-5 grid gap-3 sm:grid-cols-3" onSubmit={soumettre}>
-        <Champ libelle="Dossier">
-          <input className={inputClass} list="refs-sp" value={form.dossier_ref} onChange={(e) => setForm({ ...form, dossier_ref: e.target.value })} required />
-          <datalist id="refs-sp">
-            {refsSinistres.map((ref) => <option key={ref} value={ref} />)}
-          </datalist>
-        </Champ>
-        <Champ libelle="Type">
-          <select className={inputClass} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-            <option value="photo_expertise">Photo expertise</option>
-            <option value="constat">Constat</option>
-            <option value="facture">Facture</option>
-            <option value="devis">Devis</option>
-          </select>
-        </Champ>
-        <Champ libelle="Fichier">
-          <select className={inputClass} value={form.chemin} onChange={(e) => setForm({ ...form, chemin: e.target.value })}>
-            {PIECES_SHAREPOINT.map((p) => (
-              <option key={p.chemin} value={p.chemin}>{p.libelle}</option>
-            ))}
-          </select>
-        </Champ>
-        <button type="submit" disabled={envoi} className="sm:col-span-3 justify-self-end rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme disabled:opacity-50">
-          {envoi ? 'Dépôt…' : 'Déposer dans SharePoint'}
-        </button>
-      </form>
-      <div className="overflow-hidden rounded-lg border border-line">
-        <TableApercu
-          vide="Aucun document"
-          colonnes={['Dossier', 'Type', 'Fichier']}
-          lignes={docs.map((d) => [d.dossier_ref, d.type, d.nom_source])}
-        />
+      <div className="mb-5 flex gap-1 rounded-lg bg-surface-deep p-1">
+        {[
+          ['extraire', 'Dossiers SharePoint'],
+          ['piece', 'Ajouter une pièce'],
+          ['retours', 'Retours traités'],
+        ].map(([id, libelle]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setMode(id)}
+            className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold ${
+              mode === id ? 'bg-surface text-encre shadow-sm' : 'text-encre/45'
+            }`}
+          >
+            {libelle}
+          </button>
+        ))}
       </div>
+
+      {mode === 'extraire' && (
+        <div className="grid gap-3">
+          <p className="text-sm text-encre/50">
+            Chaque ligne est un dossier dans la bibliothèque SharePoint. « Extraire »
+            crée le sinistre dans Norix avec ses pièces.
+          </p>
+          <div className="overflow-hidden rounded-lg border border-line">
+            <TableApercu
+              vide="Aucun dossier dans SharePoint"
+              colonnes={['Réf.', 'Assuré', 'Pièces', 'Statut']}
+              lignes={dossiersSp.map((d) => [
+                d.ref,
+                d.assure || '—',
+                String(d.documents?.length ?? 0),
+                d.statut_sharepoint || 'a_traiter',
+              ])}
+            />
+          </div>
+        </div>
+      )}
+
+      {mode === 'piece' && (
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={soumettrePiece}>
+          <Champ libelle="Réf. dossier SharePoint">
+            <input className={inputClass} value={form.dossier_ref} onChange={(e) => setForm({ ...form, dossier_ref: e.target.value })} required />
+          </Champ>
+          <Champ libelle="Police Norix (si nouveau)">
+            <input className={inputClass} value={form.police_numero} onChange={(e) => setForm({ ...form, police_numero: e.target.value })} />
+          </Champ>
+          <Champ libelle="Type">
+            <select className={inputClass} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <option value="photo_expertise">Photo expertise</option>
+              <option value="constat">Constat</option>
+              <option value="facture">Facture</option>
+              <option value="devis">Devis</option>
+            </select>
+          </Champ>
+          <Champ libelle="Fichier">
+            <select className={inputClass} value={form.chemin} onChange={(e) => setForm({ ...form, chemin: e.target.value })}>
+              {PIECES_SHAREPOINT.map((p) => (
+                <option key={p.chemin} value={p.chemin}>{p.libelle}</option>
+              ))}
+            </select>
+          </Champ>
+          <button type="submit" disabled={envoi} className="sm:col-span-2 justify-self-end rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme disabled:opacity-50">
+            {envoi ? 'Dépôt…' : 'Déposer la pièce dans SharePoint'}
+          </button>
+        </form>
+      )}
+
+      {mode === 'retours' && (
+        <div className="grid gap-4">
+          <p className="text-sm text-encre/50">
+            Dès qu&apos;un dossier est réglé / refusé / clôturé, Norix redépose
+            automatiquement le courrier dans SharePoint (dossier Traités).
+            Le bouton ci-dessous sert de rattrapage si besoin.
+          </p>
+          <div className="overflow-hidden rounded-lg border border-line">
+            {traitesNorix.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-encre/40">
+                Aucun dossier Norix prêt à redéposer (réglé / refusé / clôturé).
+              </p>
+            ) : (
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-line text-xs text-encre/40">
+                    <th className="px-5 py-3 font-medium">Réf.</th>
+                    <th className="px-5 py-3 font-medium">État</th>
+                    <th className="px-5 py-3 font-medium">Montant</th>
+                    <th className="px-5 py-3 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {traitesNorix.map((d) => (
+                    <tr key={d.id} className="border-b border-line/70 last:border-0">
+                      <td className="px-5 py-3.5 font-medium">{d.ref}</td>
+                      <td className="px-5 py-3.5 text-encre/65">{d.etat}</td>
+                      <td className="px-5 py-3.5 text-encre/65">
+                        {d.montant_valide != null ? `${d.montant_valide} DT` : '—'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          type="button"
+                          disabled={envoi}
+                          onClick={() => deposerRetour(d)}
+                          className="rounded-md border border-line px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                        >
+                          Redéposer
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+          {retours.length > 0 && (
+            <div>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-encre/40">
+                Déjà dans SharePoint ({retours.length})
+              </h4>
+              <div className="overflow-hidden rounded-lg border border-line">
+                <TableApercu
+                  vide=""
+                  colonnes={['Réf.', 'État', 'Déposé le']}
+                  lignes={retours.map((r) => [
+                    r.dossier_ref,
+                    r.etat_norix,
+                    (r.depose_le || '').slice(0, 16).replace('T', ' '),
+                  ])}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </Overlay>
   )
 }

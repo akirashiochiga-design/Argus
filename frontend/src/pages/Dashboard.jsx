@@ -13,6 +13,8 @@ const EVENEMENTS = {
   soumission_marketplace: 'Soumission Marketplace',
   validation_marketplace: 'Validation Marketplace',
   synchronisation_documents: 'Synchronisation documentaire',
+  extraction_dossiers_sharepoint: 'Extraction dossiers SharePoint',
+  depot_retour_sharepoint: 'Dépôt retour SharePoint',
   ecriture_erp_planifiee: 'Écriture ERP planifiée',
   ecriture_erp_envoyee: 'Écriture ERP envoyée',
   creation_dossier: 'Création de dossier',

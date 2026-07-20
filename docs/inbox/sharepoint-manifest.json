@@ -1,20 +1,65 @@
 {
   "source": "SharePoint Sinistres",
   "tenant": "Horizon Assurances",
-  "dossier": "Sinistres Auto / 2026",
-  "documents": [
+  "bibliotheque": "Sinistres Auto / 2026",
+  "dossiers": [
     {
-      "dossier_ref": "EXT-SIN-2026-1002",
-      "type": "constat",
-      "chemin": "docs/samples/constat.jpg",
-      "nom_source": "constat-signe-1002.jpg"
+      "ref": "SP-2026-0142",
+      "police_numero": "PA-2024-1183",
+      "assure": "Sami Bouazizi",
+      "declaration": "Choc matériel au parking Carrefour Lac 2. Pare-chocs avant et phare gauche endommagés. Constat amiable et photos déposés dans le dossier SharePoint.",
+      "type_sinistre": "collision",
+      "statut_sharepoint": "a_traiter",
+      "documents": [
+        {
+          "type": "constat",
+          "chemin": "docs/samples/constat.jpg",
+          "nom_source": "constat-amiable-0142.jpg"
+        },
+        {
+          "type": "photo_expertise",
+          "chemin": "docs/samples/degats-1.jpg",
+          "nom_source": "photo-avant-0142.jpg"
+        },
+        {
+          "type": "facture",
+          "chemin": "docs/samples/facture.jpg",
+          "nom_source": "facture-garage-0142.jpg",
+          "montant": 1850
+        }
+      ]
     },
     {
-      "dossier_ref": "SIN-2026-004",
-      "type": "facture",
-      "chemin": "docs/samples/facture.jpg",
-      "nom_source": "facture-reparation-004.jpg",
-      "montant": 1650
+      "ref": "EXT-SIN-2026-1002",
+      "police_numero": "PA-2025-0212",
+      "assure": "Nour Ben Ammar",
+      "declaration": "Collision en sortie de rond-point à Ariana. Aile droite enfoncée. Pièces déjà présentes dans la bibliothèque SharePoint.",
+      "type_sinistre": "collision",
+      "statut_sharepoint": "a_traiter",
+      "documents": [
+        {
+          "type": "constat",
+          "chemin": "docs/samples/constat.jpg",
+          "nom_source": "constat-signe-1002.jpg"
+        }
+      ]
+    },
+    {
+      "ref": "SIN-2026-004",
+      "police_numero": "PA-2024-0967",
+      "assure": "Hedi Trabelsi",
+      "declaration": "Complément de pièces pour sinistre déjà ouvert dans Norix — facture de réparation déposée sur SharePoint.",
+      "type_sinistre": "collision",
+      "statut_sharepoint": "a_traiter",
+      "documents": [
+        {
+          "type": "facture",
+          "chemin": "docs/samples/facture.jpg",
+          "nom_source": "facture-reparation-004.jpg",
+          "montant": 1650
+        }
+      ]
     }
-  ]
+  ],
+  "retours": []
 }

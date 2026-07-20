@@ -254,11 +254,13 @@ activée » — on demande toujours la version en production.
 **Vous avez vraiment connecté SharePoint et l'ERP interne ?**
 En démo : « CoreSinistre » lit une base externe réelle (porte lecture BDD)
 **via MCP** (`lire_polices`, `lire_sinistres`), valide le schéma et sync sans
-doublon. L'ERP interne envoie les écritures après HITL via
-`envoyer_ecritures_planifiees`. SharePoint suit le même contrat (MCP
-documentaire en cours). DigiClaim / Avidea : chemin le plus court en prod
-auto chez plusieurs assureurs TN — pas branché en live ici ; la démo prouve
-le *contrat*, pas chaque pack. Chaque appel est audité.
+doublon. SharePoint extrait des *dossiers* (pièces + déclaration) vers Norix,
+puis permet de redéposer un retour une fois le dossier traité — simulation
+locale, même contrat d'adaptateur (MCP documentaire à brancher ensuite).
+L'ERP interne envoie les écritures après HITL via
+`envoyer_ecritures_planifiees`. DigiClaim / Avidea : chemin le plus court en
+prod auto chez plusieurs assureurs TN — pas branché en live ici ; la démo
+prouve le *contrat*, pas chaque pack. Chaque appel est audité.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,
