@@ -51,6 +51,18 @@ DEFINITIONS = {
             "additionalProperties": False,
         },
     },
+    "consulter_bien_assure": {
+        "name": "consulter_bien_assure",
+        "description": (
+            "Consulter les caractéristiques du bien assuré (type de bien, adresse, année de "
+            "construction) afin de comparer les photos de dégâts aux éléments déclarés."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
     "consulter_circonstances": {
         "name": "consulter_circonstances",
         "description": (
@@ -69,6 +81,7 @@ OUTILS_PAR_CATEGORIE = {
     "fnol": ("consulter_police", "inventorier_pieces"),
     "vision": (
         "consulter_vehicule_assure",
+        "consulter_bien_assure",
         "consulter_circonstances",
         "inventorier_pieces",
     ),
@@ -123,6 +136,8 @@ def executer_outil(
             "garanties_souscrites": sorted(police.garanties.keys()),
         }
     if nom == "consulter_vehicule_assure":
+        return dict(_police(dossier, session).vehicule or {})
+    if nom == "consulter_bien_assure":
         return dict(_police(dossier, session).vehicule or {})
     if nom == "inventorier_pieces":
         return {

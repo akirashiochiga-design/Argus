@@ -17,7 +17,10 @@ SCHEMA = {
     "properties": {
         "type_sinistre": {
             "type": "string",
-            "enum": ["collision", "bris_glace", "vol", "incendie", "vandalisme", "autre"],
+            "enum": [
+                "collision", "bris_glace", "vol", "incendie", "vandalisme",
+                "degat_eaux", "catastrophe_naturelle", "autre",
+            ],
         },
         "date_sinistre": {"type": "string", "description": "Date ou moment déclaré, tel quel"},
         "lieu": {"type": "string"},
@@ -41,15 +44,30 @@ OBJECTIF = "Structurer la déclaration initiale et contrôler sa complétude"
 
 
 MOTIF_BRIS_GLACE = re.compile(r"\bpare[- ]?brise\b|\bfissur\w*|\bgravier\w*")
-MOTIF_VOL = re.compile(r"\bvol\b|\bvol[ée]e?s?\b|\bd[ée]rob[ée]e?s?\b")
+MOTIF_VOL = re.compile(r"\bvol\b|\bvol[ée]e?s?\b|\bd[ée]rob[ée]e?s?\b|\bcambriol\w*|\beffraction\w*")
 MOTIF_COLLISION = re.compile(
     r"\bcollision\b|\baccroch\w*|\bheurt\w*|\bchoc\b|\bpercut\w*"
 )
+MOTIF_INCENDIE = re.compile(r"\bincendie\w*|\bfeu\b|\bbr[ûu]l[ée]\w*|\bflammes?\b")
+MOTIF_DEGAT_EAUX = re.compile(
+    r"d[ée]g[âa]ts? des eaux|\binondation\w*|\bfuite\w* d'eau|\binfiltration\w*|\bd[ée]g[âa]t\w* d'eau"
+)
+MOTIF_CATASTROPHE = re.compile(r"\btemp[êe]te\w*|\bgr[êe]le\b|\bcatastrophe\w* naturelle\w*")
 
 
-def _type_depuis_declaration(texte: str) -> str:
+def _type_depuis_declaration(texte: str, branche: str = "auto") -> str:
     """Classe les indices explicites sans confondre « vol » et « Volkswagen »."""
     texte = texte.lower()
+    if branche == "habitation":
+        if MOTIF_INCENDIE.search(texte):
+            return "incendie"
+        if MOTIF_DEGAT_EAUX.search(texte):
+            return "degat_eaux"
+        if MOTIF_CATASTROPHE.search(texte):
+            return "catastrophe_naturelle"
+        if MOTIF_VOL.search(texte):
+            return "vol"
+        return "autre"
     if MOTIF_BRIS_GLACE.search(texte):
         return "bris_glace"
     if MOTIF_VOL.search(texte):
@@ -59,9 +77,24 @@ def _type_depuis_declaration(texte: str) -> str:
 
 def _fallback(dossier: Dossier) -> dict:
     """Structuration par mots-clés — fallback si API indisponible."""
+    branche = dossier.branche or "auto"
     texte = dossier.declaration_texte.lower()
-    type_sinistre = _type_depuis_declaration(texte)
+    type_sinistre = _type_depuis_declaration(texte, branche)
     darija = sum(1 for m in MOTS_DARIJA if m in texte)
+    if branche == "habitation":
+        constat = "constat" in texte or "expertise" in texte
+        return {
+            "type_sinistre": type_sinistre,
+            "date_sinistre": "déclarée dans le texte (à confirmer)",
+            "lieu": "déclaré dans le texte (à confirmer)",
+            "circonstances": dossier.declaration_texte[:180] + "…",
+            "tiers_identifie": False,
+            "constat_present": constat,
+            "pieces_annoncees": [p["type"] for p in dossier.pieces],
+            "champs_manquants": [] if constat else ["rapport d'expertise"],
+            "completude": 0.8 if constat else 0.6,
+            "langue": "darija" if darija >= 2 else "fr",
+        }
     constat = "constat" in texte and "ma famech" not in texte
     tiers = ("reconnu" in texte or "constat amiable" in texte) and constat
     return {
@@ -80,8 +113,16 @@ def _fallback(dossier: Dossier) -> dict:
 
 def _reconcilier_type(donnees: dict, dossier: Dossier) -> dict:
     """Empêche une classification LLM incompatible avec des indices explicites."""
+    branche = dossier.branche or "auto"
     texte = dossier.declaration_texte.lower()
     type_llm = donnees.get("type_sinistre")
+
+    if branche == "habitation":
+        if MOTIF_INCENDIE.search(texte):
+            donnees["type_sinistre"] = "incendie"
+        elif MOTIF_DEGAT_EAUX.search(texte):
+            donnees["type_sinistre"] = "degat_eaux"
+        return donnees
 
     if MOTIF_BRIS_GLACE.search(texte):
         donnees["type_sinistre"] = "bris_glace"

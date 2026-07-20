@@ -7,20 +7,32 @@ from sqlmodel import Session
 
 from ..models import Agent, Dossier, Police
 
-# type de sinistre (FNOL) -> garantie du contrat requise
+# type de sinistre (FNOL) -> garantie du contrat requise, par branche
 GARANTIE_REQUISE = {
-    "collision": "collision",
-    "bris_glace": "bris_glace",
-    "vol": "vol_incendie",
-    "incendie": "vol_incendie",
-    "vandalisme": "collision",
-    "autre": "collision",
+    "auto": {
+        "collision": "collision",
+        "bris_glace": "bris_glace",
+        "vol": "vol_incendie",
+        "incendie": "vol_incendie",
+        "vandalisme": "collision",
+        "autre": "collision",
+    },
+    "habitation": {
+        "incendie": "incendie",
+        "degat_eaux": "degat_eaux",
+        "vol": "vol",
+        "catastrophe_naturelle": "catastrophe_naturelle",
+        "vandalisme": "vol",
+        "autre": "responsabilite_civile",
+    },
 }
+DEFAUT_TYPE_SINISTRE = {"auto": "collision", "habitation": "autre"}
+GARANTIE_DEFAUT = {"auto": "collision", "habitation": "responsabilite_civile"}
 
 CLAUSES = {
     "prime_impayee": "Art. 12 — Suspension de garantie en cas de prime impayée",
     "garantie_absente": "Art. 4 — Étendue des garanties souscrites (tableau des garanties)",
-    "garantie_couverte": "Art. 5 — Dommages au véhicule assuré",
+    "garantie_couverte": "Art. 5 — Dommages couverts par la police souscrite",
     "franchise": "Art. 8 — Franchises contractuelles",
     "plafond": "Art. 9 — Plafonds d'indemnisation",
 }
@@ -29,8 +41,11 @@ CLAUSES = {
 def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     police = session.get(Police, dossier.police_id)
     fnol = dossier.donnees_fnol or {}
-    type_sinistre = fnol.get("type_sinistre", "collision")
-    garantie = GARANTIE_REQUISE.get(type_sinistre, "collision")
+    branche = dossier.branche or "auto"
+    defaut = DEFAUT_TYPE_SINISTRE.get(branche, "collision")
+    type_sinistre = fnol.get("type_sinistre") or defaut
+    mapping = GARANTIE_REQUISE.get(branche, GARANTIE_REQUISE["auto"])
+    garantie = mapping.get(type_sinistre, GARANTIE_DEFAUT.get(branche, "collision"))
 
     motivation: list[dict] = []
 

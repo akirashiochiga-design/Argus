@@ -61,5 +61,17 @@
       ]
     }
   ],
-  "retours": []
+  "retours": [
+    {
+      "dossier_ref": "HAB-SIN-2026-0001",
+      "depose_le": "2026-07-20T17:09:37.228773+00:00",
+      "depose_par": "Test",
+      "automatique": true,
+      "etat_norix": "regle",
+      "montant_valide": 3000.0,
+      "objet": "Décision concernant votre déclaration de sinistre n° HAB-SIN-2026-0001",
+      "corps": "Monsieur Sami Karoui,\n\nNous faisons suite à votre déclaration de sinistre relative à votre contrat d'assurance habitation n° HAB-2026-0088.\n\nAprès étude approfondie de votre dossier, nous avons le plaisir de vous informer que votre demande a été approuvée. Voici les détails relatifs à cette décision :\n\n1.  **Couverture du sinistre** : Conformément à l'**Art. 5 — Dommages couverts par la police souscrite**, le sinistre de type « incendie » est bien pris en charge au titre de votre garantie « tous risques ».\n2.  **Franchise** : En application de l'**Art. 8 — Franchises contractuelles**, une franchise de 200 DT a été déduite du montant total de l'indemnisation.\n3.  **Plafond d'indemnisation** : Ce règlement s'inscrit dans le respect des conditions prévues à l'**Art. 9 — Plafonds d'indemnisation**, dont la limite est fixée à 40 000 DT.\n\nLe montant de l'indemnisation validé pour ce dossier s'élève à **3 000,0 DT**. Ce montant vous sera versé dans les meilleurs délais selon les modalités prévues à votre contrat.\n\nNous restons à votre entière disposition pour tout complément d'information.\n\nCordialement,\n\nLe service gestion des sinistres.\n\n*Inchallah l'indemnisation t'wassel fi wa9tha w nchallah labès.*",
+      "bibliotheque_cible": "Sinistres Auto / 2026 / Traités / HAB-SIN-2026-0001"
+    }
+  ]
 }

@@ -6,7 +6,7 @@ Réinitialise complètement norix.db — c'est le bouton "reset démo".
 from sqlmodel import SQLModel, Session
 
 from .db import DB_PATH, create_db_and_tables, engine
-from .models import Agent, MarketplaceListing, Police, Template, Workflow
+from .models import Agent, Dossier, MarketplaceListing, Police, Template, Workflow
 
 # Barème de vétusté (valeurs plausibles — à confirmer avec l'encadrant Maghrebia)
 BAREME_VETUSTE = [
@@ -369,6 +369,140 @@ def build_agents(templates: list[Template]) -> list[Agent]:
     ]
 
 
+def build_police_habitation() -> Police:
+    """Police habitation — même modèle Police, la garantie 'vehicule' porte le bien assuré."""
+    return Police(
+        numero="HAB-2026-0088",
+        assure_nom="Sami Karoui",
+        formule="tous_risques",
+        garanties={
+            "rc": {"plafond": None, "franchise": 0},
+            "incendie": {"plafond": 40000, "franchise": 200},
+            "degat_eaux": {"plafond": 15000, "franchise": 150},
+            "vol": {"plafond": 20000, "franchise": 300},
+            "catastrophe_naturelle": {"plafond": 30000, "franchise": 250},
+        },
+        prime_payee=True,
+        vehicule={"type": "appartement", "adresse": "Résidence Les Jasmins, Sousse", "annee": 2015},
+    )
+
+
+def build_agents_habitation() -> list[Agent]:
+    """Les 8 mêmes catégories de modules, instructions et garde-fous pour la branche habitation."""
+    return [
+        Agent(
+            nom="Qualification initiale (habitation)",
+            categorie="fnol",
+            instructions=(
+                "À partir de la déclaration reçue, identifie le type de sinistre habitation "
+                "(incendie, dégât des eaux, vol, catastrophe naturelle), la date, le lieu, "
+                "les circonstances et les pièces annoncées. Signale les champs manquants "
+                "sans compléter une information absente."
+            ),
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "outils_autorises": ["consulter_police", "inventorier_pieces"],
+                "max_iterations_agent": 4,
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Extraction documents (habitation)",
+            categorie="extraction",
+            instructions=(
+                "Lis le devis de réparation et extrais les postes de travaux, montants et "
+                "références. Donne une confiance par champ."
+            ),
+            garde_fous={"pas_de_decision_argent": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Analyse des dégâts (habitation)",
+            categorie="vision",
+            instructions=(
+                "Analyse les photos ou croquis de dégâts du bien assuré : classe "
+                "leger/moyen/lourd, zones touchées et confiance. Ne réalise aucun contrôle "
+                "de cohérence avec la déclaration : cette responsabilité appartient à un "
+                "module séparé."
+            ),
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "mission": "gravite",
+                "outils_autorises": [
+                    "consulter_bien_assure",
+                    "consulter_circonstances",
+                    "inventorier_pieces",
+                ],
+                "max_iterations_agent": 4,
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Cohérence photo (habitation)",
+            categorie="vision",
+            instructions=(
+                "Compare les photos de dégâts avec les circonstances déclarées. Signale "
+                "toute incohérence de zone, de type de dommage ou de bien assuré, avec les "
+                "éléments visuels observés et un niveau de confiance."
+            ),
+            garde_fous={
+                "pas_de_decision_argent": True,
+                "mission": "coherence",
+                "outils_autorises": [
+                    "consulter_bien_assure",
+                    "consulter_circonstances",
+                    "inventorier_pieces",
+                ],
+                "max_iterations_agent": 4,
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Contrôle des garanties (habitation)",
+            categorie="garanties",
+            instructions=(
+                "Applique le contrat au sinistre : garantie couverte ou non, franchise et "
+                "plafond applicables, motivation ligne à ligne avec clause citée."
+            ),
+            garde_fous={"deterministe": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Évaluation indemnitaire (habitation)",
+            categorie="indemnite",
+            instructions=(
+                "Calcule le montant d'indemnité : base devis, franchise et plafond "
+                "contractuel. Chaque ligne du calcul est sourcée. Pas de vétusté appliquée "
+                "sur ce pilote (biens valorisés à neuf)."
+            ),
+            garde_fous={"deterministe": True, "hitl_obligatoire": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Validation gestionnaire (habitation)",
+            categorie="hitl",
+            instructions=(
+                "Route la recommandation : en dessous du seuil, tâche 'proposé' ; "
+                "au-dessus, validation obligatoire."
+            ),
+            seuils={"plafond_auto": 500, "seuil_validation": 1000},
+            garde_fous={"deterministe": True, "non_desactivable": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Courrier de décision (habitation)",
+            categorie="courrier",
+            instructions=(
+                "Rédige la lettre de décision pour l'assuré : explication claire, clauses "
+                "citées. Le montant est fourni par le calcul indemnitaire et validé par le "
+                "gestionnaire."
+            ),
+            garde_fous={"montant_impose": True, "pas_de_donnees_sensibles": True},
+            statut="live",
+        ),
+    ]
+
+
 def seed() -> None:
     # Réinitialiser les tables plutôt que supprimer le fichier : sous Windows,
     # les requêtes de polling de l'interface peuvent conserver un handle ouvert.
@@ -425,8 +559,60 @@ def seed() -> None:
         )
         session.commit()
 
+        # Branche habitation — même rigueur de gouvernance, périmètre isolé de l'auto.
+        police_hab = build_police_habitation()
+        session.add(police_hab)
+        session.commit()
+
+        agents_hab = build_agents_habitation()
+        for a in agents_hab:
+            session.add(a)
+        session.commit()
+
+        workflow_hab = Workflow(
+            nom="Sinistre habitation — de la déclaration au règlement",
+            description="Traitement complet pour incendie, dégât des eaux, vol et catastrophe naturelle.",
+            branche="habitation",
+            est_defaut=True,
+            etapes=[
+                {"ordre": 0, "agent_id": agents_hab[0].id, "type": "agent"},
+                {"ordre": 1, "agent_id": agents_hab[1].id, "type": "agent"},
+                {"ordre": 2, "agent_id": agents_hab[2].id, "type": "agent"},
+                {"ordre": 3, "agent_id": agents_hab[3].id, "type": "agent"},
+                {"ordre": 4, "agent_id": agents_hab[4].id, "type": "agent"},
+                {"ordre": 5, "agent_id": agents_hab[5].id, "type": "agent"},
+                {"ordre": 6, "agent_id": agents_hab[6].id, "type": "porte_humaine"},
+                {"ordre": 7, "agent_id": agents_hab[7].id, "type": "agent"},
+            ],
+        )
+        session.add(workflow_hab)
+        session.commit()
+        session.refresh(workflow_hab)
+
+        dossier_hab = Dossier(
+            ref="HAB-SIN-2026-0001",
+            branche="habitation",
+            police_id=police_hab.id,
+            workflow_id=workflow_hab.id,
+            declaration_texte=(
+                "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans "
+                "doute causé par un appareil électrique resté branché. Les dégâts touchent "
+                "le mobilier, l'installation électrique et les murs. Un devis de réparation "
+                "est joint, ainsi qu'un croquis d'expertise."
+            ),
+            pieces=[
+                {"type": "devis", "chemin": "docs/samples/devis-incendie.jpg", "montant": 3200},
+                {"type": "photo_degats", "chemin": "docs/samples/degats-incendie.jpg"},
+            ],
+        )
+        session.add(dossier_hab)
+        session.commit()
+
     print(f"Seed OK -> {DB_PATH}")
-    print("  3 templates, 5 listings marketplace, 6 polices, 8 agents, 2 workflows, 0 dossier")
+    print(
+        "  3 templates, 5 listings marketplace, 7 polices, 16 agents, 3 workflows, "
+        "1 dossier (habitation)"
+    )
 
 
 if __name__ == "__main__":

@@ -78,15 +78,18 @@ def valider_etapes(session: Session, agent_ids: list[int]) -> list[dict]:
     ]
 
 
-def traitement_actif(session: Session) -> Workflow | None:
+def traitement_actif(session: Session, branche: str = "auto") -> Workflow | None:
     traitement = session.exec(
         select(Workflow).where(
             Workflow.statut == "live",
+            Workflow.branche == branche,
             Workflow.est_defaut == True,  # noqa: E712
         )
     ).first()
     if traitement:
         return traitement
     return session.exec(
-        select(Workflow).where(Workflow.statut == "live").order_by(Workflow.id)
+        select(Workflow)
+        .where(Workflow.statut == "live", Workflow.branche == branche)
+        .order_by(Workflow.id)
     ).first()

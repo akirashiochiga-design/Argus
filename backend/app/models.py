@@ -41,6 +41,7 @@ class Workflow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str
     description: str = ""
+    branche: str = "auto"  # auto | habitation
     statut: str = "live"
     est_defaut: bool = False
     cree_le: datetime = Field(default_factory=now)

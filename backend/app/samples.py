@@ -22,15 +22,16 @@ def _police(taille: int, gras: bool = False) -> ImageFont.FreeTypeFont:
 
 
 def _document(titre: str, entete: list[str], lignes: list[tuple[str, str]],
-              total: str, pied: str, chemin: Path) -> None:
+              total: str, pied: str, chemin: Path, sous_titre: str = "Carrosserie · peinture · mécanique",
+              sigle: str = "GB") -> None:
     img = Image.new("RGB", (900, 1100), "#f8f7f3")
     d = ImageDraw.Draw(img)
     # Feuille scannée avec marges, en-tête garage et références comptables.
     d.rectangle([24, 18, 876, 1080], fill="white", outline="#d3d0c8", width=2)
     d.rectangle([48, 42, 132, 126], fill="#243b53")
-    d.text((70, 62), "GB", font=_police(28, True), fill="white")
+    d.text((70, 62), sigle, font=_police(28, True), fill="white")
     d.text((154, 48), titre.split("—")[0].strip(), font=_police(25, True), fill="#172b4d")
-    d.text((154, 82), "Carrosserie · peinture · mécanique", font=_police(16), fill="#5d6774")
+    d.text((154, 82), sous_titre, font=_police(16), fill="#5d6774")
     nature = titre.split("—")[-1].strip()
     d.text((690, 50), nature, font=_police(28, True), fill="#172b4d")
     d.text((690, 88), "ORIGINAL", font=_police(14, True), fill="#b3402a")
@@ -214,6 +215,51 @@ def _croquis_degats(titre: str, zones: list[tuple], annotations: list[str],
     print(f"  {chemin.name}")
 
 
+def _croquis_piece(titre: str, zones: list[tuple], annotations: list[str], chemin: Path) -> None:
+    """Croquis d'expertise habitation : vue de dessus d'une pièce, zone endommagée hachurée."""
+    img = Image.new("RGB", (900, 1100), "#fdfcf8")
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 900, 90], fill="#17150F")
+    d.text((40, 26), titre, font=_police(28, True), fill="#F4F1EA")
+
+    encre = "#17150F"
+    x0, y0, x1, y1 = 150, 190, 750, 870
+    d.rectangle([x0, y0, x1, y1], outline=encre, width=5)
+    # Mobilier simplifié : plan de travail + îlot
+    d.rectangle([x0 + 20, y0 + 20, x1 - 20, y0 + 90], outline=encre, width=3)
+    d.rectangle([x0 + 200, y0 + 260, x1 - 200, y0 + 420], outline=encre, width=3)
+    d.text((x0 + 30, y0 + 40), "Plan de travail", font=_police(16), fill=encre)
+    d.text((x0 + 220, y0 + 320), "Îlot central", font=_police(16), fill=encre)
+
+    rouge = "#B3402A"
+    for poly in zones:
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        px0, px1, py0, py1 = min(xs), max(xs), min(ys), max(ys)
+        masque = Image.new("L", img.size, 0)
+        ImageDraw.Draw(masque).polygon(poly, fill=255)
+        hachures = Image.new("RGB", img.size, "#fdfcf8")
+        dh = ImageDraw.Draw(hachures)
+        for off in range(-(py1 - py0), px1 - px0 + (py1 - py0), 14):
+            dh.line([px0 + off, py1, px0 + off + (py1 - py0), py0], fill=rouge, width=3)
+        img.paste(hachures, (0, 0), masque)
+        d.polygon(poly, outline=rouge, width=4)
+
+    y = y1 + 50
+    d.line([40, y - 18, 860, y - 18], fill="#d8d2c4", width=2)
+    d.rectangle([40, y, 70, y + 20], outline=rouge, width=3)
+    d.line([44, y + 18, 62, y + 2], fill=rouge, width=3)
+    d.text((80, y), "zone endommagée constatée", font=_police(19), fill="#333333")
+    y += 40
+    for a in annotations:
+        d.text((40, y), f"• {a}", font=_police(19), fill="#333333")
+        y += 30
+    d.text((40, 1050), "Croquis d'expertise établi sur constatations",
+           font=_police(15), fill="#999999")
+    img.save(chemin, quality=90)
+    print(f"  {chemin.name}")
+
+
 def generer() -> None:
     DOSSIER.mkdir(parents=True, exist_ok=True)
     print("Génération des documents d'exemple :")
@@ -264,6 +310,32 @@ def generer() -> None:
         "420,00",
         "Tunisie Pare-Brise — La Marsa — intervention à domicile",
         DOSSIER / "devis-parebrise.jpg",
+    )
+
+    # Dossier habitation — devis réparation après incendie domestique (3 200 DT)
+    _document(
+        "ARTISAN RÉNOV TUNIS — DEVIS",
+        ["Devis N° AR-2026-0231          Date : 19/07/2026",
+         "Client : Sami Karoui",
+         "Bien : Appartement — Résidence Les Jasmins, Sousse",
+         "Sinistre : incendie domestique, cuisine"],
+        [("Dépose et remplacement mobilier cuisine", "1 450,00"),
+         ("Réfection électricité (ligne cuisine)", "620,00"),
+         ("Peinture et enduit murs/plafond", "780,00"),
+         ("Main d'œuvre et évacuation gravats", "350,00")],
+        "3 200,00",
+        "Artisan Rénov Tunis — Zone industrielle, Sousse — MF 7654321/B/M/000",
+        DOSSIER / "devis-incendie.jpg",
+        sous_titre="Rénovation · peinture · électricité",
+        sigle="AR",
+    )
+    _croquis_piece(
+        "CROQUIS D'EXPERTISE — CUISINE",
+        [[(320, 260), (600, 260), (600, 480), (320, 480)]],
+        ["Départ de feu localisé sur le plan de travail",
+         "Cloison et plafond noircis par la fumée",
+         "Mobilier haut détruit sur 2 mètres linéaires"],
+        DOSSIER / "degats-incendie.jpg",
     )
 
     # Les photos réelles de dégâts sont des assets versionnés : ne jamais les
