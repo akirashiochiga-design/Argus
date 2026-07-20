@@ -123,6 +123,29 @@ def _fallback(agent: Agent, dossier: Dossier, mission: str | None = None) -> dic
     }
 
 
+def _sans_photo(mission: str) -> dict:
+    """Retour explicite : aucune conclusion visuelle sans image exploitable."""
+    if mission == "coherence":
+        return {
+            "coherence_declaration": None,
+            "verification_vehicule": {
+                "statut": "indeterminable",
+                "elements_observes": [],
+                "motif": "Aucune photo de dégâts exploitable n'est jointe au dossier.",
+            },
+            "commentaire": "Contrôle visuel non réalisé : aucune photo exploitable.",
+            "confiance": 0.0,
+            "analyse_disponible": False,
+        }
+    return {
+        "classe": None,
+        "zones": [],
+        "commentaire": "Analyse visuelle non réalisée : aucune photo de dégâts exploitable.",
+        "confiance": 0.0,
+        "analyse_disponible": False,
+    }
+
+
 def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     mission = _mission(agent)
     objectif = OBJECTIF_COHERENCE if mission == "coherence" else OBJECTIF_GRAVITE
@@ -170,7 +193,17 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
                 "mode": "regles_locales",
                 "trace": runtime.trace_repli("vision", objectif, str(e)),
             }
-    if donnees is None:
+    if not photos:
+        donnees = _sans_photo(mission)
+        meta = {
+            "cout": 0.0,
+            "duree_ms": 1,
+            "mode": "non_execute",
+            "trace": runtime.trace_repli(
+                "vision", objectif, "aucune photo exploitable"
+            ),
+        }
+    elif donnees is None:
         donnees = _fallback(agent, dossier, mission)
         if meta is None:
             meta = {

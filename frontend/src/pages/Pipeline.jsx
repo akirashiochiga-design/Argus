@@ -473,6 +473,17 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
   }
   if (categorie === 'vision' && s.analyse_gravite) {
     const g = s.analyse_gravite
+    if (g.analyse_disponible === false || !g.classe) {
+      return (
+        <div className="text-sm">
+          <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
+          <span className="rounded-full bg-surface-deep px-2.5 py-0.5 font-semibold text-encre/60">
+            analyse visuelle non réalisée
+          </span>
+          <p className="mt-1 text-encre/50">{g.commentaire}</p>
+        </div>
+      )
+    }
     const couleurs = { leger: 'bg-ok-tint text-ok', moyen: 'bg-warn-tint text-warn', lourd: 'bg-bad-tint text-bad' }
     return (
       <div className="text-sm">
@@ -485,18 +496,25 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
   }
   if (categorie === 'vision' && s.analyse_coherence) {
     const c = s.analyse_coherence
+    const indeterminable = c.coherence_declaration == null
     return (
       <div className="text-sm">
         <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
         <span className={`rounded-full px-2.5 py-0.5 font-semibold ${
-          c.coherence_declaration ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
+          indeterminable
+            ? 'bg-surface-deep text-encre/60'
+            : c.coherence_declaration ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
         }`}>
-          {c.coherence_declaration ? '✓ photos cohérentes avec la déclaration' : '⚠ photos incohérentes avec la déclaration'}
+          {indeterminable
+            ? 'contrôle visuel non réalisé'
+            : c.coherence_declaration
+              ? '✓ photos cohérentes avec la déclaration'
+              : '⚠ photos incohérentes avec la déclaration'}
         </span>
-        {!c.coherence_declaration && (
+        {(indeterminable || !c.coherence_declaration) && (
           <>
             <p className="mt-1 text-encre/50">{c.commentaire}</p>
-            {c.verification_vehicule && (
+            {!indeterminable && c.verification_vehicule && (
               <div className="mt-2 rounded-md bg-bad-tint px-3 py-2 text-xs text-bad">
                 <b>Véhicule : </b>incohérence détectée
                 {' — '}{c.verification_vehicule.motif}

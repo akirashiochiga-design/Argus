@@ -4,6 +4,8 @@ Entrée : declaration_texte (français ou darija tunisienne).
 Sortie : dossier FNOL structuré + champs manquants + complétude + langue.
 Fallback : heuristiques par mots-clés si l'API est indisponible.
 """
+import re
+
 from sqlmodel import Session
 
 from .. import llm
@@ -38,15 +40,27 @@ MOTS_DARIJA = ("aslema", "salem", "ena", "el ", "3and", "mkass", "karhba", "chno
 OBJECTIF = "Structurer la déclaration initiale et contrôler sa complétude"
 
 
+MOTIF_BRIS_GLACE = re.compile(r"\bpare[- ]?brise\b|\bfissur\w*|\bgravier\w*")
+MOTIF_VOL = re.compile(r"\bvol\b|\bvol[ée]e?s?\b|\bd[ée]rob[ée]e?s?\b")
+MOTIF_COLLISION = re.compile(
+    r"\bcollision\b|\baccroch\w*|\bheurt\w*|\bchoc\b|\bpercut\w*"
+)
+
+
+def _type_depuis_declaration(texte: str) -> str:
+    """Classe les indices explicites sans confondre « vol » et « Volkswagen »."""
+    texte = texte.lower()
+    if MOTIF_BRIS_GLACE.search(texte):
+        return "bris_glace"
+    if MOTIF_VOL.search(texte):
+        return "vol"
+    return "collision"
+
+
 def _fallback(dossier: Dossier) -> dict:
     """Structuration par mots-clés — fallback si API indisponible."""
     texte = dossier.declaration_texte.lower()
-    if "pare-brise" in texte or "fissur" in texte or "gravier" in texte:
-        type_sinistre = "bris_glace"
-    elif "vol" in texte and "volant" not in texte:
-        type_sinistre = "vol"
-    else:
-        type_sinistre = "collision"
+    type_sinistre = _type_depuis_declaration(texte)
     darija = sum(1 for m in MOTS_DARIJA if m in texte)
     constat = "constat" in texte and "ma famech" not in texte
     tiers = ("reconnu" in texte or "constat amiable" in texte) and constat
@@ -62,6 +76,22 @@ def _fallback(dossier: Dossier) -> dict:
         "completude": 0.8 if constat else 0.6,
         "langue": "darija" if darija >= 2 else "fr",
     }
+
+
+def _reconcilier_type(donnees: dict, dossier: Dossier) -> dict:
+    """Empêche une classification LLM incompatible avec des indices explicites."""
+    texte = dossier.declaration_texte.lower()
+    type_llm = donnees.get("type_sinistre")
+
+    if MOTIF_BRIS_GLACE.search(texte):
+        donnees["type_sinistre"] = "bris_glace"
+    elif (
+        type_llm == "vol"
+        and MOTIF_COLLISION.search(texte)
+        and not MOTIF_VOL.search(texte)
+    ):
+        donnees["type_sinistre"] = "collision"
+    return donnees
 
 
 def _reconcilier_pieces(donnees: dict, dossier: Dossier) -> dict:
@@ -112,6 +142,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
             "trace": runtime.trace_repli("fnol", OBJECTIF, str(e)),
         }
 
+    donnees = _reconcilier_type(donnees, dossier)
     donnees = _reconcilier_pieces(donnees, dossier)
     return {
         "donnees_fnol": donnees,

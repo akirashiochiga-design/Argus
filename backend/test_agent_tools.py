@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from app import llm
-from app.agents import gravite, indemnite, runtime, tools
+from app.agents import fnol, gravite, indemnite, runtime, tools
 from app.models import Agent, Dossier, Police
 
 
@@ -104,6 +104,25 @@ class AgentToolsTest(unittest.TestCase):
                 "fnol", "calculer_indemnite", {}, self.dossier, self.session
             )
 
+    def test_fnol_ne_confond_pas_volkswagen_avec_un_vol(self):
+        self.dossier.declaration_texte = (
+            "Collision entre deux véhicules. Le véhicule assuré est une Volkswagen Golf 8."
+        )
+        self.assertEqual(fnol._fallback(self.dossier)["type_sinistre"], "collision")
+
+    def test_fnol_detecte_un_vol_explicitement_declare(self):
+        self.dossier.declaration_texte = "Vol du véhicule Volkswagen déclaré ce matin."
+        self.assertEqual(fnol._fallback(self.dossier)["type_sinistre"], "vol")
+
+    def test_fnol_corrige_une_sortie_llm_vol_sur_une_collision(self):
+        self.dossier.declaration_texte = (
+            "Constat reçu après collision entre deux véhicules Volkswagen."
+        )
+        resultat = fnol._reconcilier_type(
+            {"type_sinistre": "vol"}, self.dossier
+        )
+        self.assertEqual(resultat["type_sinistre"], "collision")
+
     def test_identite_visuelle_reste_indeterminable_en_repli(self):
         agent = Agent(
             nom="Contrôle cohérence",
@@ -127,6 +146,18 @@ class AgentToolsTest(unittest.TestCase):
         self.assertEqual(resultat["classe"], "moyen")
         self.assertNotIn("coherence_declaration", resultat)
         self.assertNotIn("verification_vehicule", resultat)
+
+    def test_analyse_visuelle_sans_photo_ne_simule_pas_de_gravite(self):
+        agent = Agent(
+            nom="Analyse des dégâts",
+            categorie="vision",
+            instructions="Évaluer uniquement la gravité des dégâts.",
+            garde_fous={"mission": "gravite"},
+        )
+        resultat = gravite.executer(agent, self.dossier, self.session)
+        self.assertIsNone(resultat["gravite"])
+        self.assertFalse(resultat["analyse_gravite"]["analyse_disponible"])
+        self.assertEqual(resultat["confiance"], 0.0)
 
     def test_calcul_financier_reste_determine_par_le_code(self):
         self.dossier.montant_estime = 2300.0
