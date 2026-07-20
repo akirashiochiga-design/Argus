@@ -6,7 +6,7 @@ Réinitialise complètement norix.db — c'est le bouton "reset démo".
 from sqlmodel import SQLModel, Session
 
 from .db import DB_PATH, create_db_and_tables, engine
-from .models import Agent, Dossier, MarketplaceListing, Police, Template, Workflow
+from .models import Agent, MarketplaceListing, Police, Template, Workflow
 
 # Barème de vétusté (valeurs plausibles — à confirmer avec l'encadrant Maghrebia)
 BAREME_VETUSTE = [
@@ -559,7 +559,8 @@ def seed() -> None:
         )
         session.commit()
 
-        # Branche habitation — même rigueur de gouvernance, périmètre isolé de l'auto.
+        # Branche habitation — agents + workflow prêts, sans dossier préchargé
+        # (pipeline vide au reset : les dossiers viennent de la déclaration / SharePoint / CoreSinistre).
         police_hab = build_police_habitation()
         session.add(police_hab)
         session.commit()
@@ -569,49 +570,30 @@ def seed() -> None:
             session.add(a)
         session.commit()
 
-        workflow_hab = Workflow(
-            nom="Sinistre habitation — de la déclaration au règlement",
-            description="Traitement complet pour incendie, dégât des eaux, vol et catastrophe naturelle.",
-            branche="habitation",
-            est_defaut=True,
-            etapes=[
-                {"ordre": 0, "agent_id": agents_hab[0].id, "type": "agent"},
-                {"ordre": 1, "agent_id": agents_hab[1].id, "type": "agent"},
-                {"ordre": 2, "agent_id": agents_hab[2].id, "type": "agent"},
-                {"ordre": 3, "agent_id": agents_hab[3].id, "type": "agent"},
-                {"ordre": 4, "agent_id": agents_hab[4].id, "type": "agent"},
-                {"ordre": 5, "agent_id": agents_hab[5].id, "type": "agent"},
-                {"ordre": 6, "agent_id": agents_hab[6].id, "type": "porte_humaine"},
-                {"ordre": 7, "agent_id": agents_hab[7].id, "type": "agent"},
-            ],
+        session.add(
+            Workflow(
+                nom="Sinistre habitation — de la déclaration au règlement",
+                description="Traitement complet pour incendie, dégât des eaux, vol et catastrophe naturelle.",
+                branche="habitation",
+                est_defaut=False,
+                etapes=[
+                    {"ordre": 0, "agent_id": agents_hab[0].id, "type": "agent"},
+                    {"ordre": 1, "agent_id": agents_hab[1].id, "type": "agent"},
+                    {"ordre": 2, "agent_id": agents_hab[2].id, "type": "agent"},
+                    {"ordre": 3, "agent_id": agents_hab[3].id, "type": "agent"},
+                    {"ordre": 4, "agent_id": agents_hab[4].id, "type": "agent"},
+                    {"ordre": 5, "agent_id": agents_hab[5].id, "type": "agent"},
+                    {"ordre": 6, "agent_id": agents_hab[6].id, "type": "porte_humaine"},
+                    {"ordre": 7, "agent_id": agents_hab[7].id, "type": "agent"},
+                ],
+            )
         )
-        session.add(workflow_hab)
-        session.commit()
-        session.refresh(workflow_hab)
-
-        dossier_hab = Dossier(
-            ref="HAB-SIN-2026-0001",
-            branche="habitation",
-            police_id=police_hab.id,
-            workflow_id=workflow_hab.id,
-            declaration_texte=(
-                "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans "
-                "doute causé par un appareil électrique resté branché. Les dégâts touchent "
-                "le mobilier, l'installation électrique et les murs. Un devis de réparation "
-                "est joint, ainsi qu'un croquis d'expertise."
-            ),
-            pieces=[
-                {"type": "devis", "chemin": "docs/samples/devis-incendie.jpg", "montant": 3200},
-                {"type": "photo_degats", "chemin": "docs/samples/degats-incendie.jpg"},
-            ],
-        )
-        session.add(dossier_hab)
         session.commit()
 
     print(f"Seed OK -> {DB_PATH}")
     print(
         "  3 templates, 5 listings marketplace, 7 polices, 16 agents, 3 workflows, "
-        "1 dossier (habitation)"
+        "0 dossier (pipeline vide)"
     )
 
 
