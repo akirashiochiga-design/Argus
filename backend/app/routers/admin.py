@@ -20,8 +20,35 @@ MANIFESTE_SHAREPOINT = RACINE / "docs" / "inbox" / "sharepoint-manifest.json"
 MANIFESTE_SHAREPOINT_REF = {
     "source": "SharePoint Sinistres",
     "tenant": "Horizon Assurances",
-    "bibliotheque": "Sinistres Auto / 2026",
+    "bibliotheque": "Sinistres / 2026",
     "dossiers": [
+        {
+            "ref": "HAB-SIN-2026-0001",
+            "branche": "habitation",
+            "police_numero": "HAB-2026-0088",
+            "assure": "Sami Karoui",
+            "declaration": (
+                "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans "
+                "doute causé par un appareil électrique resté branché. Les dégâts touchent "
+                "le mobilier, l'installation électrique et les murs. Un devis de réparation "
+                "est joint, ainsi qu'un croquis d'expertise."
+            ),
+            "type_sinistre": "incendie",
+            "statut_sharepoint": "a_traiter",
+            "documents": [
+                {
+                    "type": "devis",
+                    "chemin": "docs/samples/devis-incendie.jpg",
+                    "nom_source": "devis-reparation-hab0001.jpg",
+                    "montant": 3200,
+                },
+                {
+                    "type": "photo_degats",
+                    "chemin": "docs/samples/degats-incendie.jpg",
+                    "nom_source": "croquis-expertise-hab0001.jpg",
+                },
+            ],
+        },
         {
             "ref": "SP-2026-0142",
             "police_numero": "PA-2024-1183",

@@ -123,9 +123,6 @@ class ConnecteurDocumentsLocal:
         """Extrait les dossiers SharePoint vers Norix (création + pièces)."""
         debut = time.monotonic()
         donnees = self._manifeste()
-        workflow = traitement_actif(session)
-        if not workflow:
-            raise ValueError("Aucun parcours actif dans Norix")
 
         dossiers_crees = 0
         dossiers_ignores = 0
@@ -156,6 +153,10 @@ class ConnecteurDocumentsLocal:
             ).first()
 
             if not dossier:
+                branche = source.get("branche") or "auto"
+                workflow = traitement_actif(session, branche)
+                if not workflow:
+                    raise ValueError(f"Aucun parcours actif pour la branche '{branche}'")
                 police_numero = (source.get("police_numero") or "").strip()
                 police = None
                 if police_numero:
@@ -173,6 +174,7 @@ class ConnecteurDocumentsLocal:
                     )
                 dossier = Dossier(
                     ref=source["ref"],
+                    branche=branche,
                     police_id=police.id,
                     workflow_id=workflow.id,
                     declaration_texte=source.get("declaration")
