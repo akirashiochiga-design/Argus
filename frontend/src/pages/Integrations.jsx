@@ -265,37 +265,6 @@ export default function Integrations() {
         )}
       </section>
 
-      <section className="rounded-xl border border-terracotta/25 bg-terracotta-tint/40 p-5">
-        <div className="flex flex-wrap items-start gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-terracotta-deep">
-              Connexion rapide
-            </div>
-            <h3 className="mt-1 font-semibold">Un adaptateur, pas une réécriture du SI</h3>
-            <p className="mt-1 max-w-2xl text-sm text-encre/55">
-              Les données sont traduites vers le modèle Argus par un Relay déployé chez
-              l’assureur. Les agents ne reçoivent ni identifiants ERP ni accès réseau libre.
-            </p>
-          </div>
-          <span className="ml-auto rounded-full bg-surface px-3 py-1 text-xs font-semibold text-encre/60">
-            REST · SQL lecture seule · SFTP · Graph
-          </span>
-        </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-4">
-          {[
-            ['1', 'Choisir', 'Pack ERP ou connecteur universel'],
-            ['2', 'Tester', 'Schéma et droits minimaux'],
-            ['3', 'Mapper', 'Champs vers Police, Dossier, Pièce'],
-            ['4', 'Activer', 'Dry-run, audit et reprise sur erreur'],
-          ].map(([numero, titre, detail]) => (
-            <div key={numero} className="rounded-lg bg-surface p-3">
-              <div className="text-xs font-bold text-terracotta">{numero} · {titre}</div>
-              <div className="mt-1 text-xs leading-5 text-encre/50">{detail}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section>
         <div className="mb-3">
           <h3 className="font-semibold">Adaptateurs actifs</h3>

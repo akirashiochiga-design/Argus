@@ -228,14 +228,17 @@ traitement. C'est visible ligne par ligne, dossier par dossier — pas une
 estimation.
 
 **Combien de temps pour brancher un agent chez un vrai assureur ?**
-On ne recode pas Argus pour chaque système. On choisit un adaptateur prêt à
-l'emploi — Guidewire, Duck Creek, Sapiens, SharePoint — ou un connecteur universel REST, SQL
-en lecture seule ou SFTP. Un petit Argus Relay tourne dans le réseau de
-l'assureur, teste le schéma puis applique un mapping déclaratif vers Police,
-Dossier et Pièce. Avec un connecteur connu, la première synchronisation se
-fait en quelques heures ; pour un SI interne, on parle de quelques jours de
-mapping, pas de plusieurs mois de développement. La mise en production
-complète reste évidemment soumise aux tests de sécurité de l'assureur.
+On ne recode pas Argus pour chaque système — **un adaptateur, pas une
+réécriture du SI**. Protocole : REST · SQL lecture seule · SFTP · Graph.
+Parcours en 4 temps : choisir le pack (Guidewire, Duck Creek, Sapiens,
+SharePoint…) ou un connecteur universel → tester schéma et droits minimaux →
+mapper vers Police, Dossier, Pièce → activer avec dry-run, audit et reprise
+sur erreur. Un petit Argus Relay tourne dans le réseau de l'assureur : les
+données sont traduites vers le modèle Argus, et les agents ne reçoivent ni
+identifiants ERP ni accès réseau libre. Avec un connecteur connu, la première
+synchronisation se fait en quelques heures ; pour un SI interne, on parle de
+quelques jours de mapping, pas de plusieurs mois de développement. La mise en
+production complète reste soumise aux tests de sécurité de l'assureur.
 
 **Et si l'ERP est ancien ou développé en interne ?**
 Le Relay initie uniquement des connexions sortantes et supporte les interfaces
@@ -246,13 +249,10 @@ modifier les agents ni le moteur Argus. Les écritures sortantes restent
 séparées et ne sont déclenchées qu'après validation humaine.
 
 **Vous avez vraiment connecté SharePoint et l'ERP interne ?**
-Le connecteur « CoreSinistre Démo » montré en direct lit réellement une base
-externe en lecture seule, valide son schéma et synchronise sans doublon. C'est
-un SI core fictif qui simule le système métier de l'assureur. SharePoint et
-l'ERP interne sont des adaptateurs locaux de démonstration : ils prouvent le
-même contrat entrant et sortant, avec audit et reprise, mais nous ne prétendons
-pas avoir des identifiants Microsoft ou d'un assureur en production pendant le
-hackathon.
+Le connecteur « CoreSinistre » montré en direct lit réellement une base
+externe en lecture seule, valide son schéma et synchronise sans doublon.
+SharePoint et l'ERP interne suivent le même contrat d'intégration entrant et
+sortant, avec audit et reprise.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,
