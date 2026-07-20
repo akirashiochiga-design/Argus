@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { BrandMark } from '../brandLogos'
+import { AGENT_ICONE } from '../ui'
 
 /** Catalogue local — toujours affiché, enrichi par le statut API. */
 const PACKS_ERP_TN = [
@@ -82,19 +83,26 @@ export default function Integrations() {
   const [ecrituresErp, setEcrituresErp] = useState([])
   const [onglet, setOnglet] = useState('polices')
   const [panneau, setPanneau] = useState(null)
+  const [plateformes, setPlateformes] = useState([])
+  const [agents, setAgents] = useState([])
+  const [choixConnexion, setChoixConnexion] = useState(null)
 
   const charger = async () => {
     try {
-      const [etat, donnees, catalogue, ecritures] = await Promise.all([
+      const [etat, donnees, catalogue, ecritures, apps, modules] = await Promise.all([
         api.statutBaseAssurance(),
         api.apercuBaseAssurance(),
         api.listerConnecteurs(),
         api.listerEcrituresErp(),
+        api.listerPlateformesMcp(),
+        api.listerAgents(),
       ])
       setStatut(etat)
       setApercu(donnees)
       setConnecteurs(catalogue)
       setEcrituresErp(ecritures)
+      setPlateformes(apps)
+      setAgents(modules)
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
     } finally {
@@ -307,6 +315,41 @@ export default function Integrations() {
         </div>
       </section>
 
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <h3 className="text-sm font-semibold">Connexions</h3>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-encre/45">
+              Branchez Gmail, Outlook, Slack… sur un agent. OAuth simulé ; chaque activation est auditée.
+            </p>
+          </div>
+          <span className="text-xs text-encre/40">{plateformes.length} plateformes</span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+          {plateformes.map((p) => (
+            <div key={p.slug} className="flex items-center gap-3 border-b border-line px-4 py-3.5 lg:border-r">
+              <BrandMark slug={p.slug} size={36} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">{p.nom}</div>
+                <div className="text-[11px] text-encre/40">{p.categorie}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChoixConnexion({ slug: p.slug, nom: p.nom })}
+                className="shrink-0 rounded-md bg-encre px-2.5 py-1.5 text-[11px] font-semibold text-creme hover:bg-encre/85"
+              >
+                Se connecter
+              </button>
+            </div>
+          ))}
+          {plateformes.length === 0 && (
+            <p className="col-span-full px-5 py-8 text-center text-sm text-encre/40">
+              Catalogue indisponible — démarrez le backend.
+            </p>
+          )}
+        </div>
+      </section>
+
       <section>
         <h3 className="mb-3 text-sm font-semibold text-encre/70">Flux connectés</h3>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -398,6 +441,22 @@ export default function Integrations() {
           onFermer={() => setPanneau(null)}
           onSync={() => activerConnecteur(packActif.identifiant)}
           syncEnCours={action === packActif.identifiant}
+        />
+      )}
+      {choixConnexion && (
+        <ChoixAgentConnexion
+          plateforme={choixConnexion}
+          agents={agents}
+          onFermer={() => setChoixConnexion(null)}
+          onConnecte={async (agent, resultat) => {
+            setChoixConnexion(null)
+            await charger()
+            setMessage({
+              ton: 'succes',
+              texte: `« ${agent.nom} » connecté à ${choixConnexion.nom} (${resultat.connexion.compte})`,
+            })
+          }}
+          onErreur={(texte) => setMessage({ ton: 'erreur', texte })}
         />
       )}
     </div>
@@ -1048,5 +1107,63 @@ function Champ({ libelle, children }) {
       {libelle}
       {children}
     </label>
+  )
+}
+
+function ChoixAgentConnexion({ plateforme, agents, onFermer, onConnecte, onErreur }) {
+  const [enCours, setEnCours] = useState(null)
+  const disponibles = agents.filter((a) => a.statut === 'live' || a.statut === 'draft')
+
+  const connecter = async (agent) => {
+    setEnCours(agent.id)
+    try {
+      const resultat = await api.connecterPlateformeAgent(agent.id, plateforme.slug)
+      await onConnecte(agent, resultat)
+    } catch (e) {
+      onErreur(e.message)
+    } finally {
+      setEnCours(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-encre/45 p-4" onClick={onFermer}>
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-surface shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+          <BrandMark slug={plateforme.slug} size={40} />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold">Connecter {plateforme.nom}</h3>
+            <p className="text-xs text-encre/45">Choisissez le module qui utilisera cette app.</p>
+          </div>
+          <button type="button" onClick={onFermer} className="text-encre/40 hover:text-encre">×</button>
+        </div>
+        <ul className="max-h-[50vh] divide-y divide-line overflow-y-auto">
+          {disponibles.length === 0 ? (
+            <li className="px-5 py-8 text-center text-sm text-encre/40">Aucun module disponible.</li>
+          ) : (
+            disponibles.map((agent) => (
+              <li key={agent.id} className="flex items-center gap-3 px-5 py-3">
+                <span>{AGENT_ICONE[agent.categorie] ?? '⚙️'}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{agent.nom}</div>
+                  <div className="text-[11px] text-encre/40">{agent.statut}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={enCours !== null}
+                  onClick={() => connecter(agent)}
+                  className="rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme disabled:opacity-50"
+                >
+                  {enCours === agent.id ? '…' : 'Se connecter'}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </div>
+    </div>
   )
 }
