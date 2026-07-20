@@ -42,6 +42,19 @@ de scheduler en démo.
 **AUDITER** — dashboard de supervision (dossiers par état, coût, temps
 économisé, taux d'approbation) + journal d'audit consultable.
 
+### Extension finale (lundi)
+
+Le jury ayant retenu Argus en finale, deux extensions démontrables sont ajoutées
+au périmètre :
+
+- **Marketplace persistante** : un freelance soumet un template d'agent ; un
+  assureur peut l'acheter/l'installer et obtient immédiatement un agent `live`
+  dans son Studio. Paiement, reversement et certification restent simulés.
+- **Connecteurs démonstrateurs** : formaliser un registre d'adaptateurs autour
+  du connecteur assurance SQLite existant, puis montrer un flux documentaire
+  type SharePoint entrant et une écriture ERP type SAP sortante. Ces deux
+  systèmes externes restent des simulations locales clairement identifiées.
+
 ### Les agents réellement implémentés (le pipeline P5 du cahier des charges)
 1. **FNOL** — lit une déclaration (texte libre FR/darija) → dossier structuré
 2. **Extraction docs** — lit un constat / une facture (image ou PDF) → champs (LLM multimodal, 1 appel API)
@@ -57,10 +70,14 @@ Ne code aucun de ces éléments, même s'ils sont détaillés dans le cahier des
 charges. S'ils apparaissent, ce sont des libellés "à venir" dans l'UI, jamais du
 code fonctionnel :
 
-- Marketplace (M4) entière : publication, certification, achat, fork, revenus.
+- Marketplace M4 complète : paiement réel, certification complète, fork,
+  revenus et reversements. Seul le parcours template → soumission →
+  achat/installation dans le Studio appartient à l'extension finale.
 - Multi-tenant réel / isolation inter-organisations. Un seul tenant en dur.
 - RBAC fin. Un login factice + un rôle "superviseur" suffisent.
-- Vrais connecteurs ERP / core insurance / MCP. Tout est simulé par des données locales.
+- Vrais connecteurs ERP / Drive / MCP de production. Le connecteur core SQLite
+  et les adaptateurs SharePoint/SAP locaux servent uniquement de preuves du
+  contrat d'intégration et utilisent des données locales.
 - Coffre à secrets, rotation de clés, environnements bac-à-sable vs prod séparés.
 - Versioning / rollback des agents, promotion, déploiement en un clic.
 - Scoring de fraude, graphe de fraude, doublons, subrogation, provisions, reporting réglementaire.

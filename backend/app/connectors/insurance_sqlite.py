@@ -292,3 +292,17 @@ def synchroniser(session: Session) -> dict:
     )
     session.commit()
     return resultat
+
+
+class ConnecteurAssuranceSQLite:
+    """Adaptateur du SI de démonstration conforme au registre Argus."""
+
+    identifiant = "insurance_core"
+    nom = "AssurCore Auto"
+    direction = "entrant"
+
+    def tester(self) -> dict:
+        return tester_connexion()
+
+    def synchroniser(self, session: Session) -> dict:
+        return synchroniser(session)

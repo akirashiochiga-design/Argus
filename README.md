@@ -85,15 +85,15 @@ Argus sépare explicitement les responsabilités :
 - File d'approbation humaine
 - Courrier de décision
 - Dashboard de supervision et journal d'audit
-- Interface de configuration des ERP et bases de données
-- Marketplace de démonstration : catalogue, filtres, achat et publication simulés
+- Registre d'adaptateurs : core assurance, documents SharePoint et écritures ERP
+- Marketplace persistante : soumission de templates et installation immédiate dans le Studio
 - Déploiement frontend et backend sous une URL unique
 
-Les transactions réelles de la marketplace, la certification des agents, les
-connecteurs ERP de production, le multi-tenant et le déploiement chez l'assureur
-font partie des prochaines étapes. Les écrans Marketplace et Intégrations de ce
-prototype simulent ces parcours sans achat réel ni connexion à un ERP de
-production.
+Le paiement et le reversement Marketplace, la certification complète, les
+identifiants OAuth/ERP de production, le multi-tenant et le Relay déployé chez
+l'assureur font partie des prochaines étapes. Le prototype connecte réellement
+une base assurance externe locale ; les adaptateurs SharePoint et SAP utilisent
+des sources locales clairement signalées comme simulations de démonstration.
 
 ## Architecture
 

@@ -228,11 +228,29 @@ traitement. C'est visible ligne par ligne, dossier par dossier — pas une
 estimation.
 
 **Combien de temps pour brancher un agent chez un vrai assureur ?**
-Aujourd'hui, dans le pitch : un après-midi pour créer l'agent, contre 6 à 18
-mois pour le brancher au core et le mettre en prod dans l'existant. C'est
-exactement le problème qu'Argus résout — la couche de déploiement et de
-gouvernance entre le modèle et le système d'information, pas juste un
-créateur d'agents de plus.
+On ne recode pas Argus pour chaque ERP. On choisit un adaptateur prêt à
+l'emploi — SAP, Guidewire, SharePoint — ou un connecteur universel REST, SQL
+en lecture seule ou SFTP. Un petit Argus Relay tourne dans le réseau de
+l'assureur, teste le schéma puis applique un mapping déclaratif vers Police,
+Dossier et Pièce. Avec un connecteur connu, la première synchronisation se
+fait en quelques heures ; pour un SI interne, on parle de quelques jours de
+mapping, pas de plusieurs mois de développement. La mise en production
+complète reste évidemment soumise aux tests de sécurité de l'assureur.
+
+**Et si l'ERP est ancien ou développé en interne ?**
+Le Relay initie uniquement des connexions sortantes et supporte les interfaces
+que ces systèmes exposent déjà : vue SQL en lecture seule, API REST/SOAP, dépôt
+SFTP ou export de fichiers. Si aucun pack n'existe, l'intégrateur implémente
+seulement quatre opérations standard — tester, lire, mapper, écrire — sans
+modifier les agents ni le moteur Argus. Les écritures sortantes restent
+séparées et ne sont déclenchées qu'après validation humaine.
+
+**Vous avez vraiment connecté SharePoint et SAP ?**
+Le connecteur AssurCore montré en direct lit réellement une base externe en
+lecture seule, valide son schéma et synchronise sans doublon. SharePoint et SAP
+sont des adaptateurs locaux de démonstration : ils prouvent le même contrat
+entrant et sortant, avec audit et reprise, mais nous ne prétendons pas avoir
+des identifiants Microsoft ou SAP de production pendant le hackathon.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,
@@ -242,11 +260,20 @@ workflow, garde-fous) n'a rien de spécifique à l'auto ; habitation et santé
 sont la suite naturelle, pas une refonte.
 
 **Et la marketplace, elle existe vraiment ?**
-L'expérience est démontrable dans ce build : on peut parcourir et filtrer les
-agents, simuler un achat ou une installation, et soumettre un agent à la
-publication. Les transactions, la certification et la distribution entre
-organisations sont volontairement simulées ; le cœur réellement connecté au
-backend reste la boucle créer → gouverner → exécuter → auditer.
+Oui pour le parcours produit : le catalogue vient du backend et, dès que
+l'assureur clique sur « Acheter et installer », un agent `live` apparaît
+immédiatement dans son Studio, prêt à être ajouté au workflow. Le paiement
+reste simulé dans ce build.
+
+**Comment un freelance peut-il vendre un agent sans accéder aux données ?**
+Il vend un template : rôle, instructions métier et garde-fous, pas un accès au
+système de l'assureur. Il remplit sa fiche, fixe son prix et soumet le template
+à la revue Argus. Nous contrôlons les secrets, les catégories autorisées et
+l'interdiction de déléguer une décision financière au LLM. À l'achat, Argus
+instancie l'agent dans le Studio du client ; les connecteurs et données sont
+liés ensuite par l'assureur. Le freelance ne reçoit donc jamais les données,
+les identifiants ni les exécutions du client. Certification, commission et
+reversement financier sont simulés pour la finale.
 
 ## Équipe & exécution
 

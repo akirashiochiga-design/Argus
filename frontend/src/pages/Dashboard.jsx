@@ -9,6 +9,12 @@ const EVENEMENTS = {
   changement_etat: "Changement d'état",
   synchronisation_donnees: 'Synchronisation SI',
   connexion_systeme: 'Connexion au SI',
+  installation_marketplace: 'Installation Marketplace',
+  soumission_marketplace: 'Soumission Marketplace',
+  validation_marketplace: 'Validation Marketplace',
+  synchronisation_documents: 'Synchronisation documentaire',
+  ecriture_erp_planifiee: 'Écriture ERP planifiée',
+  ecriture_erp_envoyee: 'Écriture ERP envoyée',
   creation_dossier: 'Création de dossier',
 }
 

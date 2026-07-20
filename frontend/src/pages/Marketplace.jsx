@@ -1,105 +1,102 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../api'
 import { AGENT_ICONE, dt } from '../ui'
-
-const AGENTS = [
-  {
-    id: 1,
-    nom: 'Lecture de constat auto',
-    categorie: 'extraction',
-    editeur: 'North Africa Claims Lab',
-    description: 'Extrait les conducteurs, véhicules, circonstances et signatures depuis un constat amiable.',
-    prix: 240,
-    note: 4.9,
-    installations: 128,
-    tags: ['Auto', 'Documents'],
-    verifie: true,
-  },
-  {
-    id: 2,
-    nom: 'Évaluation dégâts carrosserie',
-    categorie: 'vision',
-    editeur: 'Vision Assur',
-    description: 'Classe les dommages visibles et prépare une synthèse exploitable par le gestionnaire.',
-    prix: 390,
-    note: 4.8,
-    installations: 94,
-    tags: ['Auto', 'Vision'],
-    verifie: true,
-  },
-  {
-    id: 3,
-    nom: 'Assistant déclaration FNOL',
-    categorie: 'fnol',
-    editeur: 'Tunis Digital Insurance',
-    description: 'Transforme une déclaration en français ou en darija en dossier sinistre structuré.',
-    prix: 180,
-    note: 4.7,
-    installations: 211,
-    tags: ['Auto', 'FNOL'],
-    verifie: true,
-  },
-  {
-    id: 4,
-    nom: 'Contrôle de complétude',
-    categorie: 'assistant',
-    editeur: 'OpsFlow',
-    description: 'Vérifie les pièces obligatoires et indique clairement les éléments encore manquants.',
-    prix: 95,
-    note: 4.6,
-    installations: 76,
-    tags: ['Documents', 'Contrôle'],
-    verifie: false,
-  },
-  {
-    id: 5,
-    nom: 'Rédaction décision assurée',
-    categorie: 'courrier',
-    editeur: 'ClearClaim',
-    description: 'Rédige un courrier de décision clair à partir des clauses et montants déjà validés.',
-    prix: 150,
-    note: 4.8,
-    installations: 163,
-    tags: ['Courrier', 'Conformité'],
-    verifie: true,
-  },
-  {
-    id: 6,
-    nom: 'Contrôle qualité dossier',
-    categorie: 'assistant',
-    editeur: 'Argus Community',
-    description: 'Relit le dossier avant validation humaine et signale les incohérences de traitement.',
-    prix: 0,
-    note: 4.5,
-    installations: 302,
-    tags: ['Qualité', 'Audit'],
-    verifie: false,
-  },
-]
 
 const CATEGORIES = ['Tous', 'Auto', 'Vision', 'Documents', 'Conformité']
 
-export default function Marketplace() {
+export default function Marketplace({ onNavigate }) {
+  const [agents, setAgents] = useState([])
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('Tous')
-  const [achetes, setAchetes] = useState([])
   const [achat, setAchat] = useState(null)
   const [publication, setPublication] = useState(false)
   const [message, setMessage] = useState(null)
+  const [chargement, setChargement] = useState(true)
+  const [action, setAction] = useState(false)
+
+  const charger = async () => {
+    try {
+      setAgents(await api.listerMarketplace())
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setChargement(false)
+    }
+  }
+
+  useEffect(() => { charger() }, [])
 
   const resultats = useMemo(() => {
     const terme = recherche.trim().toLocaleLowerCase('fr')
-    return AGENTS.filter((agent) => {
+    return agents.filter((agent) => {
       const correspondCategorie = categorie === 'Tous' || agent.tags.includes(categorie)
       const contenu = `${agent.nom} ${agent.editeur} ${agent.description} ${agent.tags.join(' ')}`.toLocaleLowerCase('fr')
       return correspondCategorie && (!terme || contenu.includes(terme))
     })
-  }, [categorie, recherche])
+  }, [agents, categorie, recherche])
 
-  const confirmerAchat = () => {
-    setAchetes((liste) => [...liste, achat.id])
-    setMessage(`« ${achat.nom} » a été ajouté à votre espace Studio.`)
-    setAchat(null)
+  const confirmerAchat = async () => {
+    setAction(true)
+    try {
+      const resultat = await api.installerMarketplace(achat.id)
+      setAchat(null)
+      await charger()
+      setMessage({
+        ton: 'succes',
+        texte: `« ${resultat.agent.nom} » est maintenant live et prêt dans votre Studio.`,
+        studio: true,
+      })
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(false)
+    }
   }
+
+  const soumettre = async (event) => {
+    event.preventDefault()
+    setAction(true)
+    const donnees = new FormData(event.currentTarget)
+    try {
+      const listing = await api.soumettreMarketplace({
+        nom: donnees.get('nom'),
+        editeur: donnees.get('editeur'),
+        description: donnees.get('description'),
+        categorie: donnees.get('categorie'),
+        prix: Number(donnees.get('prix')),
+        tags: [donnees.get('tag')].filter(Boolean),
+        instructions: donnees.get('instructions'),
+      })
+      setPublication(false)
+      setMessage({
+        ton: 'succes',
+        texte: `« ${listing.nom} » a été soumis : contrôles validés, revue Argus en attente.`,
+        reviewId: listing.id,
+      })
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(false)
+    }
+  }
+
+  const validerSoumission = async (listingId) => {
+    setAction(true)
+    try {
+      const listing = await api.validerMarketplace(listingId)
+      await charger()
+      setMessage({
+        ton: 'succes',
+        texte: `« ${listing.nom} » est vérifié et disponible à l’achat dans la Marketplace.`,
+      })
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(false)
+    }
+  }
+
+  if (chargement) return <p className="text-sm text-encre/50">Chargement de la Marketplace…</p>
 
   return (
     <div className="grid gap-6">
@@ -124,10 +121,33 @@ export default function Marketplace() {
       </header>
 
       {message && (
-        <div className="flex items-center gap-2 rounded-lg border border-ok/30 bg-ok-tint px-4 py-3 text-sm text-ok">
-          <span>✓</span>
-          <span>{message}</span>
-          <button onClick={() => setMessage(null)} className="ml-auto text-lg opacity-60" aria-label="Fermer">×</button>
+        <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
+          message.ton === 'erreur'
+            ? 'border-bad/30 bg-bad-tint text-bad'
+            : 'border-ok/30 bg-ok-tint text-ok'
+        }`}>
+          <span>{message.ton === 'erreur' ? '!' : '✓'}</span>
+          <span>{message.texte}</span>
+          <div className="ml-auto flex items-center gap-2">
+            {message.reviewId && (
+              <button
+                onClick={() => validerSoumission(message.reviewId)}
+                disabled={action}
+                className="rounded-md bg-ok px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                Simuler la revue Argus
+              </button>
+            )}
+            {message.studio && (
+              <button
+                onClick={() => onNavigate('studio')}
+                className="rounded-md bg-ok px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                Ouvrir dans le Studio
+              </button>
+            )}
+            <button onClick={() => setMessage(null)} className="text-lg opacity-60" aria-label="Fermer">×</button>
+          </div>
         </div>
       )}
 
@@ -165,7 +185,7 @@ export default function Marketplace() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {resultats.map((agent) => {
-          const estAchete = achetes.includes(agent.id)
+          const estAchete = agent.installe
           return (
             <article key={agent.id} className="flex min-h-72 flex-col rounded-xl border border-line bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-start gap-3">
@@ -237,8 +257,12 @@ export default function Marketplace() {
           <p className="mt-3 text-xs text-encre/40">Cette action est simulée dans l’environnement de démonstration.</p>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setAchat(null)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>
-            <button onClick={confirmerAchat} className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white">
-              {achat.prix ? `Payer ${dt(achat.prix)}` : 'Installer'}
+            <button
+              onClick={confirmerAchat}
+              disabled={action}
+              className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {action ? 'Installation…' : achat.prix ? `Acheter et installer — ${dt(achat.prix)}` : 'Installer'}
             </button>
           </div>
         </Modal>
@@ -247,32 +271,47 @@ export default function Marketplace() {
       {publication && (
         <Modal onFermer={() => setPublication(false)}>
           <h3 className="text-lg font-semibold">Publier un agent</h3>
-          <p className="mt-1 text-sm text-encre/50">Renseignez les informations visibles dans la marketplace.</p>
+          <p className="mt-1 text-sm text-encre/50">
+            Vendez votre template métier ; les données et connecteurs restent chez l’assureur.
+          </p>
+          <div className="mt-4 grid grid-cols-4 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-encre/45">
+            {['Template', 'Fiche de vente', 'Revue Argus', 'Publication'].map((etape, index) => (
+              <div key={etape} className="rounded bg-surface-deep px-1 py-2">
+                <span className="text-terracotta">{index + 1}</span> {etape}
+              </div>
+            ))}
+          </div>
           <form
             className="mt-5 grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              const donnees = new FormData(event.currentTarget)
-              setPublication(false)
-              setMessage(`« ${donnees.get('nom')} » a été soumis pour publication.`)
-            }}
+            onSubmit={soumettre}
           >
-            <label className="grid gap-1 text-xs font-medium text-encre/60">
-              Nom de l’agent
-              <input name="nom" required placeholder="Ex. Assistant expertise auto" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="grid gap-1 text-xs font-medium text-encre/60">
+                Nom du template
+                <input name="nom" required placeholder="Ex. Assistant expertise auto" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-encre/60">
+                Éditeur / freelance
+                <input name="editeur" required placeholder="Ex. Amine Ben Ali" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
+              </label>
+            </div>
             <label className="grid gap-1 text-xs font-medium text-encre/60">
               Description
               <textarea name="description" required rows="3" placeholder="Décrivez sa valeur métier…" className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
+            </label>
+            <label className="grid gap-1 text-xs font-medium text-encre/60">
+              Instructions du template
+              <textarea name="instructions" required rows="4" placeholder="Décrivez précisément le rôle, les entrées et la sortie attendue…" className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
             </label>
             <div className="grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-xs font-medium text-encre/60">
                 Catégorie
                 <select name="categorie" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre">
-                  <option>Gestion de sinistres</option>
-                  <option>Documents</option>
-                  <option>Vision</option>
-                  <option>Conformité</option>
+                  <option value="fnol">Qualification FNOL</option>
+                  <option value="extraction">Documents</option>
+                  <option value="vision">Vision</option>
+                  <option value="courrier">Courrier</option>
+                  <option value="assistant">Assistant métier</option>
                 </select>
               </label>
               <label className="grid gap-1 text-xs font-medium text-encre/60">
@@ -280,9 +319,15 @@ export default function Marketplace() {
                 <input name="prix" type="number" min="0" defaultValue="0" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
               </label>
             </div>
+            <label className="grid gap-1 text-xs font-medium text-encre/60">
+              Tag principal
+              <input name="tag" placeholder="Ex. Auto" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
+            </label>
             <div className="mt-1 flex justify-end gap-2">
               <button type="button" onClick={() => setPublication(false)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>
-              <button type="submit" className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white">Soumettre</button>
+              <button type="submit" disabled={action} className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                {action ? 'Contrôles…' : 'Soumettre à la revue'}
+              </button>
             </div>
           </form>
         </Modal>

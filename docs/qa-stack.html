@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Q&A Stack Argus</title>
+  <style>
+    body { margin: 0; background: #f4f0e8; color: #292722; font: 18px/1.65 Georgia, serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 48px 24px 100px; }
+    h1 { font-size: 42px; margin-bottom: 8px; }
+    h2 { margin-top: 42px; color: #a6533d; }
+    h3 { margin-bottom: 4px; }
+    p { margin-top: 4px; }
+    .intro { color: #6e675e; }
+    .card { background: #fffdf8; border: 1px solid #d8d0c3; border-radius: 12px; padding: 24px; margin: 18px 0; }
+    .answer { border-left: 4px solid #bd6c53; padding-left: 18px; }
+    button { position: sticky; top: 16px; float: right; border: 0; border-radius: 8px; padding: 12px 18px;
+      background: #292722; color: white; cursor: pointer; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main id="contenu">
+  <button onclick="copier()">Copier tout</button>
+  <h1>Q&A — Stack Argus</h1>
+  <p class="intro">Version simple à lire et à copier-coller pour préparer les questions du jury.</p>
+
+  <div class="card answer">
+    <h2>Réponse courte</h2>
+    <p>Notre frontend est construit avec React, Vite et Tailwind CSS. Le backend est une API Python avec FastAPI.
+    Les données sont stockées dans SQLite à travers SQLModel et SQLAlchemy. Pour l'IA multimodale, nous utilisons
+    Gemini 2.5 Flash par défaut, avec Claude comme alternative. L'orchestration est une machine à états Python,
+    sans framework agentique lourd. Docker assemble l'application et Railway la déploie derrière une URL unique.</p>
+  </div>
+
+  <h2>Frontend</h2>
+  <div class="card">
+    <h3>React</h3>
+    <p>Construit les écrans et met l'interface à jour quand un dossier change : pipeline, Studio, approbations,
+    dashboard et audit.</p>
+    <h3>Vite</h3>
+    <p>Lance rapidement React en développement et compile le frontend en fichiers optimisés pour la production.</p>
+    <h3>Tailwind CSS</h3>
+    <p>Gère le design : couleurs, grilles, espacements, boutons, cartes et états visuels du pipeline.</p>
+  </div>
+
+  <h2>Backend</h2>
+  <div class="card">
+    <h3>Python</h3>
+    <p>Contient la logique métier : orchestration, garanties, calcul déterministe de l'indemnité, validation humaine,
+    appels IA et audit.</p>
+    <h3>FastAPI</h3>
+    <p>Expose cette logique sous forme d'API HTTP appelée par React. Il valide aussi les données entrantes.</p>
+    <h3>Uvicorn</h3>
+    <p>Est le serveur qui fait tourner FastAPI et répond aux requêtes.</p>
+  </div>
+
+  <h2>Données</h2>
+  <div class="card">
+    <h3>SQLite</h3>
+    <p>Stocke les agents, workflows, dossiers, exécutions, tâches humaines et événements d'audit dans un fichier.
+    C'est un choix adapté au prototype ; PostgreSQL serait la cible pour une production concurrente et multi-tenant.</p>
+    <h3>SQLModel et SQLAlchemy</h3>
+    <p>SQLModel représente les tables avec des classes Python. SQLAlchemy gère les connexions et traduit les
+    opérations Python en requêtes SQL.</p>
+    <h3>Connecteur assurance</h3>
+    <p>Lit une base externe en lecture seule, vérifie son schéma et synchronise polices, garanties et sinistres
+    sans modifier le système source.</p>
+  </div>
+
+  <h2>Intelligence artificielle</h2>
+  <div class="card">
+    <h3>Gemini 2.5 Flash</h3>
+    <p>Lit les déclarations en français ou en darija, extrait les documents, analyse les images et aide à rédiger
+    les courriers.</p>
+    <h3>Claude</h3>
+    <p>Est supporté comme fournisseur alternatif, ce qui évite de dépendre d'un seul modèle.</p>
+    <h3>Limite fondamentale</h3>
+    <p>L'IA ne calcule jamais l'indemnité et ne valide jamais un paiement. Les montants viennent de fonctions Python
+    déterministes et passent obligatoirement par un humain.</p>
+    <h3>Pillow</h3>
+    <p>Prépare les images avant leur analyse par le modèle multimodal.</p>
+  </div>
+
+  <h2>Orchestration et gouvernance</h2>
+  <div class="card">
+    <h3>Machine à états maison</h3>
+    <p>Un workflow est une liste ordonnée d'étapes. Chaque appel exécute une étape, enregistre sa sortie et fait
+    avancer le dossier. C'est plus simple à lire, tester et auditer qu'un framework agentique lourd.</p>
+    <h3>Human-in-the-loop</h3>
+    <p>La validation humaine est une porte bloquante du backend, pas seulement un bouton dans l'interface.
+    Aucun montant ne devient validé sans décision explicite d'un gestionnaire.</p>
+    <h3>Audit append-only</h3>
+    <p>Chaque action crée un événement horodaté avec acteur, objet, avant, après et motif. L'API ne permet pas de
+    modifier ou supprimer ces événements.</p>
+  </div>
+
+  <h2>Déploiement</h2>
+  <div class="card">
+    <h3>Docker</h3>
+    <p>Compile d'abord React avec Node, puis installe Python et FastAPI dans une image unique et reproductible.</p>
+    <h3>Railway</h3>
+    <p>Construit l'image Docker, lance le service, contrôle la route de santé et expose l'application par une URL.</p>
+  </div>
+
+  <h2>Flux complet</h2>
+  <div class="card">
+    <p>React envoie une requête à FastAPI. FastAPI charge le dossier depuis SQLite avec SQLModel. L'orchestrateur
+    exécute l'étape courante. Le LLM peut lire du contenu non structuré, mais les garanties et montants sont calculés
+    en Python. Le résultat et l'audit sont enregistrés, puis React actualise l'écran. À la porte humaine, tout
+    s'arrête jusqu'à la décision du gestionnaire.</p>
+  </div>
+</main>
+<script>
+  function copier() {
+    navigator.clipboard.writeText(document.getElementById('contenu').innerText.replace('Copier tout', '').trim());
+    const bouton = document.querySelector('button');
+    bouton.textContent = 'Copié ✓';
+    setTimeout(() => bouton.textContent = 'Copier tout', 1500);
+  }
+</script>
+</body>
+</html>

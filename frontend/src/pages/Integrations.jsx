@@ -16,15 +16,21 @@ export default function Integrations() {
   const [chargement, setChargement] = useState(true)
   const [action, setAction] = useState(null)
   const [message, setMessage] = useState(null)
+  const [connecteurs, setConnecteurs] = useState([])
+  const [ecrituresErp, setEcrituresErp] = useState([])
 
   const charger = async () => {
     try {
-      const [etat, donnees] = await Promise.all([
+      const [etat, donnees, catalogue, ecritures] = await Promise.all([
         api.statutBaseAssurance(),
         api.apercuBaseAssurance(),
+        api.listerConnecteurs(),
+        api.listerEcrituresErp(),
       ])
       setStatut(etat)
       setApercu(donnees)
+      setConnecteurs(catalogue)
+      setEcrituresErp(ecritures)
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
     } finally {
@@ -59,11 +65,36 @@ export default function Integrations() {
     }
   }
 
+  const activerConnecteur = async (identifiant) => {
+    setAction(identifiant)
+    setMessage(null)
+    try {
+      await api.connecterConnecteur(identifiant)
+      const resultat = await api.synchroniserConnecteur(identifiant)
+      await charger()
+      let texte
+      if (identifiant === 'sharepoint_demo') {
+        texte = resultat.dossiers_introuvables?.length
+          ? `Bibliothèque connectée. Synchronisez d’abord AssurCore pour rattacher ${resultat.dossiers_introuvables.length} dossier(s) source.`
+          : `${resultat.documents_importes} document(s) SharePoint importé(s), ${resultat.documents_ignores} déjà présent(s).`
+      } else {
+        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) au connecteur SAP de démonstration.`
+      }
+      setMessage({ ton: 'succes', texte })
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(null)
+    }
+  }
+
   if (chargement) return <p className="text-sm text-encre/50">Vérification de la source de données…</p>
 
   const derniere = statut?.derniere_synchronisation
   const compteurs = statut?.compteurs ?? {}
   const connecte = statut?.statut === 'connecte'
+  const sharepoint = connecteurs.find((item) => item.identifiant === 'sharepoint_demo')
+  const sap = connecteurs.find((item) => item.identifiant === 'sap_finance_demo')
 
   return (
     <div className="grid gap-6">
@@ -234,8 +265,72 @@ export default function Integrations() {
         )}
       </section>
 
+      <section className="rounded-xl border border-terracotta/25 bg-terracotta-tint/40 p-5">
+        <div className="flex flex-wrap items-start gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-terracotta-deep">
+              Connexion rapide
+            </div>
+            <h3 className="mt-1 font-semibold">Un adaptateur, pas une réécriture du SI</h3>
+            <p className="mt-1 max-w-2xl text-sm text-encre/55">
+              Les données sont traduites vers le modèle Argus par un Relay déployé chez
+              l’assureur. Les agents ne reçoivent ni identifiants ERP ni accès réseau libre.
+            </p>
+          </div>
+          <span className="ml-auto rounded-full bg-surface px-3 py-1 text-xs font-semibold text-encre/60">
+            REST · SQL lecture seule · SFTP · Graph
+          </span>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-4">
+          {[
+            ['1', 'Choisir', 'Pack ERP ou connecteur universel'],
+            ['2', 'Tester', 'Schéma et droits minimaux'],
+            ['3', 'Mapper', 'Champs vers Police, Dossier, Pièce'],
+            ['4', 'Activer', 'Dry-run, audit et reprise sur erreur'],
+          ].map(([numero, titre, detail]) => (
+            <div key={numero} className="rounded-lg bg-surface p-3">
+              <div className="text-xs font-bold text-terracotta">{numero} · {titre}</div>
+              <div className="mt-1 text-xs leading-5 text-encre/50">{detail}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section>
-        <h3 className="mb-3 font-semibold">Connecteurs ERP</h3>
+        <div className="mb-3">
+          <h3 className="font-semibold">Adaptateurs actifs</h3>
+          <p className="text-xs text-encre/45">
+            Preuves locales du même contrat d’intégration utilisé par AssurCore.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <CarteConnecteur
+            connecteur={sharepoint}
+            titre="SharePoint Sinistres"
+            sousTitre="Documents entrants · Microsoft Graph en production"
+            initiales="SP"
+            couleur="bg-[#038387]"
+            action={action}
+            onActiver={() => activerConnecteur('sharepoint_demo')}
+            detail={sharepoint
+              ? `${sharepoint.documents_disponibles} document(s) disponibles · environnement démo`
+              : 'Bibliothèque documentaire locale de démonstration'}
+          />
+          <CarteConnecteur
+            connecteur={sap}
+            titre="SAP Finance"
+            sousTitre="Écritures sortantes · après validation humaine"
+            initiales="SAP"
+            couleur="bg-[#0A6ED1]"
+            action={action}
+            onActiver={() => activerConnecteur('sap_finance_demo')}
+            detail={`${ecrituresErp.filter((item) => item.statut === 'planifiee').length} en attente · ${ecrituresErp.filter((item) => item.statut === 'envoyee').length} envoyée(s)`}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="mb-3 font-semibold">Catalogue de connecteurs prêts à configurer</h3>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {ERP.map((connecteur) => (
             <div key={connecteur.id} className="rounded-xl border border-line bg-surface p-5">
@@ -248,11 +343,58 @@ export default function Integrations() {
                   <div className="text-xs text-encre/45">{connecteur.type}</div>
                 </div>
               </div>
-              <div className="mt-5 text-xs font-medium text-encre/40">Non connecté</div>
+              <div className="mt-5 text-xs font-medium text-encre/40">Pack disponible</div>
             </div>
           ))}
         </div>
       </section>
     </div>
+  )
+}
+
+function CarteConnecteur({
+  connecteur,
+  titre,
+  sousTitre,
+  initiales,
+  couleur,
+  detail,
+  action,
+  onActiver,
+}) {
+  const connecte = connecteur?.statut === 'connecte'
+  const enCours = action === connecteur?.identifiant
+  return (
+    <article className="rounded-xl border border-line bg-surface p-5 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className={`flex h-11 w-11 items-center justify-center rounded-lg text-xs font-bold text-white ${couleur}`}>
+          {initiales}
+        </div>
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-semibold">{titre}</h4>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              connecte ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/45'
+            }`}>
+              {connecte ? 'Connecté' : 'Prêt à connecter'}
+            </span>
+          </div>
+          <p className="text-xs text-encre/45">{sousTitre}</p>
+        </div>
+      </div>
+      <p className="mt-4 text-sm text-encre/55">{detail}</p>
+      <div className="mt-4 flex items-center gap-2 border-t border-line pt-4">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-encre/35">
+          Simulation locale auditée
+        </span>
+        <button
+          onClick={onActiver}
+          disabled={action !== null || !connecteur}
+          className="ml-auto rounded-md bg-encre px-3 py-2 text-xs font-semibold text-creme disabled:opacity-50"
+        >
+          {enCours ? 'Synchronisation…' : connecte ? 'Synchroniser' : 'Tester et connecter'}
+        </button>
+      </div>
+    </article>
   )
 }

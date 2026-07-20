@@ -47,6 +47,11 @@ export const api = {
   categoriesStudio: () => request('/studio/categories'),
   genererInstructions: (brief) => post('/studio/generer-instructions', { brief }),
   creerAgentPersonnalise: (corps) => post('/studio/agents-personnalises', corps),
+  // Marketplace
+  listerMarketplace: () => request('/marketplace/listings'),
+  installerMarketplace: (id) => post(`/marketplace/listings/${id}/installer`),
+  soumettreMarketplace: (corps) => post('/marketplace/listings', corps),
+  validerMarketplace: (id) => post(`/marketplace/listings/${id}/valider`),
   // Pipeline
   listerDossiers: () => request('/dossiers'),
   lireDossier: (id) => request(`/dossiers/${id}`),
@@ -63,6 +68,7 @@ export const api = {
   listerTaches: (etat) => request(`/taches${etat ? `?etat=${etat}` : ''}`),
   deciderTache: (id, corps) => post(`/taches/${id}/decider`, corps),
   relancerTache: (id, validateur) => post(`/taches/${id}/relancer`, { validateur }),
+  surveillerPieces: () => post('/integrations/connecteurs/sharepoint_demo/synchroniser'),
   // Audit & dashboard
   lireAudit: (params = {}) => request(`/audit?${new URLSearchParams(params)}`),
   lireKpi: () => request('/dashboard/kpi'),
@@ -72,6 +78,10 @@ export const api = {
   testerBaseAssurance: () => post('/integrations/database/test'),
   apercuBaseAssurance: () => request('/integrations/database/apercu'),
   synchroniserBaseAssurance: () => post('/integrations/database/synchroniser'),
+  listerConnecteurs: () => request('/integrations/connecteurs'),
+  connecterConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/connecter`),
+  synchroniserConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/synchroniser`),
+  listerEcrituresErp: () => request('/integrations/erp/ecritures'),
   // Démo
   reseed: () => post('/admin/reseed'),
 }

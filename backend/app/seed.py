@@ -6,7 +6,7 @@ Réinitialise complètement argus.db — c'est le bouton "reset démo".
 from sqlmodel import SQLModel, Session
 
 from .db import DB_PATH, create_db_and_tables, engine
-from .models import Agent, Police, Template, Workflow
+from .models import Agent, MarketplaceListing, Police, Template, Workflow
 
 # Barème de vétusté (valeurs plausibles — à confirmer avec l'encadrant Maghrebia)
 BAREME_VETUSTE = [
@@ -60,6 +60,118 @@ def build_templates() -> list[Template]:
         },
     ),
 ]
+
+
+def build_marketplace() -> list[MarketplaceListing]:
+    """Templates vendus par des éditeurs tiers, installables en un clic."""
+    commun = {"pas_de_decision_argent": True, "max_iterations_agent": 4}
+    return [
+        MarketplaceListing(
+            nom="Lecture de constat auto",
+            categorie="extraction",
+            editeur="North Africa Claims Lab",
+            description=(
+                "Extrait les conducteurs, véhicules, circonstances et signatures "
+                "depuis un constat amiable."
+            ),
+            prix=240,
+            note=4.9,
+            installations=128,
+            tags=["Auto", "Documents"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Lis le constat amiable et extrais les conducteurs, véhicules, "
+                "circonstances, cases cochées et signatures. Signale chaque champ "
+                "illisible avec un niveau de confiance."
+            ),
+            garde_fous={**commun, "outils_autorises": ["inventorier_pieces"]},
+        ),
+        MarketplaceListing(
+            nom="Évaluation dégâts carrosserie",
+            categorie="vision",
+            editeur="Vision Assur",
+            description=(
+                "Classe les dommages visibles et prépare une synthèse exploitable "
+                "par le gestionnaire."
+            ),
+            prix=390,
+            note=4.8,
+            installations=94,
+            tags=["Auto", "Vision"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Analyse les photos de carrosserie, localise les zones touchées et "
+                "classe la gravité sans estimer ni recommander aucun montant."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
+            },
+        ),
+        MarketplaceListing(
+            nom="Assistant déclaration FNOL",
+            categorie="fnol",
+            editeur="Tunis Digital Insurance",
+            description=(
+                "Transforme une déclaration en français ou en darija en dossier "
+                "sinistre structuré."
+            ),
+            prix=180,
+            note=4.7,
+            installations=211,
+            tags=["Auto", "FNOL"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Structure la déclaration libre en faits, date, lieu, parties et "
+                "pièces annoncées. N'invente jamais une information absente."
+            ),
+            garde_fous={**commun, "langues": ["fr", "darija"]},
+        ),
+        MarketplaceListing(
+            nom="Contrôle de complétude",
+            categorie="extraction",
+            editeur="OpsFlow",
+            description=(
+                "Vérifie les pièces obligatoires et indique clairement les éléments "
+                "encore manquants."
+            ),
+            prix=95,
+            note=4.6,
+            installations=76,
+            tags=["Documents", "Contrôle"],
+            verifie=False,
+            statut="publie",
+            instructions=(
+                "Inventorie les pièces du dossier, contrôle leur lisibilité et produit "
+                "la liste exacte des justificatifs manquants."
+            ),
+            garde_fous={**commun, "outils_autorises": ["inventorier_pieces"]},
+        ),
+        MarketplaceListing(
+            nom="Rédaction décision assurée",
+            categorie="courrier",
+            editeur="ClearClaim",
+            description=(
+                "Rédige un courrier clair à partir des clauses et montants déjà "
+                "validés par le gestionnaire."
+            ),
+            prix=150,
+            note=4.8,
+            installations=163,
+            tags=["Courrier", "Conformité"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Rédige une décision compréhensible et cite les clauses fournies. "
+                "Reprends uniquement le montant explicitement validé par le gestionnaire."
+            ),
+            garde_fous={**commun, "montant_impose": True},
+        ),
+    ]
+
 
 def build_polices() -> list[Police]:
   return [
@@ -270,6 +382,8 @@ def seed() -> None:
             session.add(t)
         for p in build_polices():
             session.add(p)
+        for listing in build_marketplace():
+            session.add(listing)
         session.commit()
 
         agents = build_agents(templates)
@@ -312,7 +426,7 @@ def seed() -> None:
         session.commit()
 
     print(f"Seed OK -> {DB_PATH}")
-    print("  3 templates, 6 polices, 8 agents, 2 workflows, 0 dossier")
+    print("  3 templates, 5 listings marketplace, 6 polices, 8 agents, 2 workflows, 0 dossier")
 
 
 if __name__ == "__main__":

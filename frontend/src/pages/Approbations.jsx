@@ -7,6 +7,7 @@ export default function Approbations({ onNavigate }) {
   const [enAttente, setEnAttente] = useState([])
   const [decidees, setDecidees] = useState([])
   const [message, setMessage] = useState(null)
+  const [surveillance, setSurveillance] = useState({ active: false, verifieLe: null })
   const validateur = libelleValidateur(lireSession())
 
   const charger = async () => {
@@ -18,7 +19,23 @@ export default function Approbations({ onNavigate }) {
     setDecidees(faites)
   }
 
-  useEffect(() => { charger() }, [])
+  const verifierPieces = async () => {
+    let active = false
+    try {
+      await api.surveillerPieces()
+      active = true
+    } catch {
+      // Le connecteur n'est peut-être pas encore activé dans Intégrations.
+    }
+    await charger()
+    setSurveillance({ active, verifieLe: new Date() })
+  }
+
+  useEffect(() => {
+    verifierPieces()
+    const intervalle = window.setInterval(verifierPieces, 8000)
+    return () => window.clearInterval(intervalle)
+  }, [])
 
   const decider = async (tache, decision, montant, motif) => {
     setMessage(null)
@@ -65,6 +82,10 @@ export default function Approbations({ onNavigate }) {
         <h2 className="text-lg font-semibold">File d'approbation</h2>
         <span className="text-sm text-encre/50">
           {enAttente.length} tâche{enAttente.length !== 1 ? 's' : ''} en attente — décideur : {validateur}
+        </span>
+        <span className={`ml-auto text-xs ${surveillance.active ? 'text-ok' : 'text-encre/40'}`}>
+          {surveillance.active ? '● Suivi automatique des pièces actif' : '○ Connectez SharePoint pour le suivi automatique'}
+          {surveillance.verifieLe && ` · vérifié à ${surveillance.verifieLe.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
         </span>
       </div>
 
@@ -125,7 +146,7 @@ const dateCourte = (iso) =>
 
 function CarteTache({ tache: t, onDecision, onRelancer }) {
   const [mode, setMode] = useState(null) // null | 'modifier' | 'refuser' | 'sans_suite'
-  const [montant, setMontant] = useState(t.montant)
+  const [montant, setMontant] = useState(t.piece_chiffree?.montant ?? t.montant)
   const [motif, setMotif] = useState('')
   const [envoi, setEnvoi] = useState(false)
   const [envoiRelance, setEnvoiRelance] = useState(false)
@@ -133,6 +154,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
   const p = t.proposition ?? {}
   const refus = t.type === 'validation_refus'
   const demandePiece = t.type === 'demande_piece'
+  const pieceRecue = demandePiece && t.piece_chiffree_recue
   const relances = t.relances ?? []
 
   const lancer = async (decision, m, mo) => {
@@ -168,7 +190,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
           : refus ? 'bg-bad-tint text-bad'
           : p.sous_seuil ? 'bg-surface-deep text-encre/70' : 'bg-warn-tint text-warn'
         }`}>
-          {demandePiece ? '📎 pièce manquante' : refus ? 'refus à confirmer' : p.sous_seuil ? 'proposition sous seuil' : 'validation obligatoire'}
+          {pieceRecue ? '✓ pièce reçue automatiquement' : demandePiece ? '📎 pièce manquante' : refus ? 'refus à confirmer' : p.sous_seuil ? 'proposition sous seuil' : 'validation obligatoire'}
         </span>
         {p.gravite && <span className="text-xs text-encre/50">gravité : {p.gravite}</span>}
         <div className="ml-auto text-right">
@@ -182,10 +204,19 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
       <GaleriePieces pieces={t.pieces} className="mt-3" hauteur="h-28" />
       {demandePiece && (
         <div className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">
-          <p>
-            Aucune facture ni devis chiffré n'a pu être extrait du dossier. Relancez l'assuré ; s'il ne
-            répond pas, la pièce arrive plus tard (saisissez le montant) ou clôturez sans suite.
-          </p>
+          {pieceRecue ? (
+            <p className="font-medium text-ok">
+              Facture ou devis détecté automatiquement
+              {t.piece_chiffree?.source_nom && ` : ${t.piece_chiffree.source_nom}`}
+              {t.piece_chiffree?.recu_le && ` — reçu le ${dateCourte(t.piece_chiffree.recu_le)}`}.
+              Vérifiez le montant extrait avant de confirmer.
+            </p>
+          ) : (
+            <p>
+              Aucune facture ni devis chiffré n'a pu être extrait du dossier. Le connecteur documentaire
+              vérifie automatiquement si l'assuré transmet la pièce.
+            </p>
+          )}
           {relances.length > 0 && (
             <button onClick={() => setVoirRelances(!voirRelances)} className="mt-1.5 font-semibold underline">
               📧 {relances.length} relance{relances.length > 1 ? 's' : ''} envoyée{relances.length > 1 ? 's' : ''}
@@ -254,7 +285,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
           )}
           <button onClick={() => setMode('modifier')} disabled={envoi}
             className="rounded-md border border-warn/50 px-4 py-2 text-sm font-semibold text-warn transition hover:bg-warn-tint">
-            {demandePiece ? '✎ Pièce reçue — saisir le montant' : '✎ Modifier le montant'}
+            {pieceRecue ? '✓ Traiter la pièce reçue' : demandePiece ? '✎ Saisir une pièce reçue manuellement' : '✎ Modifier le montant'}
           </button>
           {!refus && !demandePiece && (
             <button onClick={() => setMode('refuser')} disabled={envoi}
@@ -262,13 +293,13 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
               ✗ Refuser
             </button>
           )}
-          {demandePiece && (
+          {demandePiece && !pieceRecue && (
             <button onClick={relancer} disabled={envoiRelance || envoi}
               className="rounded-md border border-terracotta/40 px-4 py-2 text-sm font-semibold text-terracotta-deep transition hover:bg-terracotta-tint">
               {envoiRelance ? '…' : '📧 Relancer l\'assuré'}
             </button>
           )}
-          {demandePiece && (
+          {demandePiece && !pieceRecue && (
             <button onClick={ouvrirClotureSansSuite} disabled={envoi}
               className="rounded-md border border-encre/30 px-4 py-2 text-sm font-semibold text-encre/70 transition hover:bg-surface-deep">
               🚫 Clôturer sans suite (assuré non-répondant)

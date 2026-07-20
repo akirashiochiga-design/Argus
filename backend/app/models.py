@@ -7,7 +7,7 @@ en texte, SQLAlchemy sérialise).
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -133,3 +133,50 @@ class IntegrationConnexion(SQLModel, table=True):
     identifiant: str = Field(index=True)
     statut: str = "connecte"
     connecte_le: datetime = Field(default_factory=now)
+
+
+class MarketplaceListing(SQLModel, table=True):
+    """Template d'agent proposé à la vente dans la Marketplace."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    nom: str
+    categorie: str
+    editeur: str
+    description: str
+    prix: float = 0.0
+    note: float = 0.0
+    installations: int = 0
+    tags: list = Field(default_factory=list, sa_column=Column(JSON))
+    verifie: bool = False
+    statut: str = "en_attente"  # en_attente | publie | refuse
+    instructions: str
+    seuils: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    garde_fous: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    cree_le: datetime = Field(default_factory=now)
+
+
+class MarketplaceInstallation(SQLModel, table=True):
+    """Preuve qu'un listing a instancié un agent dans le Studio."""
+
+    __table_args__ = (
+        UniqueConstraint("listing_id", "acheteur", name="uq_marketplace_installation"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    listing_id: int = Field(foreign_key="marketplacelisting.id", index=True)
+    agent_id: int = Field(foreign_key="agent.id")
+    acheteur: str = "compagnie_demo"
+    installe_le: datetime = Field(default_factory=now)
+
+
+class EcritureERP(SQLModel, table=True):
+    """Écriture sortante préparée uniquement après une validation humaine."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    dossier_id: int = Field(foreign_key="dossier.id", index=True)
+    connecteur: str = "sap_finance_demo"
+    statut: str = "planifiee"  # planifiee | envoyee
+    montant: float
+    payload: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    cree_le: datetime = Field(default_factory=now)
+    envoyee_le: Optional[datetime] = None

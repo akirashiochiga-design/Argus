@@ -1,0 +1,26 @@
+{
+  "source": "SharePoint Sinistres",
+  "tenant": "Compagnie Démo",
+  "dossier": "Sinistres Auto / 2026",
+  "documents": [
+    {
+      "dossier_ref": "EXT-SIN-2026-1001",
+      "type": "photo_expertise",
+      "chemin": "docs/samples/degats-3.jpg",
+      "nom_source": "expertise-complementaire-1001.jpg"
+    },
+    {
+      "dossier_ref": "EXT-SIN-2026-1002",
+      "type": "constat",
+      "chemin": "docs/samples/constat.jpg",
+      "nom_source": "constat-signe-1002.jpg"
+    },
+    {
+      "dossier_ref": "SIN-2026-004",
+      "type": "facture",
+      "chemin": "docs/samples/facture.jpg",
+      "nom_source": "facture-reparation-004.jpg",
+      "montant": 1650
+    }
+  ]
+}

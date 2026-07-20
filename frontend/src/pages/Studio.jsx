@@ -561,10 +561,11 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
   const [instructions, setInstructions] = useState(a.instructions)
   const aDesSeuils = a.seuils && Object.keys(a.seuils).length > 0
   const perso = a.garde_fous?.origine === 'prompt_studio'
+  const marketplace = a.garde_fous?.origine === 'marketplace'
   const outils = a.garde_fous?.outils_autorises ?? OUTILS_PAR_CATEGORIE[a.categorie] ?? []
 
   return (
-    <div className={`rounded-lg border bg-surface px-4 py-3 ${perso ? 'border-terracotta/40' : 'border-line'}`}>
+    <div className={`rounded-lg border bg-surface px-4 py-3 ${perso || marketplace ? 'border-terracotta/40' : 'border-line'}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span>{AGENT_ICONE[a.categorie] ?? '⚙️'}</span>
         <span className="text-sm font-semibold">{a.nom}</span>
@@ -573,6 +574,11 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
           a.statut === 'live' ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/60'
         }`}>{a.statut === 'live' ? 'Publié' : 'Brouillon'}</span>
         {perso && <span className="rounded-full bg-terracotta-tint px-2 py-0.5 text-xs font-medium text-terracotta-deep">Personnalisé</span>}
+        {marketplace && (
+          <span className="rounded-full bg-terracotta-tint px-2 py-0.5 text-xs font-medium text-terracotta-deep">
+            Marketplace · {a.garde_fous.editeur}
+          </span>
+        )}
         {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">Dans le parcours</span>}
         {a.garde_fous?.non_desactivable && (
           <span className="rounded bg-bad-tint px-1.5 py-0.5 text-[10px] font-semibold text-bad">🔒 Obligatoire</span>
