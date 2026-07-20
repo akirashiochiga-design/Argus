@@ -1,4 +1,35 @@
-/** Logos de marques (SVG) pour Studio / Intégrations. */
+/** Logos de marques — PNG officiels dans /public/logos, fallback SVG. */
+
+const PNG_SLUGS = new Set([
+  'gmail',
+  'outlook',
+  'slack',
+  'teams',
+  'whatsapp_business',
+  'whatsapp',
+  'google_drive',
+  'drive',
+  'onedrive',
+  'notion',
+  'sharepoint',
+  'coresinistre',
+  'insurance_core',
+  'erp',
+  'erp_interne_demo',
+  'digiclaim',
+  'micard',
+  'pass',
+  'proassur',
+  'erecours',
+])
+
+const PNG_FILE = {
+  whatsapp: 'whatsapp_business',
+  drive: 'google_drive',
+  insurance_core: 'coresinistre',
+  erp_interne_demo: 'erp',
+}
+
 const wrap = (children, className = '') => (
   <svg viewBox="0 0 24 24" className={`h-full w-full ${className}`} aria-hidden="true">
     {children}
@@ -170,13 +201,28 @@ export function BrandLogo({ slug, className = '' }) {
   }
 }
 
+function PngMark({ slug, size }) {
+  const file = PNG_FILE[slug] || slug
+  return (
+    <img
+      src={`/logos/${file}.png`}
+      alt=""
+      width={size}
+      height={size}
+      className="h-full w-full object-contain"
+      draggable={false}
+    />
+  )
+}
+
 export function BrandMark({ slug, size = 36, className = '' }) {
+  const usePng = PNG_SLUGS.has(slug)
   return (
     <div
       className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 ${className}`}
       style={{ width: size, height: size, padding: size > 32 ? 6 : 4 }}
     >
-      <BrandLogo slug={slug} />
+      {usePng ? <PngMark slug={slug} size={size - (size > 32 ? 12 : 8)} /> : <BrandLogo slug={slug} />}
     </div>
   )
 }
