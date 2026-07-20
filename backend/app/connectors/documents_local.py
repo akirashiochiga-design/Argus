@@ -18,6 +18,7 @@ class ConnecteurDocumentsLocal:
     identifiant = "sharepoint_demo"
     nom = "SharePoint Sinistres"
     direction = "entrant"
+    protocole = "local"  # MCP documentaire : à venir
 
     def _manifeste(self) -> dict:
         if not MANIFESTE.exists():
@@ -38,6 +39,8 @@ class ConnecteurDocumentsLocal:
             "tenant": donnees["tenant"],
             "dossier": donnees["dossier"],
             "direction": self.direction,
+            "protocole": self.protocole,
+            "mcp": "à venir",
             "documents_disponibles": len(donnees.get("documents", [])),
             "latence_ms": int((time.monotonic() - debut) * 1000),
         }

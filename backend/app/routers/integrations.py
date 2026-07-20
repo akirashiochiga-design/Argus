@@ -72,6 +72,7 @@ def statut_database(session: Session = Depends(get_session)) -> dict:
     ).first()
     return {
         **info,
+        "protocole": "MCP",
         "statut": "connecte" if connexion else "non_connecte",
         "connecte_le": connexion.connecte_le if connexion else None,
         "derniere_synchronisation": derniere.apres if derniere else None,
@@ -99,8 +100,8 @@ def connecter_database(session: Session = Depends(get_session)) -> dict:
             acteur_type="humain",
             type="connexion_systeme",
             objet="integration:insurance_core",
-            apres={"source": info["source"], "organisation": info["organisation"]},
-            motif="Connexion validée après contrôle du schéma source",
+            apres={"source": info["source"], "organisation": info["organisation"], "protocole": "MCP"},
+            motif="Connexion validée après contrôle du schéma source via MCP",
         )
         session.commit()
         session.refresh(connexion)
@@ -240,6 +241,7 @@ def connecter(
             apres={
                 "nom": connecteur.nom,
                 "direction": connecteur.direction,
+                "protocole": getattr(connecteur, "protocole", info.get("protocole")),
                 "simulation": info.get("simulation", False),
             },
             motif="Test réussi et adaptateur activé depuis le registre Norix",

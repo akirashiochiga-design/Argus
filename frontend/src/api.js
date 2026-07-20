@@ -89,5 +89,11 @@ export const api = {
   connecterConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/connecter`),
   synchroniserConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/synchroniser`),
   listerEcrituresErp: () => request('/integrations/erp/ecritures'),
+  // Connexions MCP (style console Anthropic)
+  listerPlateformesMcp: () => request('/studio/plateformes-mcp'),
+  listerConnexionsAgent: (id) => request(`/agents/${id}/connexions`),
+  connecterPlateformeAgent: (id, slug) => post(`/agents/${id}/connexions/${slug}/connecter`),
+  deconnecterPlateformeAgent: (id, slug) =>
+    request(`/agents/${id}/connexions/${slug}`, { method: 'DELETE' }),
   reseed: () => post('/admin/reseed'),
 }

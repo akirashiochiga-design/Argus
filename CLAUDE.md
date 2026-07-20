@@ -51,9 +51,10 @@ au périmètre :
   assureur peut l'acheter/l'installer et obtient immédiatement un agent `live`
   dans son Studio. Paiement, reversement et certification restent simulés.
 - **Connecteurs démonstrateurs** : formaliser un registre d'adaptateurs autour
-  du connecteur assurance SQLite existant, puis montrer un flux documentaire
-  type SharePoint entrant et une écriture vers l'ERP interne sortante. Ces deux
-  systèmes externes restent des simulations locales clairement identifiées.
+  du connecteur assurance SQLite existant, avec **client MCP démo** vers BDD et
+  ERP (tools/list · tools/call), puis montrer un flux documentaire type
+  SharePoint entrant et une écriture vers l'ERP interne sortante. Ces systèmes
+  externes restent des simulations locales clairement identifiées.
 
 ### Les agents réellement implémentés (le pipeline P5 du cahier des charges)
 1. **FNOL** — lit une déclaration (texte libre FR/darija) → dossier structuré
@@ -75,9 +76,9 @@ code fonctionnel :
   achat/installation dans le Studio appartient à l'extension finale.
 - Multi-tenant réel / isolation inter-organisations. Un seul tenant en dur.
 - RBAC fin. Un login factice + un rôle "superviseur" suffisent.
-- Vrais connecteurs ERP / Drive / MCP de production. Le connecteur core SQLite
-  et les adaptateurs SharePoint/ERP interne locaux servent uniquement de preuves du
-  contrat d'intégration et utilisent des données locales.
+- Vrais connecteurs ERP / Drive / MCP de production. Le connecteur core SQLite,
+  les adaptateurs SharePoint/ERP locaux et le **client MCP démo** (serveurs
+  in-process) servent uniquement de preuves du contrat d'intégration.
 - Coffre à secrets, rotation de clés, environnements bac-à-sable vs prod séparés.
 - Versioning / rollback des agents, promotion, déploiement en un clic.
 - Scoring de fraude, graphe de fraude, doublons, subrogation, provisions, reporting réglementaire.

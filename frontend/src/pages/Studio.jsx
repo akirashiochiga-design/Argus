@@ -41,6 +41,8 @@ export default function Studio() {
   const [creation, setCreation] = useState(null) // template pour le formulaire modal
   const [composeur, setComposeur] = useState(null)
   const [message, setMessage] = useState(null)
+  const [plateformes, setPlateformes] = useState([])
+  const [connexionsAgent, setConnexionsAgent] = useState(null) // agent ouvert pour connexions MCP
 
   const charger = async () => {
     const [t, a, w] = await Promise.all([
@@ -60,6 +62,7 @@ export default function Studio() {
   useEffect(() => {
     charger()
     api.categoriesStudio().then(setCategories).catch(() => {})
+    api.listerPlateformesMcp().then(setPlateformes).catch(() => {})
   }, [])
 
   const agentsDuPipeline = new Set((workflow?.etapes ?? []).map((e) => e.agent_id))
@@ -98,6 +101,46 @@ export default function Studio() {
           setMessage({ ton: 'succes', texte: `Module « ${nom} » créé — publiez-le pour l'utiliser.` })
         }}
       />
+
+      {/* ---- connexions MCP (style console Anthropic) ---- */}
+      <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">Connexions MCP</h3>
+              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
+                MCP
+              </span>
+            </div>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-encre/45">
+              Branchez Gmail, Outlook, Slack… sur un agent — comme dans la console Anthropic.
+              OAuth simulé ; chaque activation est auditée. Cliquez « Connexions » sur un module.
+            </p>
+          </div>
+          <span className="text-xs text-encre/40">{plateformes.length} plateformes</span>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4">
+          {plateformes.map((p) => (
+            <div key={p.slug} className="flex items-start gap-3 border-b border-line px-4 py-3.5 lg:border-r">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
+                style={{ background: p.couleur }}
+              >
+                {p.initiales}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">{p.nom}</div>
+                <div className="text-[11px] text-encre/40">{p.categorie} · {p.tools_count} tools</div>
+              </div>
+            </div>
+          ))}
+          {plateformes.length === 0 && (
+            <p className="col-span-full px-5 py-8 text-center text-sm text-encre/40">
+              Catalogue MCP indisponible — démarrez le backend.
+            </p>
+          )}
+        </div>
+      </section>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,1fr)_minmax(0,1.6fr)]">
         {/* templates */}
@@ -222,11 +265,29 @@ export default function Studio() {
                   `Seuils de « ${a.nom} » mis à jour et enregistrés dans le journal d'audit.`)}
                 onInstructions={(instructions) => agir(() => api.modifierAgent(a.id, { instructions }),
                   `Instructions de « ${a.nom} » mises à jour et enregistrées dans le journal d'audit.`)}
+                onConnexions={() => setConnexionsAgent(a)}
               />
             ))}
           </div>
         </div>
       </div>
+
+      {connexionsAgent && (
+        <PanneauConnexionsMcp
+          agent={connexionsAgent}
+          onFermer={() => setConnexionsAgent(null)}
+          onChange={async (texte) => {
+            await charger()
+            const maj = agents.find((x) => x.id === connexionsAgent.id)
+            if (maj) {
+              const fresh = (await api.listerAgents()).find((x) => x.id === connexionsAgent.id)
+              if (fresh) setConnexionsAgent(fresh)
+            }
+            setMessage({ ton: 'succes', texte })
+          }}
+          onErreur={(texte) => setMessage({ ton: 'erreur', texte })}
+        />
+      )}
 
       {creation && (
         <FormulaireTemplate template={creation} onFermer={() => setCreation(null)}
@@ -554,7 +615,7 @@ function CreateurPrompt({ categories, onCree }) {
 
 /* ============ carte d'un agent déployé ============ */
 
-function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstructions }) {
+function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstructions, onConnexions }) {
   const [editionSeuil, setEditionSeuil] = useState(false)
   const [editionInstructions, setEditionInstructions] = useState(false)
   const [seuil, setSeuil] = useState(a.seuils?.seuil_validation ?? '')
@@ -563,6 +624,7 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
   const perso = a.garde_fous?.origine === 'prompt_studio'
   const marketplace = a.garde_fous?.origine === 'marketplace'
   const outils = a.garde_fous?.outils_autorises ?? OUTILS_PAR_CATEGORIE[a.categorie] ?? []
+  const connexions = Object.keys(a.garde_fous?.connexions_mcp ?? {})
 
   return (
     <div className={`rounded-lg border bg-surface px-4 py-3 ${perso || marketplace ? 'border-terracotta/40' : 'border-line'}`}>
@@ -580,6 +642,11 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
           </span>
         )}
         {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">Dans le parcours</span>}
+        {connexions.length > 0 && (
+          <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
+            MCP · {connexions.length}
+          </span>
+        )}
         {a.garde_fous?.non_desactivable && (
           <span className="rounded bg-bad-tint px-1.5 py-0.5 text-[10px] font-semibold text-bad">🔒 Obligatoire</span>
         )}
@@ -589,6 +656,10 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
               Publier
             </button>
           )}
+          <button onClick={onConnexions}
+            className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/60 hover:bg-surface-deep">
+            Connexions
+          </button>
           <button onClick={() => setEditionInstructions(!editionInstructions)}
             className="rounded-md border border-line px-3 py-1 text-xs font-semibold text-encre/60 hover:bg-surface-deep">
             ✎ Instructions
@@ -601,6 +672,16 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
           )}
         </div>
       </div>
+      {connexions.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-encre/50">
+          <span className="font-semibold">Apps MCP :</span>
+          {connexions.map((slug) => (
+            <span key={slug} className="rounded bg-surface-deep px-2 py-0.5 capitalize text-encre/70">
+              {slug.replaceAll('_', ' ')}
+            </span>
+          ))}
+        </div>
+      )}
       {outils.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-encre/50">
           <span className="font-semibold">Sources consultées :</span>
@@ -713,6 +794,121 @@ function FormulaireTemplate({ template, onFermer, onCree }) {
             className="rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme hover:bg-encre/85 disabled:opacity-50">
             {envoi ? 'Création…' : 'Créer en brouillon'}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============ connexions MCP par agent (style console Anthropic) ============ */
+
+function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
+  const [plateformes, setPlateformes] = useState([])
+  const [chargement, setChargement] = useState(true)
+  const [action, setAction] = useState(null)
+
+  const charger = async () => {
+    setChargement(true)
+    try {
+      const data = await api.listerConnexionsAgent(agent.id)
+      setPlateformes(data.plateformes)
+    } catch (e) {
+      onErreur(e.message)
+    } finally {
+      setChargement(false)
+    }
+  }
+
+  useEffect(() => {
+    charger()
+  }, [agent.id])
+
+  const basculer = async (slug, connecte) => {
+    setAction(slug)
+    try {
+      if (connecte) {
+        await api.deconnecterPlateformeAgent(agent.id, slug)
+        await onChange(`Déconnecté de ${slug.replaceAll('_', ' ')}`)
+      } else {
+        const res = await api.connecterPlateformeAgent(agent.id, slug)
+        await onChange(
+          `Connecté via MCP à ${slug.replaceAll('_', ' ')} (${res.connexion.compte}) — tools : ${res.connexion.tools.join(', ')}`
+        )
+      }
+      await charger()
+    } catch (e) {
+      onErreur(e.message)
+    } finally {
+      setAction(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-encre/45 p-4" onClick={onFermer}>
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold">Connexions MCP — {agent.nom}</h3>
+              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
+                MCP
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-encre/45">
+              Activez les apps que cet agent peut utiliser (tools/list · tools/call). OAuth simulé pour la démo.
+            </p>
+          </div>
+          <button type="button" onClick={onFermer} className="text-encre/40 hover:text-encre">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2">
+          {chargement ? (
+            <p className="px-4 py-10 text-center text-sm text-encre/40">Chargement…</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {plateformes.map((p) => (
+                <li key={p.slug} className="flex items-center gap-3 px-4 py-3.5">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white"
+                    style={{ background: p.couleur }}
+                  >
+                    {p.initiales}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold">{p.nom}</span>
+                      <span className="text-[11px] text-encre/40">{p.editeur}</span>
+                      {p.connecte && (
+                        <span className="rounded-full bg-ok-tint px-2 py-0.5 text-[10px] font-semibold text-ok">
+                          Connecté
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-encre/45">{p.description}</p>
+                    <p className="mt-1 text-[11px] text-encre/35">
+                      {p.connecte
+                        ? `${p.connexion.compte} · ${p.connexion.tools.join(' · ')}`
+                        : `Tools : ${p.tools.join(' · ')}`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={action !== null}
+                    onClick={() => basculer(p.slug, p.connecte)}
+                    className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                      p.connecte
+                        ? 'border border-line text-encre/60 hover:bg-surface-deep'
+                        : 'bg-encre text-creme hover:bg-encre/85'
+                    }`}
+                  >
+                    {action === p.slug ? '…' : p.connecte ? 'Déconnecter' : 'Connecter'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

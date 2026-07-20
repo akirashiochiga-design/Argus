@@ -380,9 +380,15 @@ def _pieces_source(connexion: sqlite3.Connection, sinistre_id: int) -> list[dict
 
 
 def synchroniser(session: Session) -> dict:
-    """Importe ou met à jour les polices puis ajoute les nouveaux sinistres."""
+    """Importe ou met à jour les polices puis ajoute les nouveaux sinistres via MCP."""
+    from ..mcp import McpClient, serveur_bdd
+
     debut = time.monotonic()
-    info = tester_connexion()
+    client = McpClient(serveur_bdd())
+    schema = client.call_tool("apercu_schema", session=session)
+    polices_payload = client.call_tool("lire_polices", session=session)
+    sinistres_payload = client.call_tool("lire_sinistres", session=session)
+
     workflow = traitement_actif(session)
     if not workflow:
         raise ConnexionAssuranceInvalide("Aucun parcours actif dans Norix")
@@ -394,72 +400,68 @@ def synchroniser(session: Session) -> dict:
         "sinistres_crees": 0,
         "sinistres_ignores": 0,
     }
-    with _connexion() as connexion:
-        for source in _polices_source(connexion):
-            police = session.exec(
-                select(Police).where(Police.numero == source["numero"])
-            ).first()
-            valeurs = {
-                "assure_nom": source["assure_nom"],
-                "formule": source["formule"],
-                "prime_payee": source["prime_payee"],
-                "vehicule": source["vehicule"],
-                "garanties": source["garanties"],
-            }
-            if not police:
-                police = Police(numero=source["numero"], **valeurs)
-                session.add(police)
-                compteurs["polices_creees"] += 1
-            elif any(getattr(police, cle) != valeur for cle, valeur in valeurs.items()):
-                for cle, valeur in valeurs.items():
-                    setattr(police, cle, valeur)
-                session.add(police)
-                compteurs["polices_mises_a_jour"] += 1
-            else:
-                compteurs["polices_inchangees"] += 1
-        session.flush()
-
-        polices_norix = {
-            police.numero: police
-            for police in session.exec(
-                select(Police).where(
-                    Police.numero.in_([source["numero"] for source in _polices_source(connexion)])
-                )
-            ).all()
+    for source in polices_payload["polices"]:
+        police = session.exec(
+            select(Police).where(Police.numero == source["numero"])
+        ).first()
+        valeurs = {
+            "assure_nom": source["assure_nom"],
+            "formule": source["formule"],
+            "prime_payee": source["prime_payee"],
+            "vehicule": source["vehicule"],
+            "garanties": source["garanties"],
         }
-        sinistres_source = connexion.execute(
-            """SELECT s.id, s.reference, s.declaration, p.numero AS police_numero
-               FROM sinistres s
-               JOIN polices p ON p.id = s.police_id
-               ORDER BY s.reference"""
+        if not police:
+            police = Police(numero=source["numero"], **valeurs)
+            session.add(police)
+            compteurs["polices_creees"] += 1
+        elif any(getattr(police, cle) != valeur for cle, valeur in valeurs.items()):
+            for cle, valeur in valeurs.items():
+                setattr(police, cle, valeur)
+            session.add(police)
+            compteurs["polices_mises_a_jour"] += 1
+        else:
+            compteurs["polices_inchangees"] += 1
+    session.flush()
+
+    numeros = [source["numero"] for source in polices_payload["polices"]]
+    polices_norix = {
+        police.numero: police
+        for police in session.exec(
+            select(Police).where(Police.numero.in_(numeros))
+        ).all()
+    } if numeros else {}
+
+    for source in sinistres_payload["sinistres"]:
+        existe = session.exec(
+            select(Dossier).where(Dossier.ref == source["reference"])
+        ).first()
+        pieces_source = source["pieces"]
+        if existe:
+            if existe.etape_courante == 0 and existe.pieces != pieces_source:
+                existe.pieces = pieces_source
+                session.add(existe)
+            compteurs["sinistres_ignores"] += 1
+            continue
+        police = polices_norix[source["police_numero"]]
+        dossier = Dossier(
+            ref=source["reference"],
+            police_id=police.id,
+            workflow_id=workflow.id,
+            declaration_texte=source["declaration"],
+            etat="recu",
+            etape_courante=0,
+            pieces=pieces_source,
         )
-        for source in sinistres_source:
-            existe = session.exec(
-                select(Dossier).where(Dossier.ref == source["reference"])
-            ).first()
-            if existe:
-                pieces_source = _pieces_source(connexion, source["id"])
-                if existe.etape_courante == 0 and existe.pieces != pieces_source:
-                    existe.pieces = pieces_source
-                    session.add(existe)
-                compteurs["sinistres_ignores"] += 1
-                continue
-            police = polices_norix[source["police_numero"]]
-            dossier = Dossier(
-                ref=source["reference"],
-                police_id=police.id,
-                workflow_id=workflow.id,
-                declaration_texte=source["declaration"],
-                etat="recu",
-                etape_courante=0,
-                pieces=_pieces_source(connexion, source["id"]),
-            )
-            session.add(dossier)
-            compteurs["sinistres_crees"] += 1
+        session.add(dossier)
+        compteurs["sinistres_crees"] += 1
 
     resultat = {
         "statut": "succes",
-        "source": info["source"],
+        "source": "CoreSinistre",
+        "protocole": "MCP",
+        "tools": ["apercu_schema", "lire_polices", "lire_sinistres"],
+        "schema_version": schema.get("schema_version"),
         **compteurs,
         "duree_ms": int((time.monotonic() - debut) * 1000),
         "horodatage": datetime.now(timezone.utc).isoformat(),
@@ -471,21 +473,35 @@ def synchroniser(session: Session) -> dict:
         type="synchronisation_donnees",
         objet="integration:insurance_core",
         apres=resultat,
-        motif="Synchronisation manuelle depuis le SI assurance",
+        motif="Synchronisation manuelle via MCP (lire_polices · lire_sinistres)",
     )
     session.commit()
     return resultat
 
 
 class ConnecteurAssuranceSQLite:
-    """Adaptateur du SI core assurance conforme au registre Norix."""
+    """Adaptateur du SI core assurance conforme au registre Norix (via MCP)."""
 
     identifiant = "insurance_core"
     nom = "CoreSinistre"
     direction = "entrant"
+    protocole = "MCP"
 
     def tester(self) -> dict:
-        return tester_connexion()
+        from ..mcp import McpClient, serveur_bdd
+
+        client = McpClient(serveur_bdd())
+        ping = client.call_tool("ping", auditer=False)
+        schema = client.call_tool("apercu_schema", auditer=False)
+        tools = [tool["name"] for tool in client.list_tools()]
+        return {
+            **tester_connexion(),
+            "protocole": "MCP",
+            "mcp_server": serveur_bdd().name,
+            "mcp_tools": tools,
+            "mcp_ping": ping,
+            "latence_ms": ping.get("latence_ms", schema.get("latence_ms")),
+        }
 
     def synchroniser(self, session: Session) -> dict:
         return synchroniser(session)

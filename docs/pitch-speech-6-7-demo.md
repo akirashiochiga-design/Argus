@@ -229,30 +229,35 @@ estimation.
 
 **Combien de temps pour brancher un agent chez un vrai assureur ?**
 On ne recode pas Norix pour chaque système — **un adaptateur, pas une
-réécriture du SI**. Protocole : REST · SQL lecture seule · SFTP · Graph.
-Parcours en 4 temps : choisir le pack (Guidewire, Duck Creek, Sapiens,
-SharePoint…) ou un connecteur universel → tester schéma et droits minimaux →
-mapper vers Police, Dossier, Pièce → activer avec dry-run, audit et reprise
-sur erreur. Un petit Norix Relay tourne dans le réseau de l'assureur : les
-données sont traduites vers le modèle Norix, et les agents ne reçoivent ni
-identifiants ERP ni accès réseau libre. Avec un connecteur connu, la première
-synchronisation se fait en quelques heures ; pour un SI interne, on parle de
-quelques jours de mapping, pas de plusieurs mois de développement. La mise en
-production complète reste soumise aux tests de sécurité de l'assureur.
+réécriture du SI**. Protocole d'intégration : **MCP** (`tools/list` ·
+`tools/call`), avec REST · SQL lecture seule · SFTP · Graph en secours.
+Norix se connecte aux BDD et ERP via MCP : un adaptateur découvre les tools,
+appelle, mappe, audite — sans donner le réseau aux agents. Parcours en 4 temps :
+choisir le pack (Guidewire, Duck Creek, Sapiens, SharePoint…) ou un connecteur
+universel MCP → tester schéma et droits minimaux → mapper vers Police, Dossier,
+Pièce → activer avec dry-run, audit et reprise sur erreur. Un petit Norix Relay
+tourne dans le réseau de l'assureur : les données sont traduites vers le modèle
+Norix, et les agents ne reçoivent ni identifiants ERP ni accès réseau libre.
+Avec un connecteur connu, la première synchronisation se fait en quelques heures ;
+pour un SI interne, on parle de quelques jours de mapping, pas de plusieurs mois
+de développement. La mise en production complète reste soumise aux tests de
+sécurité de l'assureur.
 
 **Et si l'ERP est ancien ou développé en interne ?**
-Le Relay initie uniquement des connexions sortantes et supporte les interfaces
-que ces systèmes exposent déjà : vue SQL en lecture seule, API REST/SOAP, dépôt
+Le Relay initie uniquement des connexions sortantes et expose le SI derrière un
+serveur MCP (tools stables : lire, tester, écrire après HITL). Il s'appuie sur
+les interfaces déjà disponibles : vue SQL en lecture seule, API REST/SOAP, dépôt
 SFTP ou export de fichiers. Si aucun pack n'existe, l'intégrateur implémente
-seulement quatre opérations standard — tester, lire, mapper, écrire — sans
-modifier les agents ni le moteur Norix. Les écritures sortantes restent
-séparées et ne sont déclenchées qu'après validation humaine.
+seulement les tools MCP standard — sans modifier les agents ni le moteur Norix.
+Les écritures sortantes restent séparées et ne sont déclenchées qu'après
+validation humaine.
 
 **Vous avez vraiment connecté SharePoint et l'ERP interne ?**
 Le connecteur « CoreSinistre » montré en direct lit réellement une base
-externe en lecture seule, valide son schéma et synchronise sans doublon.
-SharePoint et l'ERP interne suivent le même contrat d'intégration entrant et
-sortant, avec audit et reprise.
+externe en lecture seule **via MCP** (`lire_polices`, `lire_sinistres`), valide
+son schéma et synchronise sans doublon. L'ERP interne envoie les écritures après
+HITL via `envoyer_ecritures_planifiees`. SharePoint suit le même contrat
+d'intégration (MCP documentaire en cours) ; chaque appel est audité.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,

@@ -81,7 +81,7 @@ export default function Integrations() {
       await charger()
       setMessage({
         ton: 'succes',
-        texte: `Synchronisé — ${resultat.polices_creees + resultat.polices_mises_a_jour} police(s), ${resultat.sinistres_crees} nouveau(x) sinistre(s).`,
+        texte: `Synchronisé via MCP (lire_polices · lire_sinistres) — ${resultat.polices_creees + resultat.polices_mises_a_jour} police(s), ${resultat.sinistres_crees} nouveau(x) sinistre(s).`,
       })
     } catch (erreur) {
       await charger()
@@ -101,10 +101,10 @@ export default function Integrations() {
       let texte
       if (identifiant === 'sharepoint_demo') {
         texte = resultat.dossiers_introuvables?.length
-          ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents d’Norix.`
+          ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents de Norix.`
           : `${resultat.documents_importes} document(s) importé(s), ${resultat.documents_ignores} déjà présent(s).`
       } else {
-        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) à l’ERP Finance.`
+        texte = `ERP synchronisé via MCP (envoyer_ecritures_planifiees) — ${resultat.ecritures_envoyees} écriture(s).`
       }
       setMessage({ ton: 'succes', texte })
     } catch (erreur) {
@@ -134,7 +134,7 @@ export default function Integrations() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
           <p className="mt-1 max-w-xl text-sm leading-6 text-encre/50">
-            Ouvrez le SI source, ajoutez un contrat ou un sinistre, puis synchronisez vers Norix.
+            Ouvrez le SI source, ajoutez un contrat ou un sinistre, puis synchronisez vers Norix via MCP.
           </p>
         </div>
         <button
@@ -142,7 +142,7 @@ export default function Integrations() {
           disabled={action !== null}
           className="rounded-md bg-encre px-4 py-2.5 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
         >
-          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser Norix' : 'Connecter & synchroniser'}
+          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser via MCP' : 'Connecter & synchroniser'}
         </button>
       </header>
 
@@ -164,10 +164,14 @@ export default function Integrations() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold">{statut?.source ?? 'CoreSinistre'}</h3>
+              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
+                MCP
+              </span>
               <StatutPoint actif={connecte} libelle={connecte ? 'Connecté' : 'Hors ligne'} />
             </div>
             <p className="mt-0.5 truncate text-sm text-encre/45">
-              {statut?.organisation}
+              MCP · tools/list · tools/call
+              {statut?.organisation ? ` · ${statut.organisation}` : ''}
               {statut?.latence_ms != null ? ` · ${statut.latence_ms} ms` : ''}
             </p>
           </div>
@@ -193,8 +197,9 @@ export default function Integrations() {
         </div>
         {derniere && (
           <p className="border-t border-line px-6 py-3 text-xs text-encre/40">
-            Dernier import · {derniere.polices_creees + derniere.polices_mises_a_jour} polices ·{' '}
+            Dernier import MCP · {derniere.polices_creees + derniere.polices_mises_a_jour} polices ·{' '}
             {derniere.sinistres_crees} sinistres · {derniere.duree_ms} ms
+            {derniere.tools ? ` · ${derniere.tools.join(' · ')}` : ''}
           </p>
         )}
       </section>
@@ -249,7 +254,8 @@ export default function Integrations() {
             initiales="SP"
             couleur="bg-[#038387]"
             titre="SharePoint Sinistres"
-            detail={sharepoint ? `${sharepoint.documents_disponibles} document(s)` : 'Documents entrants'}
+            detail={sharepoint ? `${sharepoint.documents_disponibles} document(s) · MCP à venir` : 'Documents entrants · MCP à venir'}
+            protocole="local"
             connecte={sharepoint?.statut === 'connecte'}
             enCours={action === 'sharepoint_demo'}
             bloque={action !== null}
@@ -260,7 +266,8 @@ export default function Integrations() {
             initiales="ERP"
             couleur="bg-[#334155]"
             titre="ERP Finance"
-            detail={`${erpAttente} en attente · ${erpEnvoyees} envoyée(s)`}
+            detail={`${erpAttente} en attente · ${erpEnvoyees} envoyée(s) · MCP tools/call`}
+            protocole="MCP"
             connecte={erpInterne?.statut === 'connecte'}
             enCours={action === 'erp_interne_demo'}
             bloque={action !== null}
@@ -373,6 +380,7 @@ function LigneConnecteur({
   couleur,
   titre,
   detail,
+  protocole,
   connecte,
   enCours,
   bloque,
@@ -387,6 +395,11 @@ function LigneConnecteur({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold">{titre}</span>
+          {protocole === 'MCP' && (
+            <span className="rounded-full bg-encre px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-creme">
+              MCP
+            </span>
+          )}
           <StatutPoint actif={connecte} libelle={connecte ? 'Actif' : 'Prêt'} />
         </div>
         <p className="mt-0.5 truncate text-xs text-encre/45">{detail}</p>

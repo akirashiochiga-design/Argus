@@ -362,3 +362,127 @@ def creer_agent_personnalise(corps: AgentPersonnalise, session: Session = Depend
     session.commit()
     session.refresh(agent)
     return agent
+
+
+@router.get("/studio/plateformes-mcp")
+def lister_plateformes_mcp() -> list[dict]:
+    """Catalogue type console Anthropic : apps connectables aux agents via MCP."""
+    from ..connectors import plateformes as apps
+
+    return apps.catalogue()
+
+
+@router.get("/agents/{agent_id}/connexions")
+def lister_connexions_agent(agent_id: int, session: Session = Depends(get_session)) -> dict:
+    from ..connectors import plateformes as apps
+
+    agent = session.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(404, "Module introuvable")
+    connexions = (agent.garde_fous or {}).get("connexions_mcp") or {}
+    catalogue = []
+    for plateforme in apps.catalogue():
+        active = connexions.get(plateforme["slug"])
+        catalogue.append(
+            {
+                **plateforme,
+                "connecte": bool(active),
+                "connexion": active,
+            }
+        )
+    return {
+        "agent_id": agent.id,
+        "agent_nom": agent.nom,
+        "protocole": "MCP",
+        "plateformes": catalogue,
+        "connectees": sum(1 for item in catalogue if item["connecte"]),
+    }
+
+
+@router.post("/agents/{agent_id}/connexions/{slug}/connecter")
+def connecter_plateforme(
+    agent_id: int,
+    slug: str,
+    session: Session = Depends(get_session),
+) -> dict:
+    """Simule OAuth + active le pack de tools MCP sur l'agent."""
+    from ..connectors import plateformes as apps
+
+    agent = session.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(404, "Module introuvable")
+    try:
+        plateforme = apps.obtenir(slug)
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+    avant = dict((agent.garde_fous or {}).get("connexions_mcp") or {})
+    agent.garde_fous = apps.connecter(agent.garde_fous or {}, slug)
+    agent.version += 1
+    # Force SQLAlchemy à voir le changement JSON
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(agent, "garde_fous")
+    connexion = agent.garde_fous["connexions_mcp"][slug]
+    tracer(
+        session,
+        "humain:superviseur",
+        "humain",
+        "connexion_mcp_plateforme",
+        f"agent:{agent.id}",
+        avant={"connexions": list(avant.keys())},
+        apres={
+            "plateforme": slug,
+            "nom": plateforme["nom"],
+            "compte": connexion["compte"],
+            "tools": connexion["tools"],
+            "protocole": "MCP",
+            "simulation": True,
+        },
+        motif=f"Connexion MCP simulée à {plateforme['nom']}",
+    )
+    session.commit()
+    session.refresh(agent)
+    return {
+        "agent_id": agent.id,
+        "plateforme": slug,
+        "connexion": connexion,
+        "version": agent.version,
+    }
+
+
+@router.delete("/agents/{agent_id}/connexions/{slug}")
+def deconnecter_plateforme(
+    agent_id: int,
+    slug: str,
+    session: Session = Depends(get_session),
+) -> dict:
+    from ..connectors import plateformes as apps
+
+    agent = session.get(Agent, agent_id)
+    if not agent:
+        raise HTTPException(404, "Module introuvable")
+    try:
+        plateforme = apps.obtenir(slug)
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+    avant = dict((agent.garde_fous or {}).get("connexions_mcp") or {})
+    if slug not in avant:
+        raise HTTPException(404, f"Aucune connexion active pour {slug}")
+    agent.garde_fous = apps.deconnecter(agent.garde_fous or {}, slug)
+    agent.version += 1
+    from sqlalchemy.orm.attributes import flag_modified
+
+    flag_modified(agent, "garde_fous")
+    tracer(
+        session,
+        "humain:superviseur",
+        "humain",
+        "deconnexion_mcp_plateforme",
+        f"agent:{agent.id}",
+        avant={"plateforme": slug, "compte": avant[slug].get("compte")},
+        apres={"plateforme": slug, "statut": "deconnecte"},
+        motif=f"Déconnexion MCP de {plateforme['nom']}",
+    )
+    session.commit()
+    session.refresh(agent)
+    return {"agent_id": agent.id, "plateforme": slug, "statut": "deconnecte", "version": agent.version}

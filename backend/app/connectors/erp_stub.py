@@ -1,6 +1,4 @@
 """File sortante locale représentant l'ERP financier interne d'un assureur."""
-from datetime import datetime, timezone
-
 from sqlmodel import Session, select
 
 from ..audit import tracer
@@ -11,48 +9,32 @@ class ConnecteurERPDemo:
     identifiant = "erp_interne_demo"
     nom = "ERP Finance interne"
     direction = "sortant"
+    protocole = "MCP"
 
     def tester(self) -> dict:
+        from ..mcp import McpClient, serveur_erp
+
+        client = McpClient(serveur_erp())
+        ping = client.call_tool("ping", auditer=False)
         return {
             "identifiant": self.identifiant,
             "nom": self.nom,
             "direction": self.direction,
-            "protocole": "REST / SOAP / SQL",
-            "mode": "écriture après validation humaine",
-            "latence_ms": 18,
+            "protocole": "MCP",
+            "mcp_server": serveur_erp().name,
+            "mcp_tools": [tool["name"] for tool in client.list_tools()],
+            "mode": ping.get("mode", "écriture après validation humaine"),
+            "latence_ms": ping.get("latence_ms", 12),
         }
 
     def synchroniser(self, session: Session) -> dict:
-        ecritures = session.exec(
-            select(EcritureERP).where(
-                EcritureERP.connecteur == self.identifiant,
-                EcritureERP.statut == "planifiee",
-            )
-        ).all()
-        for ecriture in ecritures:
-            ecriture.statut = "envoyee"
-            ecriture.envoyee_le = datetime.now(timezone.utc)
-            session.add(ecriture)
-            dossier = session.get(Dossier, ecriture.dossier_id)
-            tracer(
-                session,
-                acteur="systeme:connecteur_erp_interne",
-                acteur_type="agent",
-                type="ecriture_erp_envoyee",
-                objet=f"dossier:{dossier.ref if dossier else ecriture.dossier_id}",
-                avant={"statut": "planifiee"},
-                apres={
-                    "statut": "envoyee",
-                    "montant": ecriture.montant,
-                    "connecteur": self.identifiant,
-                },
-                motif="Accusé de réception du SI interne après validation humaine",
-            )
-        session.commit()
-        return {
-            "statut": "succes",
-            "ecritures_envoyees": len(ecritures),
-        }
+        from ..mcp import McpClient, serveur_erp
+
+        client = McpClient(serveur_erp())
+        return client.call_tool(
+            "envoyer_ecritures_planifiees",
+            session=session,
+        )
 
 
 def planifier_ecriture(
@@ -76,6 +58,7 @@ def planifier_ecriture(
             "montant_valide": dossier.montant_valide,
             "devise": "TND",
             "valide_par": validateur,
+            "protocole": "MCP",
         },
     )
     session.add(ecriture)
@@ -91,6 +74,7 @@ def planifier_ecriture(
             "montant": ecriture.montant,
             "connecteur": ecriture.connecteur,
             "statut": ecriture.statut,
+            "protocole": "MCP",
         },
         motif="Écriture préparée après validation explicite du gestionnaire",
     )

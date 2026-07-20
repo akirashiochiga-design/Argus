@@ -249,7 +249,10 @@
     <p class="a">Quelques centimes de dollar d'appel IA par dossier (affiché en direct au dashboard), contre en moyenne plusieurs heures de gestionnaire pour le même traitement. Visible ligne par ligne, dossier par dossier — pas une estimation.</p>
 
     <p class="q">Combien de temps pour brancher un agent chez un vrai assureur ?</p>
-    <p class="a">Aujourd'hui, dans le pitch : un après-midi pour créer l'agent, contre 6 à 18 mois pour le brancher au core et le mettre en prod dans l'existant. C'est exactement le problème qu'Norix résout — la couche de déploiement et de gouvernance entre le modèle et le système d'information, pas juste un créateur d'agents de plus.</p>
+    <p class="a">Norix se connecte aux BDD et ERP via MCP : un adaptateur découvre les tools (`tools/list`), appelle (`tools/call`), mappe et audite — sans donner le réseau aux agents. En démo : CoreSinistre et l'ERP Finance passent déjà par MCP. Créer l'agent prend un après-midi ; brancher un SI réel, quelques heures à quelques jours de mapping — pas 6 à 18 mois de réécriture.</p>
+
+    <p class="q">Vous avez vraiment connecté une base et un ERP ?</p>
+    <p class="a">Oui en démo locale : CoreSinistre lit via MCP (`lire_polices`, `lire_sinistres`) ; l'ERP envoie après HITL via `envoyer_ecritures_planifiees`. Chaque appel est dans la piste d'audit.</p>
 
     <p class="q">Vous ciblez que l'assurance auto ?</p>
     <p class="a">Pour la preuve de concept, oui — une seule branche, sinistre matériel auto, volontairement pour aller au bout d'un parcours démontrable plutôt que de saupoudrer sur plusieurs branches à moitié câblées. L'architecture n'a rien de spécifique à l'auto ; habitation et santé sont la suite naturelle, pas une refonte.</p>

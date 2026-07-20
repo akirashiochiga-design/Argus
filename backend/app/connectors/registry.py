@@ -24,6 +24,7 @@ def catalogue() -> list[dict]:
             "identifiant": connecteur.identifiant,
             "nom": connecteur.nom,
             "direction": connecteur.direction,
+            "protocole": getattr(connecteur, "protocole", "local"),
         }
         for connecteur in _CONNECTEURS.values()
     ]
