@@ -539,21 +539,6 @@ def seed() -> None:
             ],
         )
         session.add(workflow)
-        session.add(
-            Workflow(
-                nom="Bris de glace",
-                description="Traitement allégé des déclarations liées au vitrage automobile.",
-                est_defaut=False,
-                etapes=[
-                    {"ordre": 0, "agent_id": agents[0].id, "type": "agent"},
-                    {"ordre": 1, "agent_id": agents[1].id, "type": "agent"},
-                    {"ordre": 2, "agent_id": agents[4].id, "type": "agent"},
-                    {"ordre": 3, "agent_id": agents[5].id, "type": "agent"},
-                    {"ordre": 4, "agent_id": agents[6].id, "type": "porte_humaine"},
-                    {"ordre": 5, "agent_id": agents[7].id, "type": "agent"},
-                ],
-            )
-        )
         session.commit()
 
         # Branche habitation — même modules que l'auto (le code gère la branche).
@@ -587,7 +572,7 @@ def seed() -> None:
 
     print(f"Seed OK -> {DB_PATH}")
     print(
-        "  3 templates, 5 listings marketplace, 7 polices, 16 agents, 3 workflows, "
+        "  3 templates, 5 listings marketplace, 7 polices, 16 agents, 2 workflows, "
         "0 dossier (pipeline vide)"
     )
 
