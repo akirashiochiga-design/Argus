@@ -228,36 +228,37 @@ traitement. C'est visible ligne par ligne, dossier par dossier — pas une
 estimation.
 
 **Combien de temps pour brancher un agent chez un vrai assureur ?**
-On ne recode pas Norix pour chaque système — **un adaptateur, pas une
-réécriture du SI**. Protocole d'intégration : **MCP** (`tools/list` ·
-`tools/call`), avec REST · SQL lecture seule · SFTP · Graph en secours.
-Norix se connecte aux BDD et ERP via MCP : un adaptateur découvre les tools,
-appelle, mappe, audite — sans donner le réseau aux agents. Parcours en 4 temps :
-choisir le pack (Guidewire, Duck Creek, Sapiens, SharePoint…) ou un connecteur
-universel MCP → tester schéma et droits minimaux → mapper vers Police, Dossier,
-Pièce → activer avec dry-run, audit et reprise sur erreur. Un petit Norix Relay
-tourne dans le réseau de l'assureur : les données sont traduites vers le modèle
-Norix, et les agents ne reçoivent ni identifiants ERP ni accès réseau libre.
-Avec un connecteur connu, la première synchronisation se fait en quelques heures ;
-pour un SI interne, on parle de quelques jours de mapping, pas de plusieurs mois
-de développement. La mise en production complète reste soumise aux tests de
-sécurité de l'assureur.
+On ne se branche pas sur une **marque** d'ERP — on se branche sur ce que le
+système **expose**. Cinq portes, de la meilleure à la pire : API moderne ·
+web service · lecture de base · échange de fichiers · robot sur l'écran.
+Le protocole unifié côté Norix reste **MCP** (`tools/list` · `tools/call`) :
+l'adaptateur découvre les tools, appelle, mappe, audite — sans donner le réseau
+aux agents. Packs marché Tunisie : DigiClaim / MiCard (Avidea), Pass Insurance,
+PROASSUR, e-Recours — plus SharePoint et l'ERP finance. Parcours : choisir la
+porte → tester schéma et droits minimaux → mapper Police / Dossier / Pièce →
+activer avec dry-run et audit. Avec une API déjà active (ex. DigiClaim chez
+plusieurs assureurs), première sync en quelques heures ; sinon quelques jours
+de mapping, pas des mois de réécriture. Prod soumise aux tests sécu de
+l'assureur — et **jamais** de sondage sans autorisation écrite.
 
 **Et si l'ERP est ancien ou développé en interne ?**
-Le Relay initie uniquement des connexions sortantes et expose le SI derrière un
-serveur MCP (tools stables : lire, tester, écrire après HITL). Il s'appuie sur
-les interfaces déjà disponibles : vue SQL en lecture seule, API REST/SOAP, dépôt
-SFTP ou export de fichiers. Si aucun pack n'existe, l'intégrateur implémente
-seulement les tools MCP standard — sans modifier les agents ni le moteur Norix.
-Les écritures sortantes restent séparées et ne sont déclenchées qu'après
-validation humaine.
+On descend l'échelle jusqu'à ce qu'une porte existe. Le Relay n'initie que des
+connexions sortantes et expose le SI derrière un serveur MCP (tools stables :
+lire, tester, écrire après HITL). SQL lecture seule, SOAP/REST, SFTP ou export
+fichier : même contrat MCP. Si aucun pack n'existe, l'intégrateur implémente
+seulement les tools standard — agents et moteur inchangés. Les écritures
+sortantes restent séparées et ne partent qu'après validation humaine.
+Piège à connaître : « l'éditeur a une API » ≠ « cette installation a l'API
+activée » — on demande toujours la version en production.
 
 **Vous avez vraiment connecté SharePoint et l'ERP interne ?**
-Le connecteur « CoreSinistre » montré en direct lit réellement une base
-externe en lecture seule **via MCP** (`lire_polices`, `lire_sinistres`), valide
-son schéma et synchronise sans doublon. L'ERP interne envoie les écritures après
-HITL via `envoyer_ecritures_planifiees`. SharePoint suit le même contrat
-d'intégration (MCP documentaire en cours) ; chaque appel est audité.
+En démo : « CoreSinistre » lit une base externe réelle (porte lecture BDD)
+**via MCP** (`lire_polices`, `lire_sinistres`), valide le schéma et sync sans
+doublon. L'ERP interne envoie les écritures après HITL via
+`envoyer_ecritures_planifiees`. SharePoint suit le même contrat (MCP
+documentaire en cours). DigiClaim / Avidea : chemin le plus court en prod
+auto chez plusieurs assureurs TN — pas branché en live ici ; la démo prouve
+le *contrat*, pas chaque pack. Chaque appel est audité.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { BrandMark } from '../brandLogos'
 import { AGENT_ICONE } from '../ui'
 
 const LIBELLES_GARDE_FOU = {
@@ -42,7 +43,8 @@ export default function Studio() {
   const [composeur, setComposeur] = useState(null)
   const [message, setMessage] = useState(null)
   const [plateformes, setPlateformes] = useState([])
-  const [connexionsAgent, setConnexionsAgent] = useState(null) // agent ouvert pour connexions MCP
+  const [connexionsAgent, setConnexionsAgent] = useState(null)
+  const [choixConnexion, setChoixConnexion] = useState(null)
 
   const charger = async () => {
     const [t, a, w] = await Promise.all([
@@ -102,45 +104,58 @@ export default function Studio() {
         }}
       />
 
-      {/* ---- connexions MCP (style console Anthropic) ---- */}
+      {/* ---- connexions apps (style console Anthropic) ---- */}
       <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold">Connexions MCP</h3>
-              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
-                MCP
-              </span>
-            </div>
+            <h3 className="text-sm font-semibold">Connexions</h3>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-encre/45">
-              Branchez Gmail, Outlook, Slack… sur un agent — comme dans la console Anthropic.
-              OAuth simulé ; chaque activation est auditée. Cliquez « Connexions » sur un module.
+              Branchez Gmail, Outlook, Slack… sur un agent. OAuth simulé ; chaque activation est auditée.
             </p>
           </div>
           <span className="text-xs text-encre/40">{plateformes.length} plateformes</span>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4">
           {plateformes.map((p) => (
-            <div key={p.slug} className="flex items-start gap-3 border-b border-line px-4 py-3.5 lg:border-r">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
-                style={{ background: p.couleur }}
-              >
-                {p.initiales}
-              </div>
-              <div className="min-w-0">
+            <div key={p.slug} className="flex items-center gap-3 border-b border-line px-4 py-3.5 lg:border-r">
+              <BrandMark slug={p.slug} size={36} />
+              <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{p.nom}</div>
-                <div className="text-[11px] text-encre/40">{p.categorie} · {p.tools_count} tools</div>
+                <div className="text-[11px] text-encre/40">{p.categorie}</div>
               </div>
+              <button
+                type="button"
+                onClick={() => setChoixConnexion({ slug: p.slug, nom: p.nom })}
+                className="shrink-0 rounded-md bg-encre px-2.5 py-1.5 text-[11px] font-semibold text-creme hover:bg-encre/85"
+              >
+                Se connecter
+              </button>
             </div>
           ))}
           {plateformes.length === 0 && (
             <p className="col-span-full px-5 py-8 text-center text-sm text-encre/40">
-              Catalogue MCP indisponible — démarrez le backend.
+              Catalogue indisponible — démarrez le backend.
             </p>
           )}
         </div>
       </section>
+
+      {choixConnexion && (
+        <ChoixAgentConnexion
+          plateforme={choixConnexion}
+          agents={agents}
+          onFermer={() => setChoixConnexion(null)}
+          onConnecte={async (agent, resultat) => {
+            setChoixConnexion(null)
+            await charger()
+            setMessage({
+              ton: 'succes',
+              texte: `« ${agent.nom} » connecté à ${choixConnexion.nom} (${resultat.connexion.compte})`,
+            })
+          }}
+          onErreur={(texte) => setMessage({ ton: 'erreur', texte })}
+        />
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(280px,1fr)_minmax(0,1.6fr)]">
         {/* templates */}
@@ -643,8 +658,8 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
         )}
         {dansPipeline && <span className="rounded-full bg-surface-deep px-2 py-0.5 text-xs font-medium text-encre/70">Dans le parcours</span>}
         {connexions.length > 0 && (
-          <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
-            MCP · {connexions.length}
+          <span className="rounded-full bg-surface-deep px-2 py-0.5 text-[10px] font-semibold text-encre/60">
+            {connexions.length} app{connexions.length > 1 ? 's' : ''}
           </span>
         )}
         {a.garde_fous?.non_desactivable && (
@@ -674,7 +689,7 @@ function CarteAgent({ agent: a, dansPipeline, onPublier, onSeuils, onInstruction
       </div>
       {connexions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-encre/50">
-          <span className="font-semibold">Apps MCP :</span>
+          <span className="font-semibold">Apps :</span>
           {connexions.map((slug) => (
             <span key={slug} className="rounded bg-surface-deep px-2 py-0.5 capitalize text-encre/70">
               {slug.replaceAll('_', ' ')}
@@ -832,7 +847,7 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
       } else {
         const res = await api.connecterPlateformeAgent(agent.id, slug)
         await onChange(
-          `Connecté via MCP à ${slug.replaceAll('_', ' ')} (${res.connexion.compte}) — tools : ${res.connexion.tools.join(', ')}`
+          `Connecté à ${slug.replaceAll('_', ' ')} (${res.connexion.compte})`
         )
       }
       await charger()
@@ -852,13 +867,10 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold">Connexions MCP — {agent.nom}</h3>
-              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
-                MCP
-              </span>
+              <h3 className="text-base font-semibold">Connexions — {agent.nom}</h3>
             </div>
             <p className="mt-1 text-xs leading-5 text-encre/45">
-              Activez les apps que cet agent peut utiliser (tools/list · tools/call). OAuth simulé pour la démo.
+              Activez les apps que cet agent peut utiliser. OAuth simulé pour la démo.
             </p>
           </div>
           <button type="button" onClick={onFermer} className="text-encre/40 hover:text-encre">×</button>
@@ -870,12 +882,7 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
             <ul className="divide-y divide-line">
               {plateformes.map((p) => (
                 <li key={p.slug} className="flex items-center gap-3 px-4 py-3.5">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[11px] font-bold text-white"
-                    style={{ background: p.couleur }}
-                  >
-                    {p.initiales}
-                  </div>
+                  <BrandMark slug={p.slug} size={40} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold">{p.nom}</span>
@@ -890,7 +897,7 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
                     <p className="mt-1 text-[11px] text-encre/35">
                       {p.connecte
                         ? `${p.connexion.compte} · ${p.connexion.tools.join(' · ')}`
-                        : `Tools : ${p.tools.join(' · ')}`}
+                        : p.tools.join(' · ')}
                     </p>
                   </div>
                   <button
@@ -903,13 +910,71 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
                         : 'bg-encre text-creme hover:bg-encre/85'
                     }`}
                   >
-                    {action === p.slug ? '…' : p.connecte ? 'Déconnecter' : 'Connecter'}
+                    {action === p.slug ? '…' : p.connecte ? 'Déconnecter' : 'Se connecter'}
                   </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ChoixAgentConnexion({ plateforme, agents, onFermer, onConnecte, onErreur }) {
+  const [enCours, setEnCours] = useState(null)
+  const disponibles = agents.filter((a) => a.statut === 'live' || a.statut === 'draft')
+
+  const connecter = async (agent) => {
+    setEnCours(agent.id)
+    try {
+      const resultat = await api.connecterPlateformeAgent(agent.id, plateforme.slug)
+      await onConnecte(agent, resultat)
+    } catch (e) {
+      onErreur(e.message)
+    } finally {
+      setEnCours(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-encre/45 p-4" onClick={onFermer}>
+      <div
+        className="w-full max-w-md overflow-hidden rounded-2xl bg-surface shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+          <BrandMark slug={plateforme.slug} size={40} />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-semibold">Connecter {plateforme.nom}</h3>
+            <p className="text-xs text-encre/45">Choisissez le module qui utilisera cette app.</p>
+          </div>
+          <button type="button" onClick={onFermer} className="text-encre/40 hover:text-encre">×</button>
+        </div>
+        <ul className="max-h-[50vh] divide-y divide-line overflow-y-auto">
+          {disponibles.length === 0 ? (
+            <li className="px-5 py-8 text-center text-sm text-encre/40">Aucun module disponible.</li>
+          ) : (
+            disponibles.map((agent) => (
+              <li key={agent.id} className="flex items-center gap-3 px-5 py-3">
+                <span>{AGENT_ICONE[agent.categorie] ?? '⚙️'}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{agent.nom}</div>
+                  <div className="text-[11px] text-encre/40">{agent.statut}</div>
+                </div>
+                <button
+                  type="button"
+                  disabled={enCours !== null}
+                  onClick={() => connecter(agent)}
+                  className="rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme disabled:opacity-50"
+                >
+                  {enCours === agent.id ? '…' : 'Se connecter'}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
       </div>
     </div>
   )

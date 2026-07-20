@@ -249,10 +249,13 @@
     <p class="a">Quelques centimes de dollar d'appel IA par dossier (affiché en direct au dashboard), contre en moyenne plusieurs heures de gestionnaire pour le même traitement. Visible ligne par ligne, dossier par dossier — pas une estimation.</p>
 
     <p class="q">Combien de temps pour brancher un agent chez un vrai assureur ?</p>
-    <p class="a">Norix se connecte aux BDD et ERP via MCP : un adaptateur découvre les tools (`tools/list`), appelle (`tools/call`), mappe et audite — sans donner le réseau aux agents. En démo : CoreSinistre et l'ERP Finance passent déjà par MCP. Créer l'agent prend un après-midi ; brancher un SI réel, quelques heures à quelques jours de mapping — pas 6 à 18 mois de réécriture.</p>
+    <p class="a">On ne se branche pas sur une marque d'ERP — on se branche sur ce que le système expose. Cinq portes : API · web service · lecture de base · fichiers · robot écran. Côté Norix, le contrat unifié est MCP (`tools/list` · `tools/call`). Packs TN : DigiClaim / MiCard (Avidea), Pass Insurance, PROASSUR, e-Recours. En démo, CoreSinistre et l'ERP Finance passent déjà par MCP. Avec une API active (ex. DigiClaim), quelques heures ; sinon quelques jours de mapping — pas 6 à 18 mois. Jamais de sondage sans autorisation écrite.</p>
+
+    <p class="q">Et si le SI est ancien, sans API moderne ?</p>
+    <p class="a">On descend l'échelle jusqu'à une porte qui existe. Même contrat MCP derrière : SQL lecture seule, SOAP/REST, SFTP ou export fichier. « L'éditeur a une API » ≠ « cette installation l'a activée » — on demande la version en production. Les écritures ne partent qu'après validation humaine.</p>
 
     <p class="q">Vous avez vraiment connecté une base et un ERP ?</p>
-    <p class="a">Oui en démo locale : CoreSinistre lit via MCP (`lire_polices`, `lire_sinistres`) ; l'ERP envoie après HITL via `envoyer_ecritures_planifiees`. Chaque appel est dans la piste d'audit.</p>
+    <p class="a">Oui en démo locale : CoreSinistre lit via MCP (`lire_polices`, `lire_sinistres`) — porte lecture BDD ; l'ERP envoie après HITL via `envoyer_ecritures_planifiees`. DigiClaim/Avidea est le chemin prod le plus court en auto TN, pas branché en live ici. Chaque appel est dans la piste d'audit.</p>
 
     <p class="q">Vous ciblez que l'assurance auto ?</p>
     <p class="a">Pour la preuve de concept, oui — une seule branche, sinistre matériel auto, volontairement pour aller au bout d'un parcours démontrable plutôt que de saupoudrer sur plusieurs branches à moitié câblées. L'architecture n'a rien de spécifique à l'auto ; habitation et santé sont la suite naturelle, pas une refonte.</p>

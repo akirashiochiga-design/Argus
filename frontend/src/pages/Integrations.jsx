@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import { BrandMark } from '../brandLogos'
 
+// Packs marché TN (fiche ERP) — libellés de cible, pas de connecteurs live.
 const SYSTEMES_ASSURANCE = [
-  { id: 'guidewire', nom: 'Guidewire ClaimCenter', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
-  { id: 'duck-creek', nom: 'Duck Creek Claims', couleur: 'bg-[#236192]', initiales: 'DC' },
-  { id: 'sapiens', nom: 'Sapiens IDITSuite', couleur: 'bg-[#6D4C9F]', initiales: 'SP' },
-  { id: 'interne', nom: 'SI assurance interne', couleur: 'bg-[#334155]', initiales: 'SI' },
+  { id: 'digiclaim', nom: 'DigiClaim', editeur: 'Avidea', porte: 'API' },
+  { id: 'micard', nom: 'MiCard', editeur: 'Avidea', porte: 'API' },
+  { id: 'pass', nom: 'Pass Insurance', editeur: 'RGI', porte: 'Web' },
+  { id: 'proassur', nom: 'PROASSUR', editeur: 'EDI Tunisie', porte: 'WS' },
+  { id: 'erecours', nom: 'e-Recours', editeur: 'FTUSA', porte: 'Portail' },
 ]
 
 const PIECES_SHAREPOINT = [
@@ -81,7 +84,7 @@ export default function Integrations() {
       await charger()
       setMessage({
         ton: 'succes',
-        texte: `Synchronisé via MCP (lire_polices · lire_sinistres) — ${resultat.polices_creees + resultat.polices_mises_a_jour} police(s), ${resultat.sinistres_crees} nouveau(x) sinistre(s).`,
+        texte: `Synchronisé — ${resultat.polices_creees + resultat.polices_mises_a_jour} police(s), ${resultat.sinistres_crees} nouveau(x) sinistre(s).`,
       })
     } catch (erreur) {
       await charger()
@@ -104,7 +107,7 @@ export default function Integrations() {
           ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents de Norix.`
           : `${resultat.documents_importes} document(s) importé(s), ${resultat.documents_ignores} déjà présent(s).`
       } else {
-        texte = `ERP synchronisé via MCP (envoyer_ecritures_planifiees) — ${resultat.ecritures_envoyees} écriture(s).`
+        texte = `ERP synchronisé — ${resultat.ecritures_envoyees} écriture(s).`
       }
       setMessage({ ton: 'succes', texte })
     } catch (erreur) {
@@ -134,7 +137,8 @@ export default function Integrations() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
           <p className="mt-1 max-w-xl text-sm leading-6 text-encre/50">
-            Ouvrez le SI source, ajoutez un contrat ou un sinistre, puis synchronisez vers Norix via MCP.
+            On ne se branche pas sur une marque d&apos;ERP : on prend la porte
+            que le SI expose. Ici, CoreSinistre prouve le contrat d&apos;intégration.
           </p>
         </div>
         <button
@@ -142,7 +146,7 @@ export default function Integrations() {
           disabled={action !== null}
           className="rounded-md bg-encre px-4 py-2.5 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
         >
-          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser via MCP' : 'Connecter & synchroniser'}
+          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser' : 'Se connecter'}
         </button>
       </header>
 
@@ -158,19 +162,14 @@ export default function Integrations() {
 
       <section className="overflow-hidden rounded-2xl border border-line bg-surface">
         <div className="flex flex-wrap items-center gap-4 border-b border-line px-6 py-5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-encre text-[11px] font-bold tracking-wide text-creme">
-            CS
-          </div>
+          <BrandMark slug="coresinistre" size={44} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold">{statut?.source ?? 'CoreSinistre'}</h3>
-              <span className="rounded-full bg-encre px-2 py-0.5 text-[10px] font-bold tracking-wide text-creme">
-                MCP
-              </span>
               <StatutPoint actif={connecte} libelle={connecte ? 'Connecté' : 'Hors ligne'} />
             </div>
             <p className="mt-0.5 truncate text-sm text-encre/45">
-              MCP · tools/list · tools/call
+              Base assurance (lecture)
               {statut?.organisation ? ` · ${statut.organisation}` : ''}
               {statut?.latence_ms != null ? ` · ${statut.latence_ms} ms` : ''}
             </p>
@@ -181,6 +180,14 @@ export default function Integrations() {
             className="rounded-md border border-line px-3 py-2 text-xs font-semibold text-encre/70 transition hover:bg-surface-deep"
           >
             Ouvrir le SI
+          </button>
+          <button
+            type="button"
+            onClick={connecter}
+            disabled={action !== null}
+            className="rounded-md bg-encre px-3 py-2 text-xs font-semibold text-creme disabled:opacity-50"
+          >
+            {action === 'connexion' ? '…' : connecte ? 'Synchroniser' : 'Se connecter'}
           </button>
         </div>
         <div className="grid grid-cols-3 divide-x divide-line">
@@ -197,9 +204,8 @@ export default function Integrations() {
         </div>
         {derniere && (
           <p className="border-t border-line px-6 py-3 text-xs text-encre/40">
-            Dernier import MCP · {derniere.polices_creees + derniere.polices_mises_a_jour} polices ·{' '}
+            Dernier import · {derniere.polices_creees + derniere.polices_mises_a_jour} polices ·{' '}
             {derniere.sinistres_crees} sinistres · {derniere.duree_ms} ms
-            {derniere.tools ? ` · ${derniere.tools.join(' · ')}` : ''}
           </p>
         )}
       </section>
@@ -251,11 +257,9 @@ export default function Integrations() {
         <h3 className="mb-3 text-sm font-semibold text-encre/70">Flux connectés</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <LigneConnecteur
-            initiales="SP"
-            couleur="bg-[#038387]"
+            slug="sharepoint"
             titre="SharePoint Sinistres"
-            detail={sharepoint ? `${sharepoint.documents_disponibles} document(s) · MCP à venir` : 'Documents entrants · MCP à venir'}
-            protocole="local"
+            detail={sharepoint ? `${sharepoint.documents_disponibles} document(s)` : 'Documents entrants'}
             connecte={sharepoint?.statut === 'connecte'}
             enCours={action === 'sharepoint_demo'}
             bloque={action !== null}
@@ -263,11 +267,9 @@ export default function Integrations() {
             onActiver={() => activerConnecteur('sharepoint_demo')}
           />
           <LigneConnecteur
-            initiales="ERP"
-            couleur="bg-[#334155]"
+            slug="erp"
             titre="ERP Finance"
-            detail={`${erpAttente} en attente · ${erpEnvoyees} envoyée(s) · MCP tools/call`}
-            protocole="MCP"
+            detail={`${erpAttente} en attente · ${erpEnvoyees} envoyée(s)`}
             connecte={erpInterne?.statut === 'connecte'}
             enCours={action === 'erp_interne_demo'}
             bloque={action !== null}
@@ -278,17 +280,30 @@ export default function Integrations() {
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold text-encre/70">Autres cores disponibles</h3>
-        <div className="flex flex-wrap gap-2">
+        <h3 className="mb-1 text-sm font-semibold text-encre/70">Packs marché Tunisie</h3>
+        <p className="mb-3 text-xs leading-5 text-encre/40">
+          Cibles d&apos;intégration — pas encore branchées en live.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {SYSTEMES_ASSURANCE.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-2.5 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-3.5"
+              className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
+              title={`${item.editeur} · porte ${item.porte}`}
             >
-              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.couleur}`}>
-                {item.initiales}
-              </span>
-              <span className="text-sm text-encre/75">{item.nom}</span>
+              <BrandMark slug={item.id} size={36} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-encre/80">{item.nom}</div>
+                <div className="text-[11px] text-encre/40">{item.editeur} · {item.porte}</div>
+              </div>
+              <button
+                type="button"
+                disabled
+                className="shrink-0 rounded-md border border-line px-2.5 py-1 text-[11px] font-semibold text-encre/30"
+                title="Pack à brancher"
+              >
+                Bientôt
+              </button>
             </div>
           ))}
         </div>
@@ -376,11 +391,9 @@ function TableApercu({ colonnes, lignes, vide }) {
 }
 
 function LigneConnecteur({
-  initiales,
-  couleur,
+  slug,
   titre,
   detail,
-  protocole,
   connecte,
   enCours,
   bloque,
@@ -389,17 +402,10 @@ function LigneConnecteur({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5">
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white ${couleur}`}>
-        {initiales}
-      </div>
+      <BrandMark slug={slug} size={40} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold">{titre}</span>
-          {protocole === 'MCP' && (
-            <span className="rounded-full bg-encre px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-creme">
-              MCP
-            </span>
-          )}
           <StatutPoint actif={connecte} libelle={connecte ? 'Actif' : 'Prêt'} />
         </div>
         <p className="mt-0.5 truncate text-xs text-encre/45">{detail}</p>
@@ -417,7 +423,7 @@ function LigneConnecteur({
         disabled={bloque}
         className="shrink-0 rounded-md bg-encre px-3 py-1.5 text-xs font-semibold text-creme disabled:opacity-50"
       >
-        {enCours ? '…' : connecte ? 'Sync' : 'Connecter'}
+        {enCours ? '…' : connecte ? 'Synchroniser' : 'Se connecter'}
       </button>
     </div>
   )
