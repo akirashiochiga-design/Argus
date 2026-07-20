@@ -17,6 +17,7 @@ const EVENEMENTS = {
   depot_retour_sharepoint: 'Dépôt retour SharePoint',
   ecriture_erp_planifiee: 'Écriture ERP planifiée',
   ecriture_erp_envoyee: 'Écriture ERP envoyée',
+  synchronisation_erp_marche: 'Sync ERP marché TN',
   creation_dossier: 'Création de dossier',
 }
 

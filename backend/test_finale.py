@@ -7,7 +7,9 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.connectors.documents_local import ConnecteurDocumentsLocal
 from app.connectors.erp_stub import ConnecteurERPDemo
+from app.connectors.erp_tn import ConnecteurERPMarcheTN, SYSTEMES_ERP_TN, construire_tous
 from app.connectors.insurance_sqlite import synchroniser
+from app.connectors.registry import catalogue
 from app.models import (
     Agent,
     Dossier,
@@ -157,6 +159,40 @@ class ParcoursFinaleTest(unittest.TestCase):
                 {event.type for event in evenements}
             )
         )
+
+    def test_erp_marche_tn_dans_registre_et_sync_idempotente(self):
+        ids = {item["identifiant"] for item in catalogue()}
+        for definition in SYSTEMES_ERP_TN:
+            self.assertIn(definition["identifiant"], ids)
+
+        police = Police(numero="TEST-TN", assure_nom="Assuré TN", formule="tous_risques")
+        self.session.add(police)
+        self.session.flush()
+        dossier = Dossier(
+            ref="TEST-TN-001",
+            police_id=police.id,
+            declaration_texte="Test ERP TN",
+            etat="regle",
+            montant_valide=1850,
+        )
+        self.session.add(dossier)
+        self.session.commit()
+
+        digiclaim = next(c for c in construire_tous() if c.identifiant == "digiclaim")
+        self.assertTrue(digiclaim.tester()["simulation"])
+        premier = digiclaim.synchroniser(self.session)
+        second = digiclaim.synchroniser(self.session)
+        self.assertEqual(premier["dossiers_pushes"], 1)
+        self.assertEqual(second["dossiers_pushes"], 0)
+        self.assertEqual(second["dossiers_ignores"], 1)
+        events = self.session.exec(
+            select(EvenementAudit).where(
+                EvenementAudit.type == "synchronisation_erp_marche"
+            )
+        ).all()
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0].apres["connecteur"], "digiclaim")
+        self.assertIsInstance(digiclaim, ConnecteurERPMarcheTN)
 
 
 if __name__ == "__main__":

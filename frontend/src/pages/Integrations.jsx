@@ -2,13 +2,48 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { BrandMark } from '../brandLogos'
 
-// Packs marché TN (fiche ERP) — libellés de cible, pas de connecteurs live.
-const SYSTEMES_ASSURANCE = [
-  { id: 'digiclaim', nom: 'DigiClaim', editeur: 'Avidea', porte: 'API' },
-  { id: 'micard', nom: 'MiCard', editeur: 'Avidea', porte: 'API' },
-  { id: 'pass', nom: 'Pass Insurance', editeur: 'RGI', porte: 'Web' },
-  { id: 'proassur', nom: 'PROASSUR', editeur: 'EDI Tunisie', porte: 'WS' },
-  { id: 'erecours', nom: 'e-Recours', editeur: 'FTUSA', porte: 'Portail' },
+/** Catalogue local — toujours affiché, enrichi par le statut API. */
+const PACKS_ERP_TN = [
+  {
+    identifiant: 'digiclaim',
+    nom: 'DigiClaim',
+    editeur: 'Avidea',
+    porte: 'API REST',
+    role: 'Gestion sinistres digitale',
+    compagnies: ['Maghrebia', 'COMAR', 'GAT'],
+  },
+  {
+    identifiant: 'micard',
+    nom: 'MiCard',
+    editeur: 'Avidea',
+    porte: 'API REST',
+    role: 'Carte / tiers payant santé',
+    compagnies: ['Maghrebia', 'ASTREE'],
+  },
+  {
+    identifiant: 'pass',
+    nom: 'Pass Insurance',
+    editeur: 'RGI',
+    porte: 'Web services',
+    role: 'Cœur métier multi-branches',
+    compagnies: ['STAR', 'COMAR'],
+  },
+  {
+    identifiant: 'proassur',
+    nom: 'PROASSUR',
+    editeur: 'EDI Tunisie',
+    porte: 'Web services',
+    role: 'Production & sinistres',
+    compagnies: ['Assurances locales'],
+  },
+  {
+    identifiant: 'erecours',
+    nom: 'e-Recours',
+    editeur: 'FTUSA',
+    porte: 'Portail',
+    role: 'Recours inter-compagnies',
+    compagnies: ['Toutes FTUSA'],
+  },
 ]
 
 const PIECES_SHAREPOINT = [
@@ -108,8 +143,14 @@ export default function Integrations() {
         texte = crees
           ? `${crees} dossier(s) extrait(s) de SharePoint · ${docs} pièce(s).`
           : `${docs} pièce(s) rattachée(s), ${resultat.documents_ignores ?? 0} déjà présente(s).`
+      } else if (identifiant === 'erp_interne_demo') {
+        texte = `ERP Finance synchronisé — ${resultat.ecritures_envoyees} écriture(s).`
       } else {
-        texte = `ERP synchronisé — ${resultat.ecritures_envoyees} écriture(s).`
+        const n = resultat.dossiers_pushes ?? 0
+        const ignores = resultat.dossiers_ignores ?? 0
+        texte = n
+          ? `${resultat.systeme} — ${n} dossier(s) synchronisé(s).`
+          : `${resultat.systeme} — à jour (${ignores} déjà synchronisé(s)).`
       }
       setMessage({ ton: 'succes', texte })
     } catch (erreur) {
@@ -128,10 +169,21 @@ export default function Integrations() {
   const connecte = statut?.statut === 'connecte'
   const sharepoint = connecteurs.find((item) => item.identifiant === 'sharepoint_demo')
   const erpInterne = connecteurs.find((item) => item.identifiant === 'erp_interne_demo')
+  const packsTn = PACKS_ERP_TN.map((pack) => {
+    const live = connecteurs.find((item) => item.identifiant === pack.identifiant)
+    return {
+      ...pack,
+      ...(live || {}),
+      statut: live?.statut || 'non_connecte',
+    }
+  })
   const polices = apercu?.apercu_polices ?? []
   const sinistres = apercu?.apercu_sinistres ?? []
   const erpAttente = ecrituresErp.filter((item) => item.statut === 'planifiee').length
   const erpEnvoyees = ecrituresErp.filter((item) => item.statut === 'envoyee').length
+  const packActif = typeof panneau === 'string' && panneau.startsWith('pack:')
+    ? packsTn.find((p) => p.identifiant === panneau.slice(5))
+    : null
 
   return (
     <div className="mx-auto grid max-w-5xl gap-8">
@@ -284,32 +336,27 @@ export default function Integrations() {
       </section>
 
       <section>
-        <h3 className="mb-1 text-sm font-semibold text-encre/70">Packs marché Tunisie</h3>
+        <h3 className="mb-1 text-sm font-semibold text-encre/70">ERP & SI marché Tunisie</h3>
         <p className="mb-3 text-xs leading-5 text-encre/40">
-          Cibles d&apos;intégration — pas encore branchées en live.
+          Connectez le cœur métier de l&apos;assureur — même flux que SharePoint / ERP Finance.
         </p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {SYSTEMES_ASSURANCE.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5"
-              title={`${item.editeur} · porte ${item.porte}`}
-            >
-              <BrandMark slug={item.id} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-encre/80">{item.nom}</div>
-                <div className="text-[11px] text-encre/40">{item.editeur} · {item.porte}</div>
-              </div>
-              <button
-                type="button"
-                disabled
-                className="shrink-0 rounded-md border border-line px-2.5 py-1 text-[11px] font-semibold text-encre/30"
-                title="Pack à brancher"
-              >
-                Bientôt
-              </button>
-            </div>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {packsTn.map((item) => {
+            const connectePack = item.statut === 'connecte'
+            return (
+              <LigneConnecteur
+                key={item.identifiant}
+                slug={item.identifiant}
+                titre={item.nom}
+                detail={`${item.editeur} · ${item.porte}${connectePack ? ' · connecté' : ''}`}
+                connecte={connectePack}
+                enCours={action === item.identifiant}
+                bloque={action !== null}
+                onOuvrir={() => setPanneau(`pack:${item.identifiant}`)}
+                onActiver={() => activerConnecteur(item.identifiant)}
+              />
+            )
+          })}
         </div>
       </section>
 
@@ -343,6 +390,14 @@ export default function Integrations() {
           ecritures={ecrituresErp}
           onSync={() => activerConnecteur('erp_interne_demo')}
           syncEnCours={action === 'erp_interne_demo'}
+        />
+      )}
+      {packActif && (
+        <PanneauPackTn
+          pack={packActif}
+          onFermer={() => setPanneau(null)}
+          onSync={() => activerConnecteur(packActif.identifiant)}
+          syncEnCours={action === packActif.identifiant}
         />
       )}
     </div>
@@ -910,6 +965,76 @@ function PanneauErp({ onFermer, ecritures, onSync, syncEnCours }) {
           ])}
         />
       </div>
+    </Overlay>
+  )
+}
+
+function PanneauPackTn({ pack, onFermer, onSync, syncEnCours }) {
+  const compagnies = pack.compagnies || []
+  const connecte = pack.statut === 'connecte'
+  return (
+    <Overlay
+      titre={pack.nom}
+      sousTitre={`${pack.editeur} · ${pack.porte || pack.protocole}`}
+      onFermer={onFermer}
+      pied={(
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60">
+            Fermer
+          </button>
+          <button
+            type="button"
+            onClick={onSync}
+            disabled={syncEnCours}
+            className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {syncEnCours ? 'Connexion…' : connecte ? 'Synchroniser' : 'Se connecter'}
+          </button>
+        </div>
+      )}
+    >
+      <div className="mb-5 flex items-start gap-4">
+        <BrandMark slug={pack.identifiant} size={52} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatutPoint actif={connecte} libelle={connecte ? 'Connecté' : 'Prêt'} />
+          </div>
+          <p className="mt-2 text-sm leading-6 text-encre/55">
+            {pack.role || 'Cœur métier assurance'}
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-line px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-encre/35">Porte</div>
+          <div className="mt-1 text-sm font-medium">{pack.porte || pack.protocole}</div>
+        </div>
+        <div className="rounded-lg border border-line px-4 py-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-encre/35">Éditeur</div>
+          <div className="mt-1 text-sm font-medium">{pack.editeur}</div>
+        </div>
+      </div>
+      {compagnies.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-encre/35">
+            Présent chez
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {compagnies.map((c) => (
+              <span
+                key={c}
+                className="rounded-md bg-surface-deep px-2.5 py-1 text-xs font-medium text-encre/65"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="mt-5 text-sm leading-6 text-encre/45">
+        Après validation humaine dans Approbations, la synchronisation pousse
+        le dossier (réf. + montant TND) vers {pack.nom}.
+      </p>
     </Overlay>
   )
 }
