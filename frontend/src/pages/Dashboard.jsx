@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import { ETAT_STYLE, heure } from '../ui'
+import { dt, ETAT_STYLE, heure } from '../ui'
 
 const EVENEMENTS = {
   run_agent: "Exécution d'une étape",
@@ -60,7 +60,7 @@ export default function Dashboard() {
           valeur={kpi.taux_approbation != null ? `${Math.round(kpi.taux_approbation * 100)} %` : '—'}
           sous="propositions transmises" />
         <Tuile nom="Taux de correction" valeur={`${(kpi.taux_correction * 100).toFixed(1)} %`} sous="ajustements des gestionnaires" />
-        <Tuile nom="Coût de traitement" valeur={`$${kpi.cout_ia_usd.toFixed(2)}`} sous={`${kpi.runs_total} opérations`} accent />
+        <Tuile nom="Coût de traitement" valeur={dt(kpi.cout_ia_dt)} sous={`${kpi.runs_total} opérations`} accent />
         <Tuile nom="Temps de gestion évité"
           valeur={`${Math.floor(kpi.temps_economise_min / 60)} h ${kpi.temps_economise_min % 60} min`}
           sous="sur les dossiers traités" />

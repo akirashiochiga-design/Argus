@@ -7,6 +7,8 @@ from ..models import Dossier, Run, Tache
 
 # Hypothèse pitch : ~2h de traitement manuel par dossier vs ~8 min avec Norix
 MINUTES_ECONOMISEES_PAR_DOSSIER = 110
+# Cours USD/TND (juillet 2026) — uniquement pour l'affichage du coût IA au dashboard
+USD_VERS_TND = 2.96
 
 router = APIRouter(tags=["dashboard"])
 
@@ -38,6 +40,7 @@ def kpi(session: Session = Depends(get_session)) -> dict:
         "dossiers_traites": len(traites),
         "runs_total": len(runs),
         "cout_ia_usd": round(sum(r.cout for r in runs), 4),
+        "cout_ia_dt": round(sum(r.cout for r in runs) * USD_VERS_TND, 3),
         "duree_pipeline_totale_s": round(duree_totale_ms / 1000, 1),
         "taux_approbation": round(len(decisions_ok) / len(taches), 2) if taches else None,
         "taux_correction": round(sum(corrections) / len(corrections), 3) if corrections else 0.0,
