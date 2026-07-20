@@ -1,11 +1,16 @@
 """API du connecteur fonctionnel vers la base assurance externe."""
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from ..connectors import catalogue, obtenir
+from ..connectors import documents_local as sharepoint
 from ..connectors.insurance_sqlite import (
     ConnexionAssuranceInvalide,
     apercu,
+    creer_police,
+    creer_sinistre,
+    inventaire,
     synchroniser,
     tester_connexion,
 )
@@ -15,6 +20,34 @@ from ..models import Dossier, EcritureERP, EvenementAudit, IntegrationConnexion
 
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
+
+
+class PoliceSourceIn(BaseModel):
+    assure_nom: str = Field(min_length=2, max_length=120)
+    marque: str = Field(min_length=1, max_length=60)
+    modele: str = Field(min_length=1, max_length=60)
+    immatriculation: str = Field(min_length=3, max_length=20)
+    formule: str = "tous_risques"
+    annee: int = 2023
+    numero: str | None = None
+    ville: str | None = None
+    telephone: str | None = None
+
+
+class SinistreSourceIn(BaseModel):
+    police_numero: str = Field(min_length=3, max_length=40)
+    declaration: str = Field(min_length=10, max_length=2000)
+    type_sinistre: str = "collision"
+    montant_estime: float | None = None
+    reference: str | None = None
+
+
+class DocumentSharePointIn(BaseModel):
+    dossier_ref: str = Field(min_length=3, max_length=40)
+    type: str = "photo_expertise"
+    chemin: str = "docs/samples/degats-3.jpg"
+    nom_source: str | None = None
+    montant: float | None = None
 
 
 def _erreur_connexion(erreur: Exception) -> HTTPException:
@@ -104,6 +137,49 @@ def synchroniser_database(session: Session = Depends(get_session)) -> dict:
     except ConnexionAssuranceInvalide as e:
         session.rollback()
         raise _erreur_connexion(e) from e
+
+
+@router.get("/database/inventaire")
+def inventaire_database() -> dict:
+    try:
+        return inventaire()
+    except ConnexionAssuranceInvalide as e:
+        raise _erreur_connexion(e) from e
+
+
+@router.post("/database/polices")
+def ajouter_police_source(corps: PoliceSourceIn) -> dict:
+    try:
+        return creer_police(corps.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except ConnexionAssuranceInvalide as e:
+        raise _erreur_connexion(e) from e
+
+
+@router.post("/database/sinistres")
+def ajouter_sinistre_source(corps: SinistreSourceIn) -> dict:
+    try:
+        return creer_sinistre(corps.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except ConnexionAssuranceInvalide as e:
+        raise _erreur_connexion(e) from e
+
+
+@router.get("/sharepoint/documents")
+def lister_documents_sharepoint() -> dict:
+    return sharepoint.lister_documents()
+
+
+@router.post("/sharepoint/documents")
+def ajouter_document_sharepoint(corps: DocumentSharePointIn) -> dict:
+    try:
+        return sharepoint.ajouter_document(corps.model_dump())
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
 
 
 @router.get("/connecteurs")

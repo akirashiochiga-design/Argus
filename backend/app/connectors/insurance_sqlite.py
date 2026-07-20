@@ -41,6 +41,18 @@ def _connexion() -> sqlite3.Connection:
         raise ConnexionAssuranceInvalide(f"Connexion à la base assurance impossible : {e}") from e
 
 
+def _connexion_ecriture() -> sqlite3.Connection:
+    """Ouverture en écriture pour alimenter le SI source (parcours démo)."""
+    ensure_external_db()
+    try:
+        connexion = sqlite3.connect(EXTERNAL_DB_PATH, timeout=5)
+        connexion.row_factory = sqlite3.Row
+        connexion.execute("PRAGMA foreign_keys = ON")
+        return connexion
+    except sqlite3.Error as e:
+        raise ConnexionAssuranceInvalide(f"Écriture dans la base assurance impossible : {e}") from e
+
+
 def _tables(connexion: sqlite3.Connection) -> set[str]:
     return {
         ligne["name"]
@@ -107,7 +119,7 @@ def apercu() -> dict:
                    JOIN assures a ON a.id = p.assure_id
                    JOIN vehicules v ON v.id = p.vehicule_id
                    ORDER BY p.numero
-                   LIMIT 5"""
+                """
             )
         ]
         sinistres = [
@@ -118,19 +130,190 @@ def apercu() -> dict:
                 "type_sinistre": ligne["type_sinistre"],
                 "statut_source": ligne["statut_source"],
                 "nombre_pieces": ligne["nombre_pieces"],
+                "declaration": ligne["declaration"],
             }
             for ligne in connexion.execute(
                 """SELECT s.reference, p.numero, s.date_sinistre, s.type_sinistre,
-                          s.statut_source, COUNT(pc.id) AS nombre_pieces
+                          s.statut_source, s.declaration, COUNT(pc.id) AS nombre_pieces
                    FROM sinistres s
                    JOIN polices p ON p.id = s.police_id
                    LEFT JOIN pieces pc ON pc.sinistre_id = s.id
                    GROUP BY s.id
                    ORDER BY s.date_sinistre DESC, s.reference
-                   LIMIT 5"""
+                """
             )
         ]
     return {**connexion_info, "apercu_polices": polices, "apercu_sinistres": sinistres}
+
+
+def inventaire() -> dict:
+    """Vue complète du SI source (pour le panneau CoreSinistre)."""
+    return apercu()
+
+
+def _prochain_numero(connexion: sqlite3.Connection, table: str, colonne: str, prefixe: str) -> str:
+    lignes = connexion.execute(
+        f"SELECT {colonne} AS valeur FROM {table} WHERE {colonne} LIKE ?",
+        (f"{prefixe}%",),
+    ).fetchall()
+    max_n = 0
+    for ligne in lignes:
+        suffixe = str(ligne["valeur"])[len(prefixe):]
+        if suffixe.isdigit():
+            max_n = max(max_n, int(suffixe))
+    return f"{prefixe}{max_n + 1:04d}"
+
+
+def creer_police(donnees: dict) -> dict:
+    """Ajoute un contrat dans CoreSinistre (pas encore dans Argus)."""
+    nom = (donnees.get("assure_nom") or "").strip()
+    marque = (donnees.get("marque") or "").strip()
+    modele = (donnees.get("modele") or "").strip()
+    immatriculation = (donnees.get("immatriculation") or "").strip().upper()
+    formule = donnees.get("formule") or "tous_risques"
+    if formule not in ("tiers", "tous_risques"):
+        raise ValueError("Formule invalide")
+    if not nom or not marque or not modele or not immatriculation:
+        raise ValueError("Assuré, véhicule et immatriculation sont requis")
+
+    with _connexion_ecriture() as connexion:
+        if connexion.execute(
+            "SELECT 1 FROM vehicules WHERE immatriculation = ?", (immatriculation,)
+        ).fetchone():
+            raise ValueError(f"Immatriculation déjà connue : {immatriculation}")
+
+        numero = (donnees.get("numero") or "").strip() or _prochain_numero(
+            connexion, "polices", "numero", "EXT-AUTO-"
+        )
+        if connexion.execute(
+            "SELECT 1 FROM polices WHERE numero = ?", (numero,)
+        ).fetchone():
+            raise ValueError(f"Police déjà existante : {numero}")
+
+        cur = connexion.execute(
+            """INSERT INTO assures (nom_complet, cin, telephone, ville)
+               VALUES (?, ?, ?, ?)""",
+            (
+                nom,
+                donnees.get("cin") or f"CIN{int(time.time()) % 100000000:08d}",
+                donnees.get("telephone") or "+216 20 000 000",
+                donnees.get("ville") or "Tunis",
+            ),
+        )
+        assure_id = cur.lastrowid
+        cur = connexion.execute(
+            """INSERT INTO vehicules
+               (assure_id, marque, modele, immatriculation, annee)
+               VALUES (?, ?, ?, ?, ?)""",
+            (assure_id, marque, modele, immatriculation, int(donnees.get("annee") or 2023)),
+        )
+        vehicule_id = cur.lastrowid
+        cur = connexion.execute(
+            """INSERT INTO polices
+               (numero, assure_id, vehicule_id, formule, prime_payee,
+                date_effet, date_echeance, statut)
+               VALUES (?, ?, ?, ?, 1, date('now'), date('now', '+1 year'), 'active')""",
+            (numero, assure_id, vehicule_id, formule),
+        )
+        police_id = cur.lastrowid
+        garanties = (
+            [("rc", 100000, 0)]
+            if formule == "tiers"
+            else [
+                ("collision", 45000, 300),
+                ("bris_glace", 3000, 100),
+                ("rc", 100000, 0),
+            ]
+        )
+        connexion.executemany(
+            """INSERT INTO garanties (police_id, code, plafond, franchise)
+               VALUES (?, ?, ?, ?)""",
+            [(police_id, code, plafond, franchise) for code, plafond, franchise in garanties],
+        )
+        connexion.commit()
+
+    return {
+        "numero": numero,
+        "assure_nom": nom,
+        "formule": formule,
+        "vehicule": f"{marque} {modele}",
+        "immatriculation": immatriculation,
+    }
+
+
+def creer_sinistre(donnees: dict) -> dict:
+    """Ajoute un sinistre dans CoreSinistre, rattaché à une police source."""
+    police_numero = (donnees.get("police_numero") or "").strip()
+    declaration = (donnees.get("declaration") or "").strip()
+    type_sinistre = (donnees.get("type_sinistre") or "collision").strip()
+    if not police_numero or not declaration:
+        raise ValueError("Police et déclaration sont requis")
+
+    with _connexion_ecriture() as connexion:
+        police = connexion.execute(
+            "SELECT id, numero FROM polices WHERE numero = ?", (police_numero,)
+        ).fetchone()
+        if not police:
+            raise ValueError(f"Police introuvable dans CoreSinistre : {police_numero}")
+
+        reference = (donnees.get("reference") or "").strip() or _prochain_numero(
+            connexion, "sinistres", "reference", "EXT-SIN-2026-"
+        )
+        if connexion.execute(
+            "SELECT 1 FROM sinistres WHERE reference = ?", (reference,)
+        ).fetchone():
+            raise ValueError(f"Référence déjà existante : {reference}")
+
+        montant = donnees.get("montant_estime")
+        cur = connexion.execute(
+            """INSERT INTO sinistres
+               (reference, police_id, date_sinistre, declaration,
+                type_sinistre, statut_source, montant_estime_source)
+               VALUES (?, ?, date('now'), ?, ?, 'declare', ?)""",
+            (
+                reference,
+                police["id"],
+                declaration,
+                type_sinistre,
+                float(montant) if montant not in (None, "") else None,
+            ),
+        )
+        sinistre_id = cur.lastrowid
+
+        pieces = donnees.get("pieces")
+        if pieces is None:
+            pieces = [
+                {"type": "constat", "chemin": "docs/samples/constat.jpg"},
+                {"type": "photo_degats", "chemin": "docs/samples/degats-1.jpg"},
+            ]
+            if montant not in (None, ""):
+                pieces.append(
+                    {
+                        "type": "devis",
+                        "chemin": "docs/samples/devis.jpg",
+                        "montant": float(montant),
+                    }
+                )
+        for piece in pieces:
+            connexion.execute(
+                """INSERT INTO pieces
+                   (sinistre_id, type_piece, chemin, montant_document)
+                   VALUES (?, ?, ?, ?)""",
+                (
+                    sinistre_id,
+                    piece["type"],
+                    piece["chemin"],
+                    piece.get("montant"),
+                ),
+            )
+        connexion.commit()
+
+    return {
+        "reference": reference,
+        "police_numero": police_numero,
+        "type_sinistre": type_sinistre,
+        "nombre_pieces": len(pieces),
+    }
 
 
 def _polices_source(connexion: sqlite3.Connection) -> list[dict]:

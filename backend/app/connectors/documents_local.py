@@ -100,3 +100,52 @@ class ConnecteurDocumentsLocal:
             )
         session.commit()
         return resultat
+
+
+def lister_documents() -> dict:
+    if not MANIFESTE.exists():
+        return {
+            "source": "SharePoint Sinistres",
+            "tenant": "Horizon Assurances",
+            "dossier": "Sinistres Auto / 2026",
+            "documents": [],
+        }
+    donnees = json.loads(MANIFESTE.read_text(encoding="utf-8"))
+    return {
+        "source": donnees.get("source", "SharePoint Sinistres"),
+        "tenant": donnees.get("tenant"),
+        "dossier": donnees.get("dossier"),
+        "documents": donnees.get("documents", []),
+    }
+
+
+def ajouter_document(corps: dict) -> dict:
+    """Ajoute un fichier dans la bibliothèque SharePoint (manifeste local)."""
+    dossier_ref = (corps.get("dossier_ref") or "").strip()
+    type_piece = (corps.get("type") or "photo_expertise").strip()
+    chemin = (corps.get("chemin") or "docs/samples/degats-3.jpg").strip()
+    nom_source = (corps.get("nom_source") or "").strip()
+    if not dossier_ref:
+        raise ValueError("Référence dossier requise")
+    if not (RACINE / chemin).exists():
+        raise FileNotFoundError(f"Fichier introuvable : {chemin}")
+    if not nom_source:
+        nom_source = f"{type_piece}-{dossier_ref.lower()}-{int(time.time())}.jpg"
+
+    donnees = lister_documents()
+    document = {
+        "dossier_ref": dossier_ref,
+        "type": type_piece,
+        "chemin": chemin,
+        "nom_source": nom_source,
+        "recu_le": datetime.now(timezone.utc).isoformat(),
+    }
+    if corps.get("montant") not in (None, ""):
+        document["montant"] = float(corps["montant"])
+    donnees["documents"] = [*donnees.get("documents", []), document]
+    MANIFESTE.parent.mkdir(parents=True, exist_ok=True)
+    MANIFESTE.write_text(
+        json.dumps(donnees, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return document
