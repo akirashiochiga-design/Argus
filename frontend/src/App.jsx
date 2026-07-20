@@ -82,17 +82,17 @@ function PlateformeAssureur() {
   const reinitialiserPlateforme = async () => {
     if (reinitialisation) return
     const confirme = window.confirm(
-      "Restaurer les données de référence ? Les dossiers, décisions et modifications en cours seront remplacés."
+      "Restaurer les données de référence ? Les dossiers, décisions et connexions d'intégration seront effacés."
     )
     if (!confirme) return
     setReinitialisation(true)
     try {
       const resultat = await api.reseed()
-      setPage('pipeline')
+      setPage('integrations')
       setRevision((valeur) => valeur + 1)
       setMenuCompte(false)
       await rafraichirCompteur()
-      window.alert(resultat.message || 'Données restaurées — pipeline vide.')
+      window.alert(resultat.message || 'Données restaurées — intégrations déconnectées.')
     } catch (erreur) {
       window.alert(`La réinitialisation a échoué : ${erreur.message}`)
     } finally {

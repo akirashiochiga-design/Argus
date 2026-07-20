@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from sqlmodel import Session, select
 
-from ..audit import tracer
 from ..connectors.insurance_sqlite import ConnexionAssuranceInvalide, tester_connexion
 from ..db import engine
 from ..models import Dossier, IntegrationConnexion
@@ -135,10 +134,10 @@ def _restaurer_sharepoint() -> dict:
 
 @router.post("/admin/reseed")
 def reseed() -> dict:
-    """Remet Norix à l'état de démo : seed vide + SharePoint reset.
+    """Remet Norix à l'état de démo : seed vide, SharePoint reset, aucune connexion active.
 
-    Pipeline vide volontairement — les dossiers arrivent via déclaration,
-    extraction SharePoint, ou sync CoreSinistre depuis Intégrations.
+    Pipeline vide — les dossiers arrivent via déclaration, extraction SharePoint,
+    ou sync CoreSinistre. Toutes les intégrations restent à reconnecter manuellement.
     """
     try:
         seed()
@@ -147,51 +146,29 @@ def reseed() -> dict:
 
     sharepoint = _restaurer_sharepoint()
     erreurs: list[str] = []
-    coresinistre = None
 
     with Session(engine) as session:
-        try:
-            info = tester_connexion()
-        except ConnexionAssuranceInvalide as e:
-            info = None
-            erreurs.append(f"CoreSinistre indisponible : {e}")
-
-        if info:
-            existante = session.exec(
-                select(IntegrationConnexion).where(
-                    IntegrationConnexion.identifiant == "insurance_core"
-                )
-            ).first()
-            if not existante:
-                session.add(IntegrationConnexion(identifiant="insurance_core"))
-                session.flush()
-                tracer(
-                    session,
-                    acteur="humain:responsable_sinistres",
-                    acteur_type="humain",
-                    type="connexion_systeme",
-                    objet="integration:insurance_core",
-                    apres={
-                        "source": info["source"],
-                        "organisation": info["organisation"],
-                        "protocole": "MCP",
-                    },
-                    motif="Reconnecté après restauration — import sinistres laissé manuel",
-                )
-                session.commit()
-            coresinistre = {
-                "statut": "connecte",
-                "source": info["source"],
-                "sinistres_importes": False,
-            }
-
         nb_dossiers = len(session.exec(select(Dossier)).all())
+        nb_connexions = len(session.exec(select(IntegrationConnexion)).all())
+
+    # Vérifie seulement la dispo technique — ne reconnecte rien.
+    coresinistre_dispo = False
+    try:
+        info = tester_connexion()
+        coresinistre_dispo = bool(info)
+    except ConnexionAssuranceInvalide as e:
+        erreurs.append(f"CoreSinistre indisponible : {e}")
 
     return {
         "statut": "ok",
-        "message": "Données restaurées — pipeline vide, prêt pour la démo",
+        "message": "Données restaurées — pipeline vide, toutes les intégrations déconnectées",
         "dossiers": nb_dossiers,
+        "connexions": nb_connexions,
         "sharepoint": sharepoint,
-        "coresinistre": coresinistre,
+        "coresinistre": {
+            "statut": "non_connecte",
+            "disponible": coresinistre_dispo,
+            "sinistres_importes": False,
+        },
         "erreurs": erreurs,
     }
