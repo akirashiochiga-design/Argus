@@ -3,7 +3,6 @@ import { api } from '../api'
 import { AGENT_ICONE, dt } from '../ui'
 
 const CATEGORIES = ['Tous', 'Auto', 'Vision', 'Documents', 'Conformité']
-const CATEGORIES_BIENTOT = ['Habitation', 'Santé', 'Vie']
 
 export default function Marketplace({ onNavigate }) {
   const [agents, setAgents] = useState([])
@@ -123,22 +122,6 @@ export default function Marketplace({ onNavigate }) {
               }`}
             >
               {item}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {CATEGORIES_BIENTOT.map((item) => (
-            <button
-              key={item}
-              type="button"
-              title="Branche hors périmètre de ce pilote — à venir"
-              onClick={() => setMessage({
-                ton: 'info',
-                texte: `Branche « ${item} » — roadmap, hors périmètre de ce pilote (auto uniquement).`,
-              })}
-              className="cursor-not-allowed rounded-md border border-dashed border-line px-3 py-1.5 text-xs font-medium text-encre/30"
-            >
-              {item} · bientôt
             </button>
           ))}
         </div>

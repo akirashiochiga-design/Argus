@@ -814,7 +814,7 @@ function PanneauConnexionsMcp({ agent, onFermer, onChange, onErreur }) {
               <h3 className="text-base font-semibold">Connexions — {agent.nom}</h3>
             </div>
             <p className="mt-1 text-xs leading-5 text-encre/45">
-              Activez les apps que cet agent peut utiliser. OAuth simulé pour la démo.
+              Activez les apps que cet agent peut utiliser.
             </p>
           </div>
           <button type="button" onClick={onFermer} className="text-encre/40 hover:text-encre">×</button>

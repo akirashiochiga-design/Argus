@@ -138,7 +138,7 @@ class ConnecteurERPMarcheTN:
                     "payload": payload,
                 },
                 motif=(
-                    f"Accusé de réception simulé — {self.nom} ({self.editeur}) "
+                    f"Accusé de réception — {self.nom} ({self.editeur}) "
                     "après validation humaine"
                 ),
             )

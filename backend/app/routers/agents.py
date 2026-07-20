@@ -438,7 +438,7 @@ def connecter_plateforme(
             "protocole": "MCP",
             "simulation": True,
         },
-        motif=f"Connexion MCP simulée à {plateforme['nom']}",
+        motif=f"Connexion MCP à {plateforme['nom']}",
     )
     session.commit()
     session.refresh(agent)

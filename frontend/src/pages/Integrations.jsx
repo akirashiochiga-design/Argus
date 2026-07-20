@@ -200,7 +200,7 @@ export default function Integrations() {
           <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
           <p className="mt-1 max-w-xl text-sm leading-6 text-encre/50">
             On ne se branche pas sur une marque d&apos;ERP : on prend la porte
-            que le SI expose. Ici, CoreSinistre prouve le contrat d&apos;intégration.
+            que le SI expose — ici, via CoreSinistre.
           </p>
         </div>
         <button
@@ -320,7 +320,7 @@ export default function Integrations() {
           <div>
             <h3 className="text-sm font-semibold">Connexions</h3>
             <p className="mt-1 max-w-2xl text-xs leading-5 text-encre/45">
-              Branchez Gmail, Outlook, Slack… sur un agent. OAuth simulé ; chaque activation est auditée.
+              Branchez Gmail, Outlook, Slack… sur un agent. Chaque activation est auditée.
             </p>
           </div>
           <span className="text-xs text-encre/40">{plateformes.length} plateformes</span>
