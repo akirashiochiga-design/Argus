@@ -1,6 +1,6 @@
 """Test de bout en bout du pipeline Argus — rejouable avant chaque répétition.
 
-Usage :  .venv/Scripts/python test_e2e.py   (backend démarré sur :8000)
+Usage :  .venv/Scripts/python test_e2e.py   (backend démarré sur :8001)
 Réinitialise la base, déroule les 3 dossiers seed + 1 déclaration live,
 vérifie chaque invariant (montants, états, audit, studio). Sort en erreur
 au premier écart — si ce script passe, la démo passe.

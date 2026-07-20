@@ -1,6 +1,6 @@
 """Point d'entrée FastAPI.
 
-Lancement (depuis backend/) :  uvicorn app.main:app --reload --port 8000
+Lancement (depuis backend/) :  uvicorn app.main:app --reload --port 8001
 """
 from pathlib import Path
 

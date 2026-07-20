@@ -23,12 +23,18 @@ validation explicite de l'utilisateur.
 ## 2. État du projet : tout est fonctionnel
 
 Les 5 étapes du plan (`CLAUDE.md` §8) sont terminées. `backend/test_e2e.py`
-contient **47 vérifications automatiques, toutes vertes** — c'est la source
-de vérité sur "est-ce que ça marche", pas la mémoire de la conversation.
+contenait 47 vérifications automatiques — **actuellement cassé** depuis le
+commit "Supprime les dossiers fictifs du jeu de données initial" (2026-07-19) :
+`/admin/reseed` ne crée plus les dossiers `SIN-2026-00x` sur lesquels le
+script se base. Le reset crée maintenant des dossiers via la synchro
+CoreSinistre (`EXT-SIN-2026-1002`/`1003`), fonctionnels bout-en-bout, mais
+`test_e2e.py` n'a pas encore été remis à jour pour matcher. Ne pas se fier à
+ce script tel quel comme preuve que la démo marche — vérifier manuellement
+(`POST /admin/reseed` puis dérouler un dossier dans l'UI).
 
 ```sh
 cd backend
-.venv/Scripts/python -m uvicorn app.main:app --port 8000   # terminal 1
+.venv/Scripts/python -m uvicorn app.main:app --port 8001   # terminal 1
 # terminal 2, backend démarré :
 .venv/Scripts/python test_e2e.py
 ```
@@ -38,11 +44,11 @@ Si ce script affiche `TOUS LES TESTS PASSENT`, l'app est démontrable.
 ## 3. Comment démarrer (commandes exactes)
 
 ```sh
-# Backend — http://localhost:8000 (docs OpenAPI sur /docs)
+# Backend — http://localhost:8001 (docs OpenAPI sur /docs)
 cd backend
 .venv/Scripts/pip install -r requirements.txt   # si venv pas encore créé
 .venv/Scripts/python -m app.seed                 # ou POST /admin/reseed une fois lancé
-.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
+.venv/Scripts/python -m uvicorn app.main:app --reload --port 8001
 
 # Frontend — http://localhost:5173
 cd frontend
@@ -51,7 +57,7 @@ npm run dev
 ```
 
 Reset démo à tout moment : bouton **↻ Reset démo** dans le header, ou
-`curl -X POST http://localhost:8000/admin/reseed`.
+`curl -X POST http://localhost:8001/admin/reseed`.
 
 ## 4. Arborescence (exacte, vérifiée à l'instant)
 
@@ -302,7 +308,7 @@ décisions — ils sont volontairement détaillés (pas des "wip"/"fix").
 
 1. `git log --oneline` — confirmer que tu es bien sur `1bd7a68` ou plus
    récent, et `git status` propre (rien en attente non commité).
-2. Lancer backend + frontend (§3), `curl -X POST http://localhost:8000/admin/reseed`.
+2. Lancer backend + frontend (§3), `curl -X POST http://localhost:8001/admin/reseed`.
 3. `.venv/Scripts/python test_e2e.py` → doit afficher `TOUS LES TESTS PASSENT`.
    Si un test échoue, **c'est la priorité absolue** avant toute nouvelle
    fonctionnalité — ne jamais ajouter de code par-dessus une régression.

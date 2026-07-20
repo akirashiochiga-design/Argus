@@ -4,12 +4,6 @@
   "dossier": "Sinistres Auto / 2026",
   "documents": [
     {
-      "dossier_ref": "EXT-SIN-2026-1001",
-      "type": "photo_expertise",
-      "chemin": "docs/samples/degats-3.jpg",
-      "nom_source": "expertise-complementaire-1001.jpg"
-    },
-    {
       "dossier_ref": "EXT-SIN-2026-1002",
       "type": "constat",
       "chemin": "docs/samples/constat.jpg",
