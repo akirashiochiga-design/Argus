@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
+import { deconnecterEditeur, lireSessionEditeur } from '../session'
 import { AGENT_ICONE, dt, Logo, Wordmark } from '../ui'
-
-const EDITEUR = {
-  nom: 'Amine Ben Youssef',
-  email: 'amine.benyoussef@independant.tn',
-}
+import LoginEditeur from './LoginEditeur'
 
 const TEMPLATE_DEMO = {
   nom: "Synthèse d'expertise carrosserie",
@@ -24,14 +21,16 @@ const TEMPLATE_DEMO = {
 }
 
 export default function Editeur() {
+  const [session, setSession] = useState(() => lireSessionEditeur())
   const [listings, setListings] = useState([])
   const [chargement, setChargement] = useState(true)
   const [publication, setPublication] = useState(false)
   const [message, setMessage] = useState(null)
 
   const charger = async () => {
+    if (!session) return
     try {
-      setListings(await api.listerMarketplaceEditeur(EDITEUR.nom))
+      setListings(await api.listerMarketplaceEditeur(session.nom))
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
     } finally {
@@ -39,7 +38,11 @@ export default function Editeur() {
     }
   }
 
-  useEffect(() => { charger() }, [])
+  useEffect(() => {
+    if (!session) return
+    setChargement(true)
+    charger()
+  }, [session])
 
   const revenus = useMemo(
     () => listings.reduce((total, listing) => total + listing.prix * listing.installations, 0),
@@ -48,13 +51,14 @@ export default function Editeur() {
 
   const publier = async (event) => {
     event.preventDefault()
+    if (!session) return
     setPublication(true)
     setMessage(null)
     const donnees = new FormData(event.currentTarget)
     try {
       const listing = await api.soumettreMarketplace({
         nom: donnees.get('nom'),
-        editeur: EDITEUR.nom,
+        editeur: session.nom,
         description: donnees.get('description'),
         categorie: donnees.get('categorie'),
         prix: Number(donnees.get('prix')),
@@ -79,6 +83,10 @@ export default function Editeur() {
     }
   }
 
+  if (!session) {
+    return <LoginEditeur onConnecte={setSession} />
+  }
+
   return (
     <div className="min-h-screen bg-creme text-encre">
       <header className="border-b border-creme/10 bg-encre text-creme">
@@ -97,9 +105,21 @@ export default function Editeur() {
             Voir la Marketplace assureur ↗
           </a>
           <div className="hidden text-right md:block">
-            <div className="text-xs font-semibold">{EDITEUR.nom}</div>
-            <div className="text-[10px] text-creme/45">{EDITEUR.email}</div>
+            <div className="text-xs font-semibold">{session.nom}</div>
+            <div className="text-[10px] text-creme/45">{session.email}</div>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              deconnecterEditeur()
+              setSession(null)
+              setListings([])
+              setMessage(null)
+            }}
+            className="rounded-md border border-creme/20 px-3 py-2 text-xs font-semibold text-creme/75 transition hover:bg-creme/10"
+          >
+            Déconnexion
+          </button>
         </div>
       </header>
 
@@ -111,7 +131,7 @@ export default function Editeur() {
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Transformez votre expertise en agent métier</h1>
             <p className="mt-3 text-sm leading-6 text-creme/60">
-              Publiez vos templates auprès des assureurs sans accéder à leurs données,
+              Publiez vos agents auprès des assureurs sans accéder à leurs données,
               connecteurs ou exécutions. Chaque installation devient un agent indépendant
               dans leur Studio.
             </p>
@@ -119,9 +139,9 @@ export default function Editeur() {
         </section>
 
         <section className="grid gap-3 sm:grid-cols-3">
-          <Kpi libelle="Templates publiés" valeur={listings.filter((item) => item.statut === 'publie').length} />
+          <Kpi libelle="Agents publiés" valeur={listings.filter((item) => item.statut === 'publie').length} />
           <Kpi libelle="Installations" valeur={listings.reduce((total, item) => total + item.installations, 0)} />
-          <Kpi libelle="Revenus simulés" valeur={dt(revenus)} />
+          <Kpi libelle="Revenus" valeur={dt(revenus)} />
         </section>
 
         {message && (
@@ -140,7 +160,7 @@ export default function Editeur() {
           <section className="rounded-xl border border-line bg-surface p-6 shadow-sm">
             <div className="flex items-start gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Publier un template</h2>
+                <h2 className="text-lg font-semibold">Publier un agent</h2>
                 <p className="mt-1 text-sm text-encre/50">
                   L’assureur l’achètera préconfiguré et prêt à l’emploi dans son Studio.
                 </p>
@@ -150,14 +170,14 @@ export default function Editeur() {
               </span>
             </div>
             <div className="mt-5 grid grid-cols-4 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-encre/45">
-              {['Template', 'Fiche de vente', 'Contrôles Argus', 'Marketplace'].map((etape, index) => (
+              {['Agent', 'Fiche de vente', 'Contrôles Argus', 'Marketplace'].map((etape, index) => (
                 <div key={etape} className="rounded bg-surface-deep px-1 py-2">
                   <span className="text-terracotta">{index + 1}</span> {etape}
                 </div>
               ))}
             </div>
             <form className="mt-5 grid gap-4" onSubmit={publier}>
-              <Champ libelle="Nom du template">
+              <Champ libelle="Nom de l’agent">
                 <input name="nom" required defaultValue={TEMPLATE_DEMO.nom} className={inputClass} />
               </Champ>
               <Champ libelle="Description commerciale">
@@ -200,7 +220,7 @@ export default function Editeur() {
           <section className="rounded-xl border border-line bg-surface p-6 shadow-sm">
             <div className="flex items-center gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Mes templates</h2>
+                <h2 className="text-lg font-semibold">Mes agents</h2>
                 <p className="mt-1 text-sm text-encre/50">Versions proposées aux assureurs.</p>
               </div>
               <button onClick={charger} className="ml-auto rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-encre/60">
@@ -211,7 +231,7 @@ export default function Editeur() {
               <p className="mt-6 text-sm text-encre/45">Chargement…</p>
             ) : listings.length === 0 ? (
               <div className="mt-6 rounded-lg border border-dashed border-line p-8 text-center text-sm text-encre/45">
-                Aucun template publié. Le formulaire est prérempli pour la démonstration.
+                Aucun agent publié pour le moment.
               </div>
             ) : (
               <div className="mt-5 grid gap-3">

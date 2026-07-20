@@ -82,8 +82,8 @@ def ensure_external_db() -> Path:
             "INSERT OR REPLACE INTO metadata(cle, valeur) VALUES (?, ?)",
             [
                 ("schema_version", "1"),
-                ("systeme_source", "AssurCore Auto"),
-                ("organisation", "Atlas Assurances"),
+                ("systeme_source", "CoreSinistre"),
+                ("organisation", "Horizon Assurances"),
             ],
         )
         connexion.executemany(

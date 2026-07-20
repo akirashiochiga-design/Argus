@@ -21,7 +21,7 @@ class ConnecteurDocumentsLocal:
 
     def _manifeste(self) -> dict:
         if not MANIFESTE.exists():
-            raise FileNotFoundError("Manifeste SharePoint de démonstration introuvable")
+            raise FileNotFoundError("Manifeste SharePoint introuvable")
         donnees = json.loads(MANIFESTE.read_text(encoding="utf-8"))
         for document in donnees.get("documents", []):
             if not (RACINE / document["chemin"]).exists():
@@ -40,7 +40,6 @@ class ConnecteurDocumentsLocal:
             "direction": self.direction,
             "documents_disponibles": len(donnees.get("documents", [])),
             "latence_ms": int((time.monotonic() - debut) * 1000),
-            "simulation": True,
         }
 
     def synchroniser(self, session: Session) -> dict:
@@ -97,7 +96,7 @@ class ConnecteurDocumentsLocal:
                 type="synchronisation_documents",
                 objet=f"integration:{self.identifiant}",
                 apres=resultat,
-                motif="Import idempotent depuis la bibliothèque documentaire de démonstration",
+                motif="Import idempotent depuis la bibliothèque SharePoint Sinistres",
             )
         session.commit()
         return resultat

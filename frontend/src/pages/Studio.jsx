@@ -103,7 +103,7 @@ export default function Studio() {
         {/* templates */}
         <div>
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-encre/40">
-            Modèles métier
+            Agents métier
           </h3>
           <div className="grid gap-3">
             {templates.map((t) => (
@@ -703,7 +703,7 @@ function FormulaireTemplate({ template, onFermer, onCree }) {
           </label>
         )}
         <div className="mt-3 rounded-md bg-ok-tint p-2 text-xs text-ok">
-          Contrôles du modèle :{' '}
+          Contrôles de l’agent :{' '}
           {Object.keys(template.garde_fous_defaut ?? {}).map(libelleGardeFou).join(', ') || 'aucun'}
         </div>
         {erreur && <p className="mt-2 text-sm text-bad">{erreur}</p>}

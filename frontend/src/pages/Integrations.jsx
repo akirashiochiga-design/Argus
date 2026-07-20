@@ -75,10 +75,10 @@ export default function Integrations() {
       let texte
       if (identifiant === 'sharepoint_demo') {
         texte = resultat.dossiers_introuvables?.length
-          ? `Bibliothèque connectée. Synchronisez d’abord AssurCore pour rattacher ${resultat.dossiers_introuvables.length} dossier(s) source.`
+          ? `Bibliothèque connectée. Synchronisez d’abord CoreSinistre pour rattacher ${resultat.dossiers_introuvables.length} dossier(s) source.`
           : `${resultat.documents_importes} document(s) SharePoint importé(s), ${resultat.documents_ignores} déjà présent(s).`
       } else {
-        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) à l’ERP interne de démonstration.`
+        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) à l’ERP Finance interne.`
       }
       setMessage({ ton: 'succes', texte })
     } catch (erreur) {
@@ -300,21 +300,21 @@ export default function Integrations() {
         <div className="mb-3">
           <h3 className="font-semibold">Adaptateurs actifs</h3>
           <p className="text-xs text-encre/45">
-            Preuves locales du même contrat d’intégration utilisé par AssurCore.
+            Même contrat d’intégration que CoreSinistre, pour les flux documentaires et financiers.
           </p>
         </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <CarteConnecteur
             connecteur={sharepoint}
             titre="SharePoint Sinistres"
-            sousTitre="Documents entrants · Microsoft Graph en production"
+            sousTitre="Documents entrants · Microsoft Graph"
             initiales="SP"
             couleur="bg-[#038387]"
             action={action}
             onActiver={() => activerConnecteur('sharepoint_demo')}
             detail={sharepoint
-              ? `${sharepoint.documents_disponibles} document(s) disponibles · environnement démo`
-              : 'Bibliothèque documentaire locale de démonstration'}
+              ? `${sharepoint.documents_disponibles} document(s) disponibles`
+              : 'Bibliothèque documentaire SharePoint'}
           />
           <CarteConnecteur
             connecteur={erpInterne}
@@ -385,7 +385,7 @@ function CarteConnecteur({
       <p className="mt-4 text-sm text-encre/55">{detail}</p>
       <div className="mt-4 flex items-center gap-2 border-t border-line pt-4">
         <span className="text-[10px] font-medium uppercase tracking-wide text-encre/35">
-          Simulation locale auditée
+          Connexion auditée
         </span>
         <button
           onClick={onActiver}

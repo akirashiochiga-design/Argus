@@ -246,11 +246,13 @@ modifier les agents ni le moteur Argus. Les écritures sortantes restent
 séparées et ne sont déclenchées qu'après validation humaine.
 
 **Vous avez vraiment connecté SharePoint et l'ERP interne ?**
-Le connecteur AssurCore montré en direct lit réellement une base externe en
-lecture seule, valide son schéma et synchronise sans doublon. SharePoint et l'ERP interne
-sont des adaptateurs locaux de démonstration : ils prouvent le même contrat
-entrant et sortant, avec audit et reprise, mais nous ne prétendons pas avoir
-des identifiants Microsoft ou d'un assureur en production pendant le hackathon.
+Le connecteur « CoreSinistre Démo » montré en direct lit réellement une base
+externe en lecture seule, valide son schéma et synchronise sans doublon. C'est
+un SI core fictif qui simule le système métier de l'assureur. SharePoint et
+l'ERP interne sont des adaptateurs locaux de démonstration : ils prouvent le
+même contrat entrant et sortant, avec audit et reprise, mais nous ne prétendons
+pas avoir des identifiants Microsoft ou d'un assureur en production pendant le
+hackathon.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,

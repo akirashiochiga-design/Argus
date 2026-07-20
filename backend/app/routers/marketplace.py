@@ -70,7 +70,7 @@ def lister_listings_editeur(
     editeur: str,
     session: Session = Depends(get_session),
 ) -> list[MarketplaceListing]:
-    """Tableau de bord d'un éditeur de templates dans l'environnement de démo."""
+    """Tableau de bord des templates publiés par un éditeur."""
     return session.exec(
         select(MarketplaceListing)
         .where(MarketplaceListing.editeur == editeur)
@@ -85,7 +85,7 @@ def installer_listing(
 ) -> dict:
     listing = session.get(MarketplaceListing, listing_id)
     if not listing or listing.statut != "publie":
-        raise HTTPException(404, "Template Marketplace introuvable")
+        raise HTTPException(404, "Agent Marketplace introuvable")
 
     existante = _installation(session, listing_id)
     if existante:
@@ -132,7 +132,7 @@ def installer_listing(
             "editeur": listing.editeur,
             "statut": "live",
         },
-        motif="Template acheté et agent prêt à l'emploi dans le Studio",
+        motif="Agent acheté et prêt à l'emploi dans le Studio",
     )
     try:
         session.commit()
@@ -155,7 +155,7 @@ def soumettre_listing(
     session: Session = Depends(get_session),
 ) -> MarketplaceListing:
     if corps.categorie not in CATEGORIES_AUTORISEES:
-        raise HTTPException(422, "Catégorie de template non autorisée")
+        raise HTTPException(422, "Catégorie d'agent non autorisée")
     if MOTIFS_SECRET.search(corps.instructions):
         raise HTTPException(422, "Retirez les clés, mots de passe ou secrets des instructions")
     doublon = session.exec(
@@ -165,7 +165,7 @@ def soumettre_listing(
         )
     ).first()
     if doublon:
-        raise HTTPException(409, "Cet éditeur a déjà soumis un template portant ce nom")
+        raise HTTPException(409, "Cet éditeur a déjà soumis un agent portant ce nom")
 
     listing = MarketplaceListing(
         nom=corps.nom.strip(),
@@ -198,7 +198,7 @@ def soumettre_listing(
             "prix": listing.prix,
             "statut": listing.statut,
         },
-        motif="Template soumis à la revue Argus avant publication",
+        motif="Agent soumis à la revue Argus avant publication",
     )
     session.commit()
     session.refresh(listing)
@@ -210,12 +210,12 @@ def valider_listing(
     listing_id: int,
     session: Session = Depends(get_session),
 ) -> MarketplaceListing:
-    """Simulation de la revue humaine Argus pour rendre le parcours démontrable."""
+    """Revue Argus : contrôles automatiques puis publication du template."""
     listing = session.get(MarketplaceListing, listing_id)
     if not listing:
-        raise HTTPException(404, "Template soumis introuvable")
+        raise HTTPException(404, "Agent soumis introuvable")
     if listing.statut != "en_attente":
-        raise HTTPException(409, "Ce template a déjà été revu")
+        raise HTTPException(409, "Cet agent a déjà été revu")
     listing.statut = "publie"
     listing.verifie = True
     session.add(listing)
@@ -227,7 +227,7 @@ def valider_listing(
         objet=f"listing:{listing.id}",
         avant={"statut": "en_attente"},
         apres={"statut": "publie", "verifie": True},
-        motif="Contrôles automatiques réussis et template approuvé pour la démonstration",
+        motif="Contrôles automatiques réussis — agent approuvé et publié",
     )
     session.commit()
     session.refresh(listing)

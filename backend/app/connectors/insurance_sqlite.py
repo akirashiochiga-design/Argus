@@ -295,10 +295,10 @@ def synchroniser(session: Session) -> dict:
 
 
 class ConnecteurAssuranceSQLite:
-    """Adaptateur du SI de démonstration conforme au registre Argus."""
+    """Adaptateur du SI core assurance conforme au registre Argus."""
 
     identifiant = "insurance_core"
-    nom = "AssurCore Auto"
+    nom = "CoreSinistre"
     direction = "entrant"
 
     def tester(self) -> dict:

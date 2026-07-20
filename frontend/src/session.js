@@ -1,6 +1,7 @@
-// Session locale du superviseur, persistée entre les rafraîchissements.
+// Sessions locales (assureur / éditeur), persistées entre les rafraîchissements.
 
 const CLE = 'argus_session'
+const CLE_EDITEUR = 'argus_session_editeur'
 
 // Identité par défaut du superviseur.
 export const COMPTE_SUPERVISEUR = {
@@ -8,6 +9,14 @@ export const COMPTE_SUPERVISEUR = {
   motDePasse: 'argus2026',
   nom: 'Zak Chammam',
   role: 'responsable sinistres',
+}
+
+// Compte éditeur (portail /#editeur).
+export const COMPTE_EDITEUR = {
+  email: 'amine.benyoussef@independant.tn',
+  motDePasse: 'argus2026',
+  nom: 'Amine Ben Youssef',
+  role: 'éditeur indépendant',
 }
 
 function nomDepuisEmail(email) {
@@ -62,6 +71,42 @@ export function connecter(email, motDePasse) {
 
 export function deconnecter() {
   localStorage.removeItem(CLE)
+}
+
+export function lireSessionEditeur() {
+  try {
+    const brut = localStorage.getItem(CLE_EDITEUR)
+    if (!brut) return null
+    const session = JSON.parse(brut)
+    if (!session?.email || !session?.nom) return null
+    return session
+  } catch {
+    return null
+  }
+}
+
+export function connecterEditeur(email, motDePasse) {
+  if (!email.trim() || !motDePasse.trim()) {
+    throw new Error('Email et mot de passe requis.')
+  }
+  const emailNorm = email.trim().toLowerCase()
+  if (emailNorm !== COMPTE_EDITEUR.email) {
+    throw new Error('Compte éditeur inconnu.')
+  }
+  if (motDePasse !== COMPTE_EDITEUR.motDePasse) {
+    throw new Error('Mot de passe incorrect.')
+  }
+  const session = {
+    email: COMPTE_EDITEUR.email,
+    nom: COMPTE_EDITEUR.nom,
+    role: COMPTE_EDITEUR.role,
+  }
+  localStorage.setItem(CLE_EDITEUR, JSON.stringify(session))
+  return session
+}
+
+export function deconnecterEditeur() {
+  localStorage.removeItem(CLE_EDITEUR)
 }
 
 // Chaîne d'attribution utilisée partout où l'ancienne constante VALIDATEUR

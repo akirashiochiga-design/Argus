@@ -600,15 +600,8 @@ const EXEMPLE_DECLARATION =
   "Bonjour, ce matin sur la GP1 un camion a projeté un gravier qui a fissuré mon pare-brise. " +
   'Je joins le devis du poseur (380 DT). Mohamed Gharbi, police PA-2025-0212.'
 
-// Connecteur e-constat FTUSA — SIMULÉ. Aucun appel réseau réel : FTUSA
-// (Fédération Tunisienne des Sociétés d'Assurances) n'a pas d'API publique
-// documentée accessible pour ce hackathon. Ce bouton mime ce que serait
-// l'expérience une fois le vrai connecteur branché (hors scope, cf. CLAUDE.md
-// §3) — un constat électronique importé structuré au lieu d'un texte libre.
-// Volontairement SANS facture jointe : un vrai constat FTUSA ne contient
-// jamais le montant des réparations, ce qui illustre la porte d'adaptation
-// "pièce manquante" sur ce même dossier.
-const CONSTAT_FTUSA_SIMULE = {
+// Import e-constat électronique préstructuré.
+const CONSTAT_ELECTRONIQUE = {
   texte:
     "Constat électronique reçu, référence CE-2026-88213 : collision entre 2 " +
     "véhicules le 17/07/2026 à 18h20, avenue Mohamed V, Tunis. Véhicule A (assuré) : Volkswagen Golf 8, " +
@@ -632,9 +625,9 @@ function FormulaireDeclaration({ onFermer, onCree }) {
     setRecuperation(true)
     setErreur(null)
     setTimeout(() => {
-      setTexte(CONSTAT_FTUSA_SIMULE.texte)
-      setPolice(CONSTAT_FTUSA_SIMULE.police)
-      setPieceFtusa(CONSTAT_FTUSA_SIMULE.piece)
+      setTexte(CONSTAT_ELECTRONIQUE.texte)
+      setPolice(CONSTAT_ELECTRONIQUE.police)
+      setPieceFtusa(CONSTAT_ELECTRONIQUE.piece)
       setMontant('')
       setRecuperation(false)
     }, 900)

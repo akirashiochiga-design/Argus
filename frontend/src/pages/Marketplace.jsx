@@ -203,7 +203,6 @@ export default function Marketplace({ onNavigate }) {
             <div className="flex justify-between"><span>Licence d’utilisation</span><b>{achat.prix ? dt(achat.prix) : 'Gratuit'}</b></div>
             <div className="mt-2 flex justify-between text-encre/45"><span>Destination</span><span>Studio Argus</span></div>
           </div>
-          <p className="mt-3 text-xs text-encre/40">Cette action est simulée dans l’environnement de démonstration.</p>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setAchat(null)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>
             <button

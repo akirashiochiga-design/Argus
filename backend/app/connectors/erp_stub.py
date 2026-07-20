@@ -17,10 +17,9 @@ class ConnecteurERPDemo:
             "identifiant": self.identifiant,
             "nom": self.nom,
             "direction": self.direction,
-            "protocole": "REST / SOAP / SQL (simulé localement)",
+            "protocole": "REST / SOAP / SQL",
             "mode": "écriture après validation humaine",
             "latence_ms": 18,
-            "simulation": True,
         }
 
     def synchroniser(self, session: Session) -> dict:
@@ -47,13 +46,12 @@ class ConnecteurERPDemo:
                     "montant": ecriture.montant,
                     "connecteur": self.identifiant,
                 },
-                motif="Accusé de réception du SI interne simulé après validation humaine",
+                motif="Accusé de réception du SI interne après validation humaine",
             )
         session.commit()
         return {
             "statut": "succes",
             "ecritures_envoyees": len(ecritures),
-            "simulation": True,
         }
 
 

@@ -84,6 +84,5 @@ export const api = {
   connecterConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/connecter`),
   synchroniserConnecteur: (identifiant) => post(`/integrations/connecteurs/${identifiant}/synchroniser`),
   listerEcrituresErp: () => request('/integrations/erp/ecritures'),
-  // Démo
   reseed: () => post('/admin/reseed'),
 }
