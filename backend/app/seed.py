@@ -369,6 +369,119 @@ def build_agents(templates: list[Template]) -> list[Agent]:
     ]
 
 
+def build_agents_complementaires() -> list[Agent]:
+    """8 modules live prêts pour le Studio (LARP) — hors pipeline auto par défaut."""
+    commun = {
+        "pas_de_decision_argent": True,
+        "max_iterations_agent": 4,
+    }
+    return [
+        Agent(
+            nom="Contrôle des pièces obligatoires",
+            categorie="extraction",
+            instructions=(
+                "Vérifie que le dossier contient les justificatifs attendus selon le type "
+                "de sinistre. Dresse la liste des pièces présentes, manquantes ou illisibles "
+                "et prépare les éléments à demander au déclarant."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["inventorier_pieces", "consulter_circonstances"],
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Détection de dommages antérieurs",
+            categorie="vision",
+            instructions=(
+                "Analyse les photos pour distinguer les dégâts récents des traces d'usure "
+                "ou de réparations anciennes. Signale les indices observés et le niveau "
+                "de confiance, sans se prononcer sur un montant."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Lecture de constat amiable",
+            categorie="extraction",
+            instructions=(
+                "Lis le constat amiable et extrais les conducteurs, véhicules, "
+                "circonstances, cases cochées et signatures. Signale chaque champ "
+                "illisible avec un niveau de confiance."
+            ),
+            garde_fous={**commun, "outils_autorises": ["inventorier_pieces"]},
+            statut="live",
+        ),
+        Agent(
+            nom="Signalement d'anomalies documentaires",
+            categorie="extraction",
+            instructions=(
+                "Repère les incohérences entre pièces (montants, dates, immatriculations, "
+                "noms) et signale les anomalies à vérifier par un gestionnaire. "
+                "Ne bloque jamais un règlement seul."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["inventorier_pieces", "consulter_police"],
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Triage et priorisation SLA",
+            categorie="fnol",
+            instructions=(
+                "Classe le dossier selon urgence, gravité apparente et engagement SLA "
+                "(délai de traitement). Propose une file (standard / prioritaire / critique) "
+                "sans décider d'un montant."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["consulter_circonstances", "inventorier_pieces"],
+            },
+            statut="live",
+        ),
+        Agent(
+            nom="Demande de complément à l'assuré",
+            categorie="courrier",
+            instructions=(
+                "Rédige un message clair et courtois demandant uniquement les informations "
+                "ou justificatifs manquants identifiés dans le dossier. Mentionne le numéro "
+                "du dossier et les modalités de transmission."
+            ),
+            garde_fous={**commun, "pas_de_donnees_sensibles": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Notification assuré",
+            categorie="courrier",
+            instructions=(
+                "Prépare une notification courte (e-mail ou SMS) informant l'assuré de "
+                "l'avancement du dossier : réception, pièces manquantes, décision en cours. "
+                "Aucun montant n'est annoncé sans validation humaine préalable."
+            ),
+            garde_fous={**commun, "pas_de_donnees_sensibles": True, "montant_impose": True},
+            statut="live",
+        ),
+        Agent(
+            nom="Suivi réparation garage",
+            categorie="extraction",
+            instructions=(
+                "Suit l'état des réparations auprès du garage partenaire : devis accepté, "
+                "travaux en cours, facture finale. Extrais les dates et montants pour le "
+                "gestionnaire, sans engager de paiement."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["inventorier_pieces", "consulter_police"],
+            },
+            statut="live",
+        ),
+    ]
+
+
 def build_police_habitation() -> Police:
     """Police habitation — même modèle Police, la garantie 'vehicule' porte le bien assuré."""
     return Police(
@@ -385,122 +498,6 @@ def build_police_habitation() -> Police:
         prime_payee=True,
         vehicule={"type": "appartement", "adresse": "Résidence Les Jasmins, Sousse", "annee": 2015},
     )
-
-
-def build_agents_habitation() -> list[Agent]:
-    """Les 8 mêmes catégories de modules, instructions et garde-fous pour la branche habitation."""
-    return [
-        Agent(
-            nom="Qualification initiale (habitation)",
-            categorie="fnol",
-            instructions=(
-                "À partir de la déclaration reçue, identifie le type de sinistre habitation "
-                "(incendie, dégât des eaux, vol, catastrophe naturelle), la date, le lieu, "
-                "les circonstances et les pièces annoncées. Signale les champs manquants "
-                "sans compléter une information absente."
-            ),
-            garde_fous={
-                "pas_de_decision_argent": True,
-                "outils_autorises": ["consulter_police", "inventorier_pieces"],
-                "max_iterations_agent": 4,
-            },
-            statut="live",
-        ),
-        Agent(
-            nom="Extraction documents (habitation)",
-            categorie="extraction",
-            instructions=(
-                "Lis le devis de réparation et extrais les postes de travaux, montants et "
-                "références. Donne une confiance par champ."
-            ),
-            garde_fous={"pas_de_decision_argent": True},
-            statut="live",
-        ),
-        Agent(
-            nom="Analyse des dégâts (habitation)",
-            categorie="vision",
-            instructions=(
-                "Analyse les photos ou croquis de dégâts du bien assuré : classe "
-                "leger/moyen/lourd, zones touchées et confiance. Ne réalise aucun contrôle "
-                "de cohérence avec la déclaration : cette responsabilité appartient à un "
-                "module séparé."
-            ),
-            garde_fous={
-                "pas_de_decision_argent": True,
-                "mission": "gravite",
-                "outils_autorises": [
-                    "consulter_bien_assure",
-                    "consulter_circonstances",
-                    "inventorier_pieces",
-                ],
-                "max_iterations_agent": 4,
-            },
-            statut="live",
-        ),
-        Agent(
-            nom="Cohérence photo (habitation)",
-            categorie="vision",
-            instructions=(
-                "Compare les photos de dégâts avec les circonstances déclarées. Signale "
-                "toute incohérence de zone, de type de dommage ou de bien assuré, avec les "
-                "éléments visuels observés et un niveau de confiance."
-            ),
-            garde_fous={
-                "pas_de_decision_argent": True,
-                "mission": "coherence",
-                "outils_autorises": [
-                    "consulter_bien_assure",
-                    "consulter_circonstances",
-                    "inventorier_pieces",
-                ],
-                "max_iterations_agent": 4,
-            },
-            statut="live",
-        ),
-        Agent(
-            nom="Contrôle des garanties (habitation)",
-            categorie="garanties",
-            instructions=(
-                "Applique le contrat au sinistre : garantie couverte ou non, franchise et "
-                "plafond applicables, motivation ligne à ligne avec clause citée."
-            ),
-            garde_fous={"deterministe": True},
-            statut="live",
-        ),
-        Agent(
-            nom="Évaluation indemnitaire (habitation)",
-            categorie="indemnite",
-            instructions=(
-                "Calcule le montant d'indemnité : base devis, franchise et plafond "
-                "contractuel. Chaque ligne du calcul est sourcée. Pas de vétusté appliquée "
-                "sur ce pilote (biens valorisés à neuf)."
-            ),
-            garde_fous={"deterministe": True, "hitl_obligatoire": True},
-            statut="live",
-        ),
-        Agent(
-            nom="Validation gestionnaire (habitation)",
-            categorie="hitl",
-            instructions=(
-                "Route la recommandation : en dessous du seuil, tâche 'proposé' ; "
-                "au-dessus, validation obligatoire."
-            ),
-            seuils={"plafond_auto": 500, "seuil_validation": 1000},
-            garde_fous={"deterministe": True, "non_desactivable": True},
-            statut="live",
-        ),
-        Agent(
-            nom="Courrier de décision (habitation)",
-            categorie="courrier",
-            instructions=(
-                "Rédige la lettre de décision pour l'assuré : explication claire, clauses "
-                "citées. Le montant est fourni par le calcul indemnitaire et validé par le "
-                "gestionnaire."
-            ),
-            garde_fous={"montant_impose": True, "pas_de_donnees_sensibles": True},
-            statut="live",
-        ),
-    ]
 
 
 def seed() -> None:
@@ -559,15 +556,10 @@ def seed() -> None:
         )
         session.commit()
 
-        # Branche habitation — agents + workflow prêts, sans dossier préchargé
-        # (pipeline vide au reset : les dossiers viennent de la déclaration / SharePoint / CoreSinistre).
+        # Branche habitation — même modules que l'auto (le code gère la branche).
+        # Les 8 agents complémentaires restent disponibles dans le Studio (16 au total).
         police_hab = build_police_habitation()
         session.add(police_hab)
-        session.commit()
-
-        agents_hab = build_agents_habitation()
-        for a in agents_hab:
-            session.add(a)
         session.commit()
 
         session.add(
@@ -577,17 +569,20 @@ def seed() -> None:
                 branche="habitation",
                 est_defaut=False,
                 etapes=[
-                    {"ordre": 0, "agent_id": agents_hab[0].id, "type": "agent"},
-                    {"ordre": 1, "agent_id": agents_hab[1].id, "type": "agent"},
-                    {"ordre": 2, "agent_id": agents_hab[2].id, "type": "agent"},
-                    {"ordre": 3, "agent_id": agents_hab[3].id, "type": "agent"},
-                    {"ordre": 4, "agent_id": agents_hab[4].id, "type": "agent"},
-                    {"ordre": 5, "agent_id": agents_hab[5].id, "type": "agent"},
-                    {"ordre": 6, "agent_id": agents_hab[6].id, "type": "porte_humaine"},
-                    {"ordre": 7, "agent_id": agents_hab[7].id, "type": "agent"},
+                    {"ordre": 0, "agent_id": agents[0].id, "type": "agent"},
+                    {"ordre": 1, "agent_id": agents[1].id, "type": "agent"},
+                    {"ordre": 2, "agent_id": agents[2].id, "type": "agent"},
+                    {"ordre": 3, "agent_id": agents[3].id, "type": "agent"},
+                    {"ordre": 4, "agent_id": agents[4].id, "type": "agent"},
+                    {"ordre": 5, "agent_id": agents[5].id, "type": "agent"},
+                    {"ordre": 6, "agent_id": agents[6].id, "type": "porte_humaine"},
+                    {"ordre": 7, "agent_id": agents[7].id, "type": "agent"},
                 ],
             )
         )
+
+        for a in build_agents_complementaires():
+            session.add(a)
         session.commit()
 
     print(f"Seed OK -> {DB_PATH}")
