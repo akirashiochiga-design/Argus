@@ -174,7 +174,7 @@ class EcritureERP(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     dossier_id: int = Field(foreign_key="dossier.id", index=True)
-    connecteur: str = "sap_finance_demo"
+    connecteur: str = "erp_interne_demo"
     statut: str = "planifiee"  # planifiee | envoyee
     montant: float
     payload: dict = Field(default_factory=dict, sa_column=Column(JSON))

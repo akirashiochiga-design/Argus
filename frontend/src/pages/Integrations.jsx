@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 
-const ERP = [
-  { id: 'sage', nom: 'Sage X3', type: 'ERP Finance', couleur: 'bg-[#00A376]', initiales: 'S' },
-  { id: 'sap', nom: 'SAP S/4HANA', type: 'ERP & Comptabilité', couleur: 'bg-[#0A6ED1]', initiales: 'SAP' },
-  { id: 'oracle', nom: 'Oracle Financials', type: 'Gestion financière', couleur: 'bg-[#C74634]', initiales: 'O' },
-  { id: 'guidewire', nom: 'Guidewire ClaimCenter', type: 'Core assurance', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
+const SYSTEMES_ASSURANCE = [
+  { id: 'guidewire', nom: 'Guidewire ClaimCenter', type: 'Gestion des sinistres', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
+  { id: 'duck-creek', nom: 'Duck Creek Claims', type: 'Core sinistres', couleur: 'bg-[#236192]', initiales: 'DC' },
+  { id: 'sapiens', nom: 'Sapiens IDITSuite', type: 'Core assurance', couleur: 'bg-[#6D4C9F]', initiales: 'SP' },
+  { id: 'interne', nom: 'SI assurance interne', type: 'API · SQL · SFTP', couleur: 'bg-[#334155]', initiales: 'SI' },
 ]
 
 const formule = (valeur) => valeur === 'tous_risques' ? 'Tous risques' : 'Tiers'
@@ -78,7 +78,7 @@ export default function Integrations() {
           ? `Bibliothèque connectée. Synchronisez d’abord AssurCore pour rattacher ${resultat.dossiers_introuvables.length} dossier(s) source.`
           : `${resultat.documents_importes} document(s) SharePoint importé(s), ${resultat.documents_ignores} déjà présent(s).`
       } else {
-        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) au connecteur SAP de démonstration.`
+        texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) à l’ERP interne de démonstration.`
       }
       setMessage({ ton: 'succes', texte })
     } catch (erreur) {
@@ -94,7 +94,7 @@ export default function Integrations() {
   const compteurs = statut?.compteurs ?? {}
   const connecte = statut?.statut === 'connecte'
   const sharepoint = connecteurs.find((item) => item.identifiant === 'sharepoint_demo')
-  const sap = connecteurs.find((item) => item.identifiant === 'sap_finance_demo')
+  const erpInterne = connecteurs.find((item) => item.identifiant === 'erp_interne_demo')
 
   return (
     <div className="grid gap-6">
@@ -317,22 +317,22 @@ export default function Integrations() {
               : 'Bibliothèque documentaire locale de démonstration'}
           />
           <CarteConnecteur
-            connecteur={sap}
-            titre="SAP Finance"
-            sousTitre="Écritures sortantes · après validation humaine"
-            initiales="SAP"
-            couleur="bg-[#0A6ED1]"
+            connecteur={erpInterne}
+            titre="ERP Finance interne"
+            sousTitre="Écritures sortantes vers le SI de l’assureur"
+            initiales="SI"
+            couleur="bg-[#334155]"
             action={action}
-            onActiver={() => activerConnecteur('sap_finance_demo')}
+            onActiver={() => activerConnecteur('erp_interne_demo')}
             detail={`${ecrituresErp.filter((item) => item.statut === 'planifiee').length} en attente · ${ecrituresErp.filter((item) => item.statut === 'envoyee').length} envoyée(s)`}
           />
         </div>
       </section>
 
       <section>
-        <h3 className="mb-3 font-semibold">Catalogue de connecteurs prêts à configurer</h3>
+        <h3 className="mb-3 font-semibold">Cores assurance et systèmes internes prêts à configurer</h3>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {ERP.map((connecteur) => (
+          {SYSTEMES_ASSURANCE.map((connecteur) => (
             <div key={connecteur.id} className="rounded-xl border border-line bg-surface p-5">
               <div className="flex items-start gap-3">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white ${connecteur.couleur}`}>

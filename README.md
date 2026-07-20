@@ -87,12 +87,13 @@ Argus sépare explicitement les responsabilités :
 - Dashboard de supervision et journal d'audit
 - Registre d'adaptateurs : core assurance, documents SharePoint et écritures ERP
 - Marketplace persistante : soumission de templates et installation immédiate dans le Studio
+- Portail freelance séparé (`/#editeur`) pour publier et suivre ses templates
 - Déploiement frontend et backend sous une URL unique
 
 Le paiement et le reversement Marketplace, la certification complète, les
 identifiants OAuth/ERP de production, le multi-tenant et le Relay déployé chez
 l'assureur font partie des prochaines étapes. Le prototype connecte réellement
-une base assurance externe locale ; les adaptateurs SharePoint et SAP utilisent
+une base assurance externe locale ; les adaptateurs SharePoint et ERP interne utilisent
 des sources locales clairement signalées comme simulations de démonstration.
 
 ## Architecture

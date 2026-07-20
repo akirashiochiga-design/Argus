@@ -52,7 +52,7 @@ au périmètre :
   dans son Studio. Paiement, reversement et certification restent simulés.
 - **Connecteurs démonstrateurs** : formaliser un registre d'adaptateurs autour
   du connecteur assurance SQLite existant, puis montrer un flux documentaire
-  type SharePoint entrant et une écriture ERP type SAP sortante. Ces deux
+  type SharePoint entrant et une écriture vers l'ERP interne sortante. Ces deux
   systèmes externes restent des simulations locales clairement identifiées.
 
 ### Les agents réellement implémentés (le pipeline P5 du cahier des charges)
@@ -76,7 +76,7 @@ code fonctionnel :
 - Multi-tenant réel / isolation inter-organisations. Un seul tenant en dur.
 - RBAC fin. Un login factice + un rôle "superviseur" suffisent.
 - Vrais connecteurs ERP / Drive / MCP de production. Le connecteur core SQLite
-  et les adaptateurs SharePoint/SAP locaux servent uniquement de preuves du
+  et les adaptateurs SharePoint/ERP interne locaux servent uniquement de preuves du
   contrat d'intégration et utilisent des données locales.
 - Coffre à secrets, rotation de clés, environnements bac-à-sable vs prod séparés.
 - Versioning / rollback des agents, promotion, déploiement en un clic.

@@ -9,7 +9,6 @@ export default function Marketplace({ onNavigate }) {
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('Tous')
   const [achat, setAchat] = useState(null)
-  const [publication, setPublication] = useState(false)
   const [message, setMessage] = useState(null)
   const [chargement, setChargement] = useState(true)
   const [action, setAction] = useState(false)
@@ -53,49 +52,6 @@ export default function Marketplace({ onNavigate }) {
     }
   }
 
-  const soumettre = async (event) => {
-    event.preventDefault()
-    setAction(true)
-    const donnees = new FormData(event.currentTarget)
-    try {
-      const listing = await api.soumettreMarketplace({
-        nom: donnees.get('nom'),
-        editeur: donnees.get('editeur'),
-        description: donnees.get('description'),
-        categorie: donnees.get('categorie'),
-        prix: Number(donnees.get('prix')),
-        tags: [donnees.get('tag')].filter(Boolean),
-        instructions: donnees.get('instructions'),
-      })
-      setPublication(false)
-      setMessage({
-        ton: 'succes',
-        texte: `« ${listing.nom} » a été soumis : contrôles validés, revue Argus en attente.`,
-        reviewId: listing.id,
-      })
-    } catch (erreur) {
-      setMessage({ ton: 'erreur', texte: erreur.message })
-    } finally {
-      setAction(false)
-    }
-  }
-
-  const validerSoumission = async (listingId) => {
-    setAction(true)
-    try {
-      const listing = await api.validerMarketplace(listingId)
-      await charger()
-      setMessage({
-        ton: 'succes',
-        texte: `« ${listing.nom} » est vérifié et disponible à l’achat dans la Marketplace.`,
-      })
-    } catch (erreur) {
-      setMessage({ ton: 'erreur', texte: erreur.message })
-    } finally {
-      setAction(false)
-    }
-  }
-
   if (chargement) return <p className="text-sm text-encre/50">Chargement de la Marketplace…</p>
 
   return (
@@ -111,12 +67,14 @@ export default function Marketplace({ onNavigate }) {
               Découvrez des modules spécialisés, évalués par la communauté assurance et compatibles avec le Studio Argus.
             </p>
           </div>
-          <button
-            onClick={() => setPublication(true)}
-            className="ml-auto rounded-md bg-terracotta px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep"
+          <a
+            href="/#editeur"
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto rounded-md border border-creme/20 px-4 py-2.5 text-sm font-semibold text-creme/75 transition hover:bg-creme/10"
           >
-            Publier un agent
-          </button>
+            Portail éditeurs ↗
+          </a>
         </div>
       </header>
 
@@ -129,15 +87,6 @@ export default function Marketplace({ onNavigate }) {
           <span>{message.ton === 'erreur' ? '!' : '✓'}</span>
           <span>{message.texte}</span>
           <div className="ml-auto flex items-center gap-2">
-            {message.reviewId && (
-              <button
-                onClick={() => validerSoumission(message.reviewId)}
-                disabled={action}
-                className="rounded-md bg-ok px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                Simuler la revue Argus
-              </button>
-            )}
             {message.studio && (
               <button
                 onClick={() => onNavigate('studio')}
@@ -268,70 +217,6 @@ export default function Marketplace({ onNavigate }) {
         </Modal>
       )}
 
-      {publication && (
-        <Modal onFermer={() => setPublication(false)}>
-          <h3 className="text-lg font-semibold">Publier un agent</h3>
-          <p className="mt-1 text-sm text-encre/50">
-            Vendez votre template métier ; les données et connecteurs restent chez l’assureur.
-          </p>
-          <div className="mt-4 grid grid-cols-4 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-encre/45">
-            {['Template', 'Fiche de vente', 'Revue Argus', 'Publication'].map((etape, index) => (
-              <div key={etape} className="rounded bg-surface-deep px-1 py-2">
-                <span className="text-terracotta">{index + 1}</span> {etape}
-              </div>
-            ))}
-          </div>
-          <form
-            className="mt-5 grid gap-4"
-            onSubmit={soumettre}
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-xs font-medium text-encre/60">
-                Nom du template
-                <input name="nom" required placeholder="Ex. Assistant expertise auto" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-encre/60">
-                Éditeur / freelance
-                <input name="editeur" required placeholder="Ex. Amine Ben Ali" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-              </label>
-            </div>
-            <label className="grid gap-1 text-xs font-medium text-encre/60">
-              Description
-              <textarea name="description" required rows="3" placeholder="Décrivez sa valeur métier…" className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-            </label>
-            <label className="grid gap-1 text-xs font-medium text-encre/60">
-              Instructions du template
-              <textarea name="instructions" required rows="4" placeholder="Décrivez précisément le rôle, les entrées et la sortie attendue…" className="resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="grid gap-1 text-xs font-medium text-encre/60">
-                Catégorie
-                <select name="categorie" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre">
-                  <option value="fnol">Qualification FNOL</option>
-                  <option value="extraction">Documents</option>
-                  <option value="vision">Vision</option>
-                  <option value="courrier">Courrier</option>
-                  <option value="assistant">Assistant métier</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-medium text-encre/60">
-                Prix de la licence (DT)
-                <input name="prix" type="number" min="0" defaultValue="0" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-              </label>
-            </div>
-            <label className="grid gap-1 text-xs font-medium text-encre/60">
-              Tag principal
-              <input name="tag" placeholder="Ex. Auto" className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-encre outline-none focus:border-terracotta" />
-            </label>
-            <div className="mt-1 flex justify-end gap-2">
-              <button type="button" onClick={() => setPublication(false)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>
-              <button type="submit" disabled={action} className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                {action ? 'Contrôles…' : 'Soumettre à la revue'}
-              </button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@ import Approbations from './pages/Approbations'
 import Dashboard from './pages/Dashboard'
 import Integrations from './pages/Integrations'
 import Marketplace from './pages/Marketplace'
+import Editeur from './pages/Editeur'
 
 const PAGES = [
   { id: 'pipeline', label: 'Sinistres', composant: Pipeline },
@@ -22,6 +23,10 @@ const PAGES = [
 const PAGE_ACCUEIL = 'integrations'
 
 export default function App() {
+  return window.location.hash === '#editeur' ? <Editeur /> : <PlateformeAssureur />
+}
+
+function PlateformeAssureur() {
   const [session, setSession] = useState(() => lireSession())
   const [page, setPage] = useState(PAGE_ACCUEIL)
   const [backendOk, setBackendOk] = useState(null)

@@ -228,8 +228,8 @@ traitement. C'est visible ligne par ligne, dossier par dossier — pas une
 estimation.
 
 **Combien de temps pour brancher un agent chez un vrai assureur ?**
-On ne recode pas Argus pour chaque ERP. On choisit un adaptateur prêt à
-l'emploi — SAP, Guidewire, SharePoint — ou un connecteur universel REST, SQL
+On ne recode pas Argus pour chaque système. On choisit un adaptateur prêt à
+l'emploi — Guidewire, Duck Creek, Sapiens, SharePoint — ou un connecteur universel REST, SQL
 en lecture seule ou SFTP. Un petit Argus Relay tourne dans le réseau de
 l'assureur, teste le schéma puis applique un mapping déclaratif vers Police,
 Dossier et Pièce. Avec un connecteur connu, la première synchronisation se
@@ -245,12 +245,12 @@ seulement quatre opérations standard — tester, lire, mapper, écrire — sans
 modifier les agents ni le moteur Argus. Les écritures sortantes restent
 séparées et ne sont déclenchées qu'après validation humaine.
 
-**Vous avez vraiment connecté SharePoint et SAP ?**
+**Vous avez vraiment connecté SharePoint et l'ERP interne ?**
 Le connecteur AssurCore montré en direct lit réellement une base externe en
-lecture seule, valide son schéma et synchronise sans doublon. SharePoint et SAP
+lecture seule, valide son schéma et synchronise sans doublon. SharePoint et l'ERP interne
 sont des adaptateurs locaux de démonstration : ils prouvent le même contrat
 entrant et sortant, avec audit et reprise, mais nous ne prétendons pas avoir
-des identifiants Microsoft ou SAP de production pendant le hackathon.
+des identifiants Microsoft ou d'un assureur en production pendant le hackathon.
 
 **Vous ciblez que l'assurance auto ?**
 Pour la preuve de concept, oui — une seule branche, sinistre matériel auto,
@@ -266,9 +266,10 @@ immédiatement dans son Studio, prêt à être ajouté au workflow. Le paiement
 reste simulé dans ce build.
 
 **Comment un freelance peut-il vendre un agent sans accéder aux données ?**
-Il vend un template : rôle, instructions métier et garde-fous, pas un accès au
-système de l'assureur. Il remplit sa fiche, fixe son prix et soumet le template
-à la revue Argus. Nous contrôlons les secrets, les catégories autorisées et
+Il utilise un portail éditeur Argus séparé, accessible dans la démo avec
+`/#editeur`. Il y vend un template : rôle, instructions métier et garde-fous,
+pas un accès au système de l'assureur. Il remplit sa fiche, fixe son prix et
+soumet le template à la revue Argus. Nous contrôlons les secrets, les catégories autorisées et
 l'interdiction de déléguer une décision financière au LLM. À l'achat, Argus
 instancie l'agent dans le Studio du client ; les connecteurs et données sont
 liés ensuite par l'assureur. Le freelance ne reçoit donc jamais les données,

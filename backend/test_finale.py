@@ -22,6 +22,7 @@ from app.routers.marketplace import (
     SoumissionTemplate,
     installer_listing,
     lister_listings,
+    lister_listings_editeur,
     soumettre_listing,
     valider_listing,
 )
@@ -97,6 +98,7 @@ class ParcoursFinaleTest(unittest.TestCase):
         )
         self.assertEqual(listing.statut, "en_attente")
         self.assertEqual(lister_listings(self.session), [])
+        self.assertEqual(len(lister_listings_editeur("Freelance test", self.session)), 1)
         listing = valider_listing(listing.id, self.session)
         self.assertEqual(listing.statut, "publie")
         self.assertTrue(listing.verifie)
@@ -113,7 +115,7 @@ class ParcoursFinaleTest(unittest.TestCase):
         self.assertEqual(second["documents_importes"], 0)
         self.assertEqual(second["documents_ignores"], 2)
 
-    def test_approbation_humaine_planifie_ecriture_sap(self):
+    def test_approbation_humaine_planifie_ecriture_erp_interne(self):
         police = Police(
             numero="TEST-ERP",
             assure_nom="Assuré test",

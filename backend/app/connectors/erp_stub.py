@@ -1,4 +1,4 @@
-"""File sortante locale représentant l'adaptateur SAP Finance."""
+"""File sortante locale représentant l'ERP financier interne d'un assureur."""
 from datetime import datetime, timezone
 
 from sqlmodel import Session, select
@@ -8,8 +8,8 @@ from ..models import Dossier, EcritureERP
 
 
 class ConnecteurERPDemo:
-    identifiant = "sap_finance_demo"
-    nom = "SAP Finance"
+    identifiant = "erp_interne_demo"
+    nom = "ERP Finance interne"
     direction = "sortant"
 
     def tester(self) -> dict:
@@ -17,7 +17,7 @@ class ConnecteurERPDemo:
             "identifiant": self.identifiant,
             "nom": self.nom,
             "direction": self.direction,
-            "protocole": "OData / IDoc (simulé localement)",
+            "protocole": "REST / SOAP / SQL (simulé localement)",
             "mode": "écriture après validation humaine",
             "latence_ms": 18,
             "simulation": True,
@@ -37,7 +37,7 @@ class ConnecteurERPDemo:
             dossier = session.get(Dossier, ecriture.dossier_id)
             tracer(
                 session,
-                acteur="systeme:connecteur_sap",
+                acteur="systeme:connecteur_erp_interne",
                 acteur_type="agent",
                 type="ecriture_erp_envoyee",
                 objet=f"dossier:{dossier.ref if dossier else ecriture.dossier_id}",
@@ -47,7 +47,7 @@ class ConnecteurERPDemo:
                     "montant": ecriture.montant,
                     "connecteur": self.identifiant,
                 },
-                motif="Accusé de réception SAP simulé après validation humaine",
+                motif="Accusé de réception du SI interne simulé après validation humaine",
             )
         session.commit()
         return {

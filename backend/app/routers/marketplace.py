@@ -65,6 +65,19 @@ def lister_listings(session: Session = Depends(get_session)) -> list[dict]:
     return resultat
 
 
+@router.get("/editeurs/{editeur}/listings")
+def lister_listings_editeur(
+    editeur: str,
+    session: Session = Depends(get_session),
+) -> list[MarketplaceListing]:
+    """Tableau de bord d'un éditeur de templates dans l'environnement de démo."""
+    return session.exec(
+        select(MarketplaceListing)
+        .where(MarketplaceListing.editeur == editeur)
+        .order_by(MarketplaceListing.id.desc())
+    ).all()
+
+
 @router.post("/listings/{listing_id}/installer")
 def installer_listing(
     listing_id: int,

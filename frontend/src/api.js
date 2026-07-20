@@ -52,6 +52,8 @@ export const api = {
   installerMarketplace: (id) => post(`/marketplace/listings/${id}/installer`),
   soumettreMarketplace: (corps) => post('/marketplace/listings', corps),
   validerMarketplace: (id) => post(`/marketplace/listings/${id}/valider`),
+  listerMarketplaceEditeur: (editeur) =>
+    request(`/marketplace/editeurs/${encodeURIComponent(editeur)}/listings`),
   // Pipeline
   listerDossiers: () => request('/dossiers'),
   lireDossier: (id) => request(`/dossiers/${id}`),
