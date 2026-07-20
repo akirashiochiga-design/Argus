@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 
 const SYSTEMES_ASSURANCE = [
-  { id: 'guidewire', nom: 'Guidewire ClaimCenter', type: 'Gestion des sinistres', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
-  { id: 'duck-creek', nom: 'Duck Creek Claims', type: 'Core sinistres', couleur: 'bg-[#236192]', initiales: 'DC' },
-  { id: 'sapiens', nom: 'Sapiens IDITSuite', type: 'Core assurance', couleur: 'bg-[#6D4C9F]', initiales: 'SP' },
+  { id: 'guidewire', nom: 'Guidewire ClaimCenter', type: 'Sinistres', couleur: 'bg-[#F59E0B]', initiales: 'GW' },
+  { id: 'duck-creek', nom: 'Duck Creek Claims', type: 'Core', couleur: 'bg-[#236192]', initiales: 'DC' },
+  { id: 'sapiens', nom: 'Sapiens IDITSuite', type: 'Core', couleur: 'bg-[#6D4C9F]', initiales: 'SP' },
   { id: 'interne', nom: 'SI assurance interne', type: 'API · SQL · SFTP', couleur: 'bg-[#334155]', initiales: 'SI' },
 ]
 
-const formule = (valeur) => valeur === 'tous_risques' ? 'Tous risques' : 'Tiers'
+const formule = (valeur) => (valeur === 'tous_risques' ? 'Tous risques' : 'Tiers')
 
 export default function Integrations() {
   const [statut, setStatut] = useState(null)
@@ -18,6 +18,7 @@ export default function Integrations() {
   const [message, setMessage] = useState(null)
   const [connecteurs, setConnecteurs] = useState([])
   const [ecrituresErp, setEcrituresErp] = useState([])
+  const [onglet, setOnglet] = useState('polices')
 
   const charger = async () => {
     try {
@@ -88,231 +89,183 @@ export default function Integrations() {
     }
   }
 
-  if (chargement) return <p className="text-sm text-encre/50">Vérification de la source de données…</p>
+  if (chargement) {
+    return <p className="text-sm text-encre/50">Vérification de la source de données…</p>
+  }
 
   const derniere = statut?.derniere_synchronisation
   const compteurs = statut?.compteurs ?? {}
   const connecte = statut?.statut === 'connecte'
   const sharepoint = connecteurs.find((item) => item.identifiant === 'sharepoint_demo')
   const erpInterne = connecteurs.find((item) => item.identifiant === 'erp_interne_demo')
+  const polices = apercu?.apercu_polices ?? []
+  const sinistres = apercu?.apercu_sinistres ?? []
+  const erpAttente = ecrituresErp.filter((item) => item.statut === 'planifiee').length
+  const erpEnvoyees = ecrituresErp.filter((item) => item.statut === 'envoyee').length
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="mx-auto grid max-w-5xl gap-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">Intégrations</h2>
-          <p className="mt-1 text-sm text-encre/50">
-            Connectez Argus aux contrats, véhicules et sinistres du système d&apos;information assurance.
+          <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
+          <p className="mt-1 max-w-xl text-sm leading-6 text-encre/50">
+            Reliez Argus au SI assurance, aux documents et à la finance.
           </p>
         </div>
         <button
           onClick={connecter}
           disabled={action !== null}
-          className="ml-auto rounded-md bg-encre px-4 py-2 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
+          className="rounded-md bg-encre px-4 py-2.5 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
         >
           {action === 'connexion'
-            ? 'Connexion et import…'
-            : statut?.statut === 'connecte'
-              ? 'Actualiser les données'
-              : 'Se connecter'}
+            ? 'Synchronisation…'
+            : connecte
+              ? 'Actualiser'
+              : 'Connecter CoreSinistre'}
         </button>
-      </div>
+      </header>
 
       {message && (
-        <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${
-          message.ton === 'erreur'
-            ? 'border-bad/30 bg-bad-tint text-bad'
-            : 'border-ok/30 bg-ok-tint text-ok'
-        }`}>
-          <span>{message.ton === 'erreur' ? '!' : '✓'}</span>
-          <span>{message.texte}</span>
-          <button onClick={() => setMessage(null)} className="ml-auto opacity-60">×</button>
+        <div
+          className={`flex items-start gap-3 rounded-lg px-4 py-3 text-sm ${
+            message.ton === 'erreur' ? 'bg-bad-tint text-bad' : 'bg-ok-tint text-ok'
+          }`}
+        >
+          <span className="mt-0.5 font-semibold">{message.ton === 'erreur' ? '!' : '✓'}</span>
+          <span className="flex-1 leading-5">{message.texte}</span>
+          <button type="button" onClick={() => setMessage(null)} className="opacity-50 hover:opacity-80">
+            ×
+          </button>
         </div>
       )}
 
-      <section className="rounded-xl border border-line bg-surface p-5 shadow-sm">
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#334155] text-xs font-bold text-white">
-            DB
+      {/* Source principale */}
+      <section className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="flex flex-wrap items-center gap-4 border-b border-line px-6 py-5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-encre text-[11px] font-bold tracking-wide text-creme">
+            CS
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">{statut?.source ?? 'Base assurance'}</h3>
-              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                connecte ? 'bg-ok-tint text-ok' : 'bg-bad-tint text-bad'
-              }`}>
-                <span className={`h-2 w-2 rounded-full ${connecte ? 'bg-ok' : 'bg-bad'}`} />
-                {connecte ? 'Connectée' : 'Indisponible'}
-              </span>
+              <h3 className="text-base font-semibold">{statut?.source ?? 'CoreSinistre'}</h3>
+              <StatutPoint actif={connecte} libelle={connecte ? 'Connecté' : 'Hors ligne'} />
             </div>
-            <p className="mt-1 text-sm text-encre/50">
-              {statut?.organisation} · {statut?.fichier} · schéma v{statut?.schema_version}
-            </p>
-            <p className="mt-1 text-xs text-encre/40">
-              {connecte
-                ? 'Accès en lecture seule, synchronisation contrôlée vers Argus.'
-                : 'Base source disponible, non reliée à la plateforme.'}
+            <p className="mt-0.5 truncate text-sm text-encre/45">
+              {statut?.organisation}
+              {statut?.latence_ms != null ? ` · ${statut.latence_ms} ms` : ''}
             </p>
           </div>
-          <div className="ml-auto text-right text-xs text-encre/45">
-            <div>Dernier test : {statut?.latence_ms ?? 0} ms</div>
-            <div>{statut?.tables?.length ?? 0} tables validées</div>
-          </div>
+          {derniere && (
+            <p className="text-xs text-encre/40">
+              Dernier import · {derniere.polices_creees + derniere.polices_mises_a_jour} polices ·{' '}
+              {derniere.sinistres_crees} sinistres · {derniere.duree_ms} ms
+            </p>
+          )}
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 divide-x divide-line">
           {[
-            ['Polices actives', compteurs.polices ?? 0],
-            ['Sinistres disponibles', compteurs.sinistres ?? 0],
-            ['Pièces rattachées', compteurs.pieces ?? 0],
+            ['Polices', compteurs.polices ?? 0],
+            ['Sinistres', compteurs.sinistres ?? 0],
+            ['Pièces', compteurs.pieces ?? 0],
           ].map(([libelle, valeur]) => (
-            <div key={libelle} className="rounded-lg bg-surface-deep p-3">
-              <div className="text-2xl font-semibold">{valeur}</div>
-              <div className="text-xs text-encre/45">{libelle}</div>
+            <div key={libelle} className="px-6 py-4">
+              <div className="text-2xl font-semibold tabular-nums tracking-tight">{valeur}</div>
+              <div className="mt-0.5 text-xs text-encre/40">{libelle}</div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <div className="border-b border-line px-5 py-4">
-            <h3 className="font-semibold">Contrats détectés</h3>
-            <p className="text-xs text-encre/45">Aperçu anonymisé lu directement dans le SI source</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-deep text-encre/45">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Police</th>
-                  <th className="px-4 py-2 font-medium">Assuré</th>
-                  <th className="px-4 py-2 font-medium">Véhicule</th>
-                  <th className="px-4 py-2 font-medium">Formule</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(apercu?.apercu_polices ?? []).map((police) => (
-                  <tr key={police.numero} className="border-t border-line">
-                    <td className="px-4 py-3 font-semibold">{police.numero}</td>
-                    <td className="px-4 py-3">{police.assure}</td>
-                    <td className="px-4 py-3">{police.vehicule}</td>
-                    <td className="px-4 py-3">{formule(police.formule)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-line bg-surface">
-          <div className="border-b border-line px-5 py-4">
-            <h3 className="font-semibold">Sinistres disponibles</h3>
-            <p className="text-xs text-encre/45">Dossiers prêts à être intégrés au parcours de traitement</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-deep text-encre/45">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Référence</th>
-                  <th className="px-4 py-2 font-medium">Police</th>
-                  <th className="px-4 py-2 font-medium">Type</th>
-                  <th className="px-4 py-2 font-medium">Pièces</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(apercu?.apercu_sinistres ?? []).map((sinistre) => (
-                  <tr key={sinistre.reference} className="border-t border-line">
-                    <td className="px-4 py-3 font-semibold">{sinistre.reference}</td>
-                    <td className="px-4 py-3">{sinistre.police_numero}</td>
-                    <td className="px-4 py-3 capitalize">{sinistre.type_sinistre.replace('_', ' ')}</td>
-                    <td className="px-4 py-3">{sinistre.nombre_pieces}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-line bg-surface p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <div>
-            <h3 className="font-semibold">Dernière synchronisation</h3>
-            <p className="mt-0.5 text-sm text-encre/50">
-              Import idempotent : une même police ou un même sinistre ne sont jamais dupliqués.
-            </p>
-          </div>
-          <span className={`ml-auto rounded-full px-3 py-1 text-xs font-semibold ${
-            derniere ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/45'
-          }`}>
-            {derniere ? 'Synchronisé' : 'Aucun import'}
-          </span>
-        </div>
-        {derniere && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            {[
-              ['Polices créées', derniere.polices_creees],
-              ['Polices mises à jour', derniere.polices_mises_a_jour],
-              ['Sinistres créés', derniere.sinistres_crees],
-              ['Durée', `${derniere.duree_ms} ms`],
-            ].map(([libelle, valeur]) => (
-              <div key={libelle} className="rounded-lg bg-surface-deep p-3">
-                <div className="font-semibold">{valeur}</div>
-                <div className="text-xs text-encre/45">{libelle}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
+      {/* Aperçu données */}
       <section>
-        <div className="mb-3">
-          <h3 className="font-semibold">Adaptateurs actifs</h3>
-          <p className="text-xs text-encre/45">
-            Même contrat d’intégration que CoreSinistre, pour les flux documentaires et financiers.
-          </p>
+        <div className="mb-3 flex items-center gap-1 border-b border-line">
+          {[
+            ['polices', 'Contrats', polices.length],
+            ['sinistres', 'Sinistres', sinistres.length],
+          ].map(([id, libelle, n]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setOnglet(id)}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+                onglet === id
+                  ? 'border-terracotta text-encre'
+                  : 'border-transparent text-encre/40 hover:text-encre/70'
+              }`}
+            >
+              {libelle}
+              <span className="ml-1.5 tabular-nums text-encre/30">{n}</span>
+            </button>
+          ))}
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <CarteConnecteur
-            connecteur={sharepoint}
-            titre="SharePoint Sinistres"
-            sousTitre="Documents entrants · Microsoft Graph"
+
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          {onglet === 'polices' ? (
+            <TableApercu
+              vide="Aucune police détectée."
+              colonnes={['Police', 'Assuré', 'Véhicule', 'Formule']}
+              lignes={polices.map((p) => [p.numero, p.assure, p.vehicule, formule(p.formule)])}
+            />
+          ) : (
+            <TableApercu
+              vide="Aucun sinistre disponible."
+              colonnes={['Référence', 'Police', 'Type', 'Pièces']}
+              lignes={sinistres.map((s) => [
+                s.reference,
+                s.police_numero,
+                s.type_sinistre.replace('_', ' '),
+                s.nombre_pieces,
+              ])}
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Flux annexes */}
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-encre/70">Flux connectés</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <LigneConnecteur
             initiales="SP"
             couleur="bg-[#038387]"
-            action={action}
+            titre="SharePoint Sinistres"
+            detail={
+              sharepoint
+                ? `${sharepoint.documents_disponibles} document(s)`
+                : 'Documents entrants'
+            }
+            connecte={sharepoint?.statut === 'connecte'}
+            enCours={action === 'sharepoint_demo'}
+            bloque={action !== null}
             onActiver={() => activerConnecteur('sharepoint_demo')}
-            detail={sharepoint
-              ? `${sharepoint.documents_disponibles} document(s) disponibles`
-              : 'Bibliothèque documentaire SharePoint'}
           />
-          <CarteConnecteur
-            connecteur={erpInterne}
-            titre="ERP Finance interne"
-            sousTitre="Écritures sortantes vers le SI de l’assureur"
-            initiales="SI"
+          <LigneConnecteur
+            initiales="ERP"
             couleur="bg-[#334155]"
-            action={action}
+            titre="ERP Finance"
+            detail={`${erpAttente} en attente · ${erpEnvoyees} envoyée(s)`}
+            connecte={erpInterne?.statut === 'connecte'}
+            enCours={action === 'erp_interne_demo'}
+            bloque={action !== null}
             onActiver={() => activerConnecteur('erp_interne_demo')}
-            detail={`${ecrituresErp.filter((item) => item.statut === 'planifiee').length} en attente · ${ecrituresErp.filter((item) => item.statut === 'envoyee').length} envoyée(s)`}
           />
         </div>
       </section>
 
+      {/* Catalogue discret */}
       <section>
-        <h3 className="mb-3 font-semibold">Cores assurance et systèmes internes prêts à configurer</h3>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {SYSTEMES_ASSURANCE.map((connecteur) => (
-            <div key={connecteur.id} className="rounded-xl border border-line bg-surface p-5">
-              <div className="flex items-start gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white ${connecteur.couleur}`}>
-                  {connecteur.initiales}
-                </div>
-                <div>
-                  <div className="font-semibold">{connecteur.nom}</div>
-                  <div className="text-xs text-encre/45">{connecteur.type}</div>
-                </div>
-              </div>
-              <div className="mt-5 text-xs font-medium text-encre/40">Pack disponible</div>
+        <h3 className="mb-3 text-sm font-semibold text-encre/70">Autres cores disponibles</h3>
+        <div className="flex flex-wrap gap-2">
+          {SYSTEMES_ASSURANCE.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2.5 rounded-full border border-line bg-surface py-1.5 pl-1.5 pr-3.5"
+            >
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white ${item.couleur}`}>
+                {item.initiales}
+              </span>
+              <span className="text-sm text-encre/75">{item.nom}</span>
             </div>
           ))}
         </div>
@@ -321,49 +274,80 @@ export default function Integrations() {
   )
 }
 
-function CarteConnecteur({
-  connecteur,
-  titre,
-  sousTitre,
+function StatutPoint({ actif, libelle }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+      actif ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/45'
+    }`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${actif ? 'bg-ok' : 'bg-encre/30'}`} />
+      {libelle}
+    </span>
+  )
+}
+
+function TableApercu({ colonnes, lignes, vide }) {
+  if (lignes.length === 0) {
+    return <p className="px-5 py-10 text-center text-sm text-encre/40">{vide}</p>
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-line text-xs text-encre/40">
+            {colonnes.map((c) => (
+              <th key={c} className="px-5 py-3 font-medium">{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lignes.map((ligne, i) => (
+            <tr key={i} className="border-b border-line/70 last:border-0">
+              {ligne.map((cellule, j) => (
+                <td
+                  key={j}
+                  className={`px-5 py-3.5 ${j === 0 ? 'font-medium text-encre' : 'text-encre/65'} ${j === 2 ? 'capitalize' : ''}`}
+                >
+                  {cellule}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function LigneConnecteur({
   initiales,
   couleur,
+  titre,
   detail,
-  action,
+  connecte,
+  enCours,
+  bloque,
   onActiver,
 }) {
-  const connecte = connecteur?.statut === 'connecte'
-  const enCours = action === connecteur?.identifiant
   return (
-    <article className="rounded-xl border border-line bg-surface p-5 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className={`flex h-11 w-11 items-center justify-center rounded-lg text-xs font-bold text-white ${couleur}`}>
-          {initiales}
-        </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-semibold">{titre}</h4>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              connecte ? 'bg-ok-tint text-ok' : 'bg-surface-deep text-encre/45'
-            }`}>
-              {connecte ? 'Connecté' : 'Prêt à connecter'}
-            </span>
-          </div>
-          <p className="text-xs text-encre/45">{sousTitre}</p>
-        </div>
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white ${couleur}`}>
+        {initiales}
       </div>
-      <p className="mt-4 text-sm text-encre/55">{detail}</p>
-      <div className="mt-4 flex items-center gap-2 border-t border-line pt-4">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-encre/35">
-          Connexion auditée
-        </span>
-        <button
-          onClick={onActiver}
-          disabled={action !== null || !connecteur}
-          className="ml-auto rounded-md bg-encre px-3 py-2 text-xs font-semibold text-creme disabled:opacity-50"
-        >
-          {enCours ? 'Synchronisation…' : connecte ? 'Synchroniser' : 'Tester et connecter'}
-        </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold">{titre}</span>
+          <StatutPoint actif={connecte} libelle={connecte ? 'Actif' : 'Prêt'} />
+        </div>
+        <p className="mt-0.5 truncate text-xs text-encre/45">{detail}</p>
       </div>
-    </article>
+      <button
+        type="button"
+        onClick={onActiver}
+        disabled={bloque}
+        className="shrink-0 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-encre/70 transition hover:border-encre/20 hover:bg-surface-deep disabled:opacity-50"
+      >
+        {enCours ? '…' : connecte ? 'Sync' : 'Connecter'}
+      </button>
+    </div>
   )
 }
