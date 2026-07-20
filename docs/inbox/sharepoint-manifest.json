@@ -8,7 +8,7 @@
       "branche": "habitation",
       "police_numero": "HAB-2026-0088",
       "assure": "Sami Karoui",
-      "declaration": "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans doute causé par un appareil électrique resté branché. Les dégâts touchent le mobilier, l'installation électrique et les murs. Un devis de réparation est joint, ainsi qu'un croquis d'expertise.",
+      "declaration": "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans doute causé par un appareil électrique resté branché. Les dégâts touchent le mobilier, l'installation électrique et les murs. Un devis de réparation et une photo des dégâts sont joints.",
       "type_sinistre": "incendie",
       "statut_sharepoint": "a_traiter",
       "documents": [
@@ -21,7 +21,7 @@
         {
           "type": "photo_degats",
           "chemin": "docs/samples/degats-incendie.jpg",
-          "nom_source": "croquis-expertise-hab0001.jpg"
+          "nom_source": "photo-degats-cuisine-hab0001.jpg"
         }
       ]
     },

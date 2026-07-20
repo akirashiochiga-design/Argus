@@ -329,14 +329,7 @@ def generer() -> None:
         sous_titre="Rénovation · peinture · électricité",
         sigle="AR",
     )
-    _croquis_piece(
-        "CROQUIS D'EXPERTISE — CUISINE",
-        [[(320, 260), (600, 260), (600, 480), (320, 480)]],
-        ["Départ de feu localisé sur le plan de travail",
-         "Cloison et plafond noircis par la fumée",
-         "Mobilier haut détruit sur 2 mètres linéaires"],
-        DOSSIER / "degats-incendie.jpg",
-    )
+    # degats-incendie.jpg : photo réelle versionnée — ne pas régénérer en croquis.
 
     # Les photos réelles de dégâts sont des assets versionnés : ne jamais les
     # écraser lors de la régénération des documents.

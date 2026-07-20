@@ -31,7 +31,7 @@ MANIFESTE_SHAREPOINT_REF = {
                 "Un feu s'est déclaré ce matin sur le plan de travail de la cuisine, sans "
                 "doute causé par un appareil électrique resté branché. Les dégâts touchent "
                 "le mobilier, l'installation électrique et les murs. Un devis de réparation "
-                "est joint, ainsi qu'un croquis d'expertise."
+                "et une photo des dégâts sont joints."
             ),
             "type_sinistre": "incendie",
             "statut_sharepoint": "a_traiter",
@@ -45,7 +45,7 @@ MANIFESTE_SHAREPOINT_REF = {
                 {
                     "type": "photo_degats",
                     "chemin": "docs/samples/degats-incendie.jpg",
-                    "nom_source": "croquis-expertise-hab0001.jpg",
+                    "nom_source": "photo-degats-cuisine-hab0001.jpg",
                 },
             ],
         },
