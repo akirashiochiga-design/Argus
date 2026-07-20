@@ -16,6 +16,7 @@ class DeclarationEntrante(BaseModel):
     declaration_texte: str
     police_numero: str
     pieces: list[dict] = []
+    branche: str = "auto"
 
 
 class ChoixTraitement(BaseModel):
@@ -63,10 +64,12 @@ def declarer_sinistre(corps: DeclarationEntrante, session: Session = Depends(get
     police = session.exec(select(Police).where(Police.numero == corps.police_numero)).first()
     if not police:
         raise HTTPException(404, f"Police {corps.police_numero} introuvable")
-    workflow = traitement_actif(session)
+    workflow = traitement_actif(session, corps.branche)
     numero = session.exec(select(Dossier)).all()
+    prefixe = "HAB-SIN-2026-" if corps.branche == "habitation" else "SIN-2026-"
     dossier = Dossier(
-        ref=f"SIN-2026-{len(numero) + 1:03d}",
+        ref=f"{prefixe}{len(numero) + 1:03d}",
+        branche=corps.branche,
         police_id=police.id,
         workflow_id=workflow.id if workflow else None,
         declaration_texte=corps.declaration_texte,

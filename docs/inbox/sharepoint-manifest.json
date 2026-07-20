@@ -63,15 +63,15 @@
   ],
   "retours": [
     {
-      "dossier_ref": "HAB-SIN-2026-0001",
-      "depose_le": "2026-07-20T17:09:37.228773+00:00",
+      "dossier_ref": "EXT-SIN-2026-1003",
+      "depose_le": "2026-07-20T18:40:23.228576+00:00",
       "depose_par": "Test",
       "automatique": true,
       "etat_norix": "regle",
-      "montant_valide": 3000.0,
-      "objet": "Décision concernant votre déclaration de sinistre n° HAB-SIN-2026-0001",
-      "corps": "Monsieur Sami Karoui,\n\nNous faisons suite à votre déclaration de sinistre relative à votre contrat d'assurance habitation n° HAB-2026-0088.\n\nAprès étude approfondie de votre dossier, nous avons le plaisir de vous informer que votre demande a été approuvée. Voici les détails relatifs à cette décision :\n\n1.  **Couverture du sinistre** : Conformément à l'**Art. 5 — Dommages couverts par la police souscrite**, le sinistre de type « incendie » est bien pris en charge au titre de votre garantie « tous risques ».\n2.  **Franchise** : En application de l'**Art. 8 — Franchises contractuelles**, une franchise de 200 DT a été déduite du montant total de l'indemnisation.\n3.  **Plafond d'indemnisation** : Ce règlement s'inscrit dans le respect des conditions prévues à l'**Art. 9 — Plafonds d'indemnisation**, dont la limite est fixée à 40 000 DT.\n\nLe montant de l'indemnisation validé pour ce dossier s'élève à **3 000,0 DT**. Ce montant vous sera versé dans les meilleurs délais selon les modalités prévues à votre contrat.\n\nNous restons à votre entière disposition pour tout complément d'information.\n\nCordialement,\n\nLe service gestion des sinistres.\n\n*Inchallah l'indemnisation t'wassel fi wa9tha w nchallah labès.*",
-      "bibliotheque_cible": "Sinistres Auto / 2026 / Traités / HAB-SIN-2026-0001"
+      "montant_valide": 340.0,
+      "objet": "Notification de décision concernant votre dossier de sinistre n° EXT-SIN-2026-1003",
+      "corps": "Cher Monsieur Youssef Gharbi,\n\nNous faisons suite à votre déclaration de sinistre concernant votre véhicule assuré sous la police n° EXT-AUTO-1003.\n\nAprès examen de votre dossier, nous avons le plaisir de vous informer que votre demande est approuvée. Conformément à l'**Art. 5 — Dommages couverts par la police souscrite**, le sinistre de type « bris de glace » est bien couvert par votre garantie « tous risques ».\n\nLe calcul de votre indemnisation a été effectué comme suit :\n*   Le montant des réparations a été évalué dans le respect du plafond d'indemnisation prévu à l'**Art. 9 — Plafonds d'indemnisation** (fixé à 3500.0 DT).\n*   En application de l'**Art. 8 — Franchises contractuelles**, une franchise de 80.0 DT a été déduite du montant global des réparations.\n\nLe montant net de l'indemnité validé pour votre dossier s'élève ainsi à **340.0 DT**. Ce montant sera versé selon les modalités prévues à votre contrat.\n\nNous restons à votre entière disposition pour tout renseignement complémentaire et vous prions d'agréer, Monsieur Gharbi, l'expression de nos salutations distinguées.\n\n*Syntèse : Hamdoulleh, dossier mta'ek tqbel w l'indemnité mta'ek 340 dinars.*",
+      "bibliotheque_cible": "Sinistres Auto / 2026 / Traités / EXT-SIN-2026-1003"
     }
   ]
 }
