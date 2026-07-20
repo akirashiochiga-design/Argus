@@ -17,6 +17,7 @@ const TEMPLATE_DEMO = {
     "N'invente aucune information et ne décide jamais d'un montant."
   ),
   prix: 120,
+  prixLocation: 25,
   tag: 'Expertise',
 }
 
@@ -45,7 +46,15 @@ export default function Editeur() {
   }, [session])
 
   const revenus = useMemo(
-    () => listings.reduce((total, listing) => total + listing.prix * listing.installations, 0),
+    () => listings.reduce(
+      (total, listing) =>
+        total + listing.prix * listing.installations + listing.prix_location * (listing.locations_actives ?? 0),
+      0,
+    ),
+    [listings],
+  )
+  const locationsActives = useMemo(
+    () => listings.reduce((total, listing) => total + (listing.locations_actives ?? 0), 0),
     [listings],
   )
 
@@ -62,6 +71,7 @@ export default function Editeur() {
         description: donnees.get('description'),
         categorie: donnees.get('categorie'),
         prix: Number(donnees.get('prix')),
+        prix_location: Number(donnees.get('prix_location') || 0),
         tags: [donnees.get('tag')].filter(Boolean),
         instructions: donnees.get('instructions'),
       })
@@ -138,10 +148,11 @@ export default function Editeur() {
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-4">
           <Kpi libelle="Agents publiés" valeur={listings.filter((item) => item.statut === 'publie').length} />
-          <Kpi libelle="Installations" valeur={listings.reduce((total, item) => total + item.installations, 0)} />
-          <Kpi libelle="Revenus" valeur={dt(revenus)} />
+          <Kpi libelle="Achats" valeur={listings.reduce((total, item) => total + item.installations, 0)} />
+          <Kpi libelle="Locations actives" valeur={locationsActives} />
+          <Kpi libelle="Revenus simulés" valeur={dt(revenus)} />
         </section>
 
         {message && (
@@ -186,7 +197,7 @@ export default function Editeur() {
               <Champ libelle="Instructions métier livrées à l’assureur">
                 <textarea name="instructions" required rows="5" defaultValue={TEMPLATE_DEMO.instructions} className={textareaClass} />
               </Champ>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <Champ libelle="Catégorie">
                   <select name="categorie" defaultValue={TEMPLATE_DEMO.categorie} className={inputClass}>
                     <option value="fnol">Qualification FNOL</option>
@@ -196,13 +207,19 @@ export default function Editeur() {
                     <option value="assistant">Assistant métier</option>
                   </select>
                 </Champ>
-                <Champ libelle="Prix (DT)">
+                <Champ libelle="Prix d’achat (DT)">
                   <input name="prix" type="number" min="0" defaultValue={TEMPLATE_DEMO.prix} className={inputClass} />
+                </Champ>
+                <Champ libelle="Prix de location (DT/mois)">
+                  <input name="prix_location" type="number" min="0" defaultValue={TEMPLATE_DEMO.prixLocation} className={inputClass} />
                 </Champ>
                 <Champ libelle="Tag">
                   <input name="tag" defaultValue={TEMPLATE_DEMO.tag} className={inputClass} />
                 </Champ>
               </div>
+              <p className="-mt-1 text-xs text-encre/40">
+                Laissez la location à 0 pour proposer votre agent uniquement à l’achat.
+              </p>
               <div className="rounded-lg bg-surface-deep p-3 text-xs leading-5 text-encre/55">
                 Norix vérifie l’absence de secrets et impose le garde-fou
                 « aucune décision financière par le LLM » avant publication.
@@ -244,7 +261,10 @@ export default function Editeur() {
                       <div>
                         <h3 className="text-sm font-semibold">{listing.nom}</h3>
                         <div className="mt-1 text-xs text-encre/45">
-                          {dt(listing.prix)} · {listing.installations} installation(s)
+                          {dt(listing.prix)} · {listing.installations} achat(s)
+                          {listing.prix_location > 0 && (
+                            <> · {dt(listing.prix_location)}/mois · {listing.locations_actives ?? 0} location(s) active(s)</>
+                          )}
                         </div>
                       </div>
                       <span className={`ml-auto rounded-full px-2 py-1 text-[10px] font-semibold ${

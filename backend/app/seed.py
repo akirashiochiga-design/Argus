@@ -75,8 +75,10 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "depuis un constat amiable."
             ),
             prix=240,
+            prix_location=45,
             note=4.9,
             installations=128,
+            locations_actives=19,
             tags=["Auto", "Documents"],
             verifie=True,
             statut="publie",
@@ -96,8 +98,10 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "par le gestionnaire."
             ),
             prix=390,
+            prix_location=70,
             note=4.8,
             installations=94,
+            locations_actives=27,
             tags=["Auto", "Vision"],
             verifie=True,
             statut="publie",
@@ -119,8 +123,10 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "sinistre structuré."
             ),
             prix=180,
+            prix_location=35,
             note=4.7,
             installations=211,
+            locations_actives=42,
             tags=["Auto", "FNOL"],
             verifie=True,
             statut="publie",
@@ -139,8 +145,10 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "encore manquants."
             ),
             prix=95,
+            prix_location=20,
             note=4.6,
             installations=76,
+            locations_actives=11,
             tags=["Documents", "Contrôle"],
             verifie=False,
             statut="publie",
@@ -159,8 +167,10 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "validés par le gestionnaire."
             ),
             prix=150,
+            prix_location=30,
             note=4.8,
             installations=163,
+            locations_actives=24,
             tags=["Courrier", "Conformité"],
             verifie=True,
             statut="publie",
@@ -169,6 +179,79 @@ def build_marketplace() -> list[MarketplaceListing]:
                 "Reprends uniquement le montant explicitement validé par le gestionnaire."
             ),
             garde_fous={**commun, "montant_impose": True},
+        ),
+        MarketplaceListing(
+            nom="Analyse dégâts incendie & dégât des eaux",
+            categorie="vision",
+            editeur="Habitat Vision Tunisie",
+            description=(
+                "Classe la gravité des dégâts d'incendie ou de dégât des eaux sur "
+                "photos ou croquis d'expertise, pour la branche habitation."
+            ),
+            prix=420,
+            prix_location=75,
+            note=4.7,
+            installations=38,
+            locations_actives=15,
+            tags=["Habitation", "Vision"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Analyse les photos ou croquis de dégâts du bien assuré : classe "
+                "leger/moyen/lourd, zones touchées et confiance, sans te prononcer "
+                "sur la cohérence avec la déclaration ni sur un montant."
+            ),
+            garde_fous={
+                **commun,
+                "outils_autorises": ["consulter_bien_assure", "inventorier_pieces"],
+            },
+        ),
+        MarketplaceListing(
+            nom="Qualification sinistre habitation",
+            categorie="fnol",
+            editeur="Sinistre Habitat Digital",
+            description=(
+                "Structure une déclaration habitation (incendie, dégât des eaux, "
+                "vol, catastrophe naturelle) en dossier exploitable."
+            ),
+            prix=200,
+            prix_location=40,
+            note=4.6,
+            installations=22,
+            locations_actives=9,
+            tags=["Habitation", "FNOL"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Structure la déclaration libre en type de sinistre habitation, "
+                "date, lieu, circonstances et pièces annoncées. N'invente jamais "
+                "une information absente."
+            ),
+            garde_fous={**commun, "outils_autorises": ["consulter_police", "inventorier_pieces"]},
+        ),
+        MarketplaceListing(
+            nom="Assistant multilingue réclamations",
+            categorie="assistant",
+            editeur="Polyglot Claims",
+            description=(
+                "Répond aux questions courantes de l'assuré sur l'avancement de son "
+                "dossier, en français, darija ou anglais, sans jamais s'engager sur "
+                "un montant ou une décision."
+            ),
+            prix=260,
+            prix_location=50,
+            note=4.5,
+            installations=17,
+            locations_actives=6,
+            tags=["Conformité", "Assistant"],
+            verifie=False,
+            statut="publie",
+            instructions=(
+                "Réponds aux questions de suivi de dossier dans la langue de "
+                "l'assuré. Ne communique jamais un montant non validé par un "
+                "gestionnaire et redirige vers un humain pour toute décision."
+            ),
+            garde_fous={**commun, "langues": ["fr", "darija", "en"]},
         ),
     ]
 

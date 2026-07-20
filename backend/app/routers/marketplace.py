@@ -1,5 +1,6 @@
-"""Marketplace : publication de templates et installation immédiate dans le Studio."""
+"""Marketplace : publication de templates, achat ou location dans le Studio."""
 import re
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -19,6 +20,7 @@ MOTIFS_SECRET = re.compile(
     r"(api[_ -]?key|mot[_ -]?de[_ -]?passe|password|secret|sk-[a-z0-9_-]{8,})",
     re.IGNORECASE,
 )
+DUREE_LOCATION_DEFAUT = 30
 
 
 class SoumissionTemplate(BaseModel):
@@ -27,9 +29,15 @@ class SoumissionTemplate(BaseModel):
     editeur: str = Field(min_length=2, max_length=100)
     description: str = Field(min_length=20, max_length=600)
     prix: float = Field(default=0, ge=0)
+    prix_location: float = Field(default=0, ge=0)
     tags: list[str] = Field(default_factory=list)
     instructions: str = Field(min_length=30, max_length=4000)
     seuils: dict = Field(default_factory=dict)
+
+
+class DemandeInstallation(BaseModel):
+    mode: str = Field(default="achat", pattern="^(achat|location)$")
+    duree_jours: int = Field(default=DUREE_LOCATION_DEFAUT, ge=1, le=365)
 
 
 def _installation(
@@ -45,6 +53,63 @@ def _installation(
     ).first()
 
 
+def _location_expiree(installation: MarketplaceInstallation) -> bool:
+    return (
+        installation.type_acquisition == "location"
+        and installation.expire_le is not None
+        and installation.expire_le < datetime.utcnow()
+    )
+
+
+def _appliquer_expiration(session: Session, installation: MarketplaceInstallation) -> Agent | None:
+    """Désactive réactivement un agent loué dont l'abonnement n'a pas été renouvelé."""
+    agent = session.get(Agent, installation.agent_id)
+    if not agent:
+        return None
+    if _location_expiree(installation) and agent.statut == "live":
+        agent.statut = "draft"
+        session.add(agent)
+        tracer(
+            session,
+            acteur="systeme:marketplace",
+            acteur_type="agent",
+            type="location_expiree",
+            objet=f"agent:{agent.id}",
+            avant={"statut": "live"},
+            apres={"statut": "draft", "expire_le": installation.expire_le.isoformat()},
+            motif="Abonnement de location expiré et non renouvelé — agent désactivé",
+        )
+        session.commit()
+        session.refresh(agent)
+    return agent
+
+
+def _etat_installation(installation: MarketplaceInstallation | None) -> dict | None:
+    if not installation:
+        return None
+    if installation.type_acquisition != "location":
+        return {
+            "installation_id": installation.id,
+            "type_acquisition": "achat",
+            "expire_le": None,
+            "jours_restants": None,
+            "expiree": False,
+        }
+    expiree = _location_expiree(installation)
+    jours_restants = None
+    if installation.expire_le:
+        delta = installation.expire_le - datetime.utcnow()
+        jours_restants = max(0, delta.days)
+    return {
+        "installation_id": installation.id,
+        "type_acquisition": "location",
+        "expire_le": installation.expire_le,
+        "jours_restants": jours_restants,
+        "expiree": expiree,
+        "renouvellements": installation.renouvellements,
+    }
+
+
 @router.get("/listings")
 def lister_listings(session: Session = Depends(get_session)) -> list[dict]:
     listings = session.exec(
@@ -55,11 +120,42 @@ def lister_listings(session: Session = Depends(get_session)) -> list[dict]:
     resultat = []
     for listing in listings:
         installation = _installation(session, listing.id)
+        if installation:
+            _appliquer_expiration(session, installation)
         resultat.append(
             {
                 **listing.model_dump(),
                 "installe": installation is not None,
                 "agent_id": installation.agent_id if installation else None,
+                "location": _etat_installation(installation),
+            }
+        )
+    return resultat
+
+
+@router.get("/installations")
+def lister_installations(
+    acheteur: str = "compagnie_demo",
+    session: Session = Depends(get_session),
+) -> list[dict]:
+    """Vue "mes agents" : tous les agents achetés ou loués par la compagnie."""
+    installations = session.exec(
+        select(MarketplaceInstallation).where(MarketplaceInstallation.acheteur == acheteur)
+    ).all()
+    resultat = []
+    for installation in installations:
+        _appliquer_expiration(session, installation)
+        listing = session.get(MarketplaceListing, installation.listing_id)
+        agent = session.get(Agent, installation.agent_id)
+        resultat.append(
+            {
+                "installation_id": installation.id,
+                "listing_id": installation.listing_id,
+                "listing_nom": listing.nom if listing else None,
+                "editeur": listing.editeur if listing else None,
+                "agent_id": installation.agent_id,
+                "agent_statut": agent.statut if agent else None,
+                **_etat_installation(installation),
             }
         )
     return resultat
@@ -81,17 +177,34 @@ def lister_listings_editeur(
 @router.post("/listings/{listing_id}/installer")
 def installer_listing(
     listing_id: int,
+    corps: DemandeInstallation = DemandeInstallation(),
     session: Session = Depends(get_session),
 ) -> dict:
     listing = session.get(MarketplaceListing, listing_id)
     if not listing or listing.statut != "publie":
         raise HTTPException(404, "Agent Marketplace introuvable")
+    if corps.mode == "location" and listing.prix_location <= 0:
+        raise HTTPException(422, "Cet agent n'est pas proposé à la location")
 
     existante = _installation(session, listing_id)
     if existante:
-        agent = session.get(Agent, existante.agent_id)
-        return {"listing": listing, "agent": agent, "deja_installe": True}
+        _appliquer_expiration(session, existante)
+        if existante.type_acquisition == "achat" or not _location_expiree(existante):
+            agent = session.get(Agent, existante.agent_id)
+            return {
+                "listing": listing,
+                "agent": agent,
+                "deja_installe": True,
+                "location": _etat_installation(existante),
+            }
+        # Location expirée : on la renouvelle au lieu de dupliquer l'installation.
+        return _renouveler_installation(session, existante, corps.duree_jours, motif_renouvellement=False)
 
+    expire_le = (
+        datetime.utcnow() + timedelta(days=corps.duree_jours)
+        if corps.mode == "location"
+        else None
+    )
     agent = Agent(
         nom=listing.nom,
         categorie=listing.categorie,
@@ -112,13 +225,20 @@ def installer_listing(
     )
     session.add(agent)
     session.flush()
-    session.add(
-        MarketplaceInstallation(
-            listing_id=listing.id,
-            agent_id=agent.id,
-        )
+    installation = MarketplaceInstallation(
+        listing_id=listing.id,
+        agent_id=agent.id,
+        type_acquisition=corps.mode,
+        duree_jours=corps.duree_jours if corps.mode == "location" else None,
+        expire_le=expire_le,
     )
-    listing.installations += 1
+    session.add(installation)
+    if corps.mode == "location":
+        listing.locations_actives += 1
+        prix_affiche = f"{listing.prix_location} DT/mois"
+    else:
+        listing.installations += 1
+        prix_affiche = f"{listing.prix} DT"
     session.add(listing)
     tracer(
         session,
@@ -131,8 +251,15 @@ def installer_listing(
             "nom": agent.nom,
             "editeur": listing.editeur,
             "statut": "live",
+            "type_acquisition": corps.mode,
+            "prix": prix_affiche,
+            **({"expire_le": expire_le.isoformat()} if expire_le else {}),
         },
-        motif="Agent acheté et prêt à l'emploi dans le Studio",
+        motif=(
+            f"Agent loué pour {corps.duree_jours} jours et prêt à l'emploi dans le Studio"
+            if corps.mode == "location"
+            else "Agent acheté et prêt à l'emploi dans le Studio"
+        ),
     )
     try:
         session.commit()
@@ -143,10 +270,92 @@ def installer_listing(
             raise
         agent = session.get(Agent, existante.agent_id)
         listing = session.get(MarketplaceListing, listing_id)
-        return {"listing": listing, "agent": agent, "deja_installe": True}
+        return {
+            "listing": listing,
+            "agent": agent,
+            "deja_installe": True,
+            "location": _etat_installation(existante),
+        }
     session.refresh(agent)
     session.refresh(listing)
-    return {"listing": listing, "agent": agent, "deja_installe": False}
+    session.refresh(installation)
+    return {
+        "listing": listing,
+        "agent": agent,
+        "deja_installe": False,
+        "location": _etat_installation(installation),
+    }
+
+
+def _renouveler_installation(
+    session: Session,
+    installation: MarketplaceInstallation,
+    duree_jours: int,
+    *,
+    motif_renouvellement: bool = True,
+) -> dict:
+    agent = session.get(Agent, installation.agent_id)
+    listing = session.get(MarketplaceListing, installation.listing_id)
+    if not agent or not listing:
+        raise HTTPException(404, "Installation introuvable")
+    base = (
+        installation.expire_le
+        if installation.expire_le and installation.expire_le > datetime.utcnow()
+        else datetime.utcnow()
+    )
+    reactivation = agent.statut != "live"
+    installation.expire_le = base + timedelta(days=duree_jours)
+    installation.duree_jours = duree_jours
+    installation.renouvellements += 1
+    agent.statut = "live"
+    session.add(installation)
+    session.add(agent)
+    tracer(
+        session,
+        acteur="humain:responsable_sinistres",
+        acteur_type="humain",
+        type="renouvellement_location_marketplace",
+        objet=f"agent:{agent.id}",
+        avant={"statut": "draft" if reactivation else "live"},
+        apres={
+            "statut": "live",
+            "expire_le": installation.expire_le.isoformat(),
+            "renouvellements": installation.renouvellements,
+        },
+        motif=(
+            f"Location renouvelée pour {duree_jours} jours après expiration — agent réactivé"
+            if reactivation
+            else f"Location renouvelée pour {duree_jours} jours supplémentaires"
+        ),
+    )
+    session.commit()
+    session.refresh(installation)
+    session.refresh(agent)
+    session.refresh(listing)
+    return {
+        "listing": listing,
+        "agent": agent,
+        "deja_installe": True,
+        "location": _etat_installation(installation),
+    }
+
+
+class DemandeRenouvellement(BaseModel):
+    duree_jours: int = Field(default=DUREE_LOCATION_DEFAUT, ge=1, le=365)
+
+
+@router.post("/installations/{installation_id}/renouveler")
+def renouveler_installation(
+    installation_id: int,
+    corps: DemandeRenouvellement = DemandeRenouvellement(),
+    session: Session = Depends(get_session),
+) -> dict:
+    installation = session.get(MarketplaceInstallation, installation_id)
+    if not installation:
+        raise HTTPException(404, "Installation introuvable")
+    if installation.type_acquisition != "location":
+        raise HTTPException(422, "Seule une location peut être renouvelée")
+    return _renouveler_installation(session, installation, corps.duree_jours)
 
 
 @router.post("/listings", status_code=201)
@@ -173,6 +382,7 @@ def soumettre_listing(
         editeur=corps.editeur.strip(),
         description=corps.description.strip(),
         prix=corps.prix,
+        prix_location=corps.prix_location,
         tags=corps.tags[:6],
         instructions=corps.instructions.strip(),
         garde_fous={

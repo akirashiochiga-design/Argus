@@ -137,16 +137,18 @@ class IntegrationConnexion(SQLModel, table=True):
 
 
 class MarketplaceListing(SQLModel, table=True):
-    """Template d'agent proposé à la vente dans la Marketplace."""
+    """Template d'agent proposé à la vente (ou à la location) dans la Marketplace."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
     nom: str
     categorie: str
     editeur: str
     description: str
-    prix: float = 0.0
+    prix: float = 0.0  # achat définitif, DT
+    prix_location: float = 0.0  # location, DT/mois (0 = location non proposée)
     note: float = 0.0
     installations: int = 0
+    locations_actives: int = 0
     tags: list = Field(default_factory=list, sa_column=Column(JSON))
     verifie: bool = False
     statut: str = "en_attente"  # en_attente | publie | refuse
@@ -167,6 +169,10 @@ class MarketplaceInstallation(SQLModel, table=True):
     listing_id: int = Field(foreign_key="marketplacelisting.id", index=True)
     agent_id: int = Field(foreign_key="agent.id")
     acheteur: str = "compagnie_demo"
+    type_acquisition: str = "achat"  # achat | location
+    duree_jours: Optional[int] = None  # uniquement pour une location
+    expire_le: Optional[datetime] = None  # uniquement pour une location
+    renouvellements: int = 0
     installe_le: datetime = Field(default_factory=now)
 
 

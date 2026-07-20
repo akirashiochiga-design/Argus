@@ -4,18 +4,32 @@ import { AGENT_ICONE, dt } from '../ui'
 
 const CATEGORIES = ['Tous', 'Auto', 'Vision', 'Documents', 'Conformité']
 
+const DUREES_LOCATION = [
+  { jours: 30, libelle: '1 mois' },
+  { jours: 90, libelle: '3 mois' },
+  { jours: 365, libelle: '1 an' },
+]
+
 export default function Marketplace({ onNavigate }) {
   const [agents, setAgents] = useState([])
+  const [installations, setInstallations] = useState([])
   const [recherche, setRecherche] = useState('')
   const [categorie, setCategorie] = useState('Tous')
   const [achat, setAchat] = useState(null)
+  const [mode, setMode] = useState('achat')
+  const [duree, setDuree] = useState(30)
   const [message, setMessage] = useState(null)
   const [chargement, setChargement] = useState(true)
   const [action, setAction] = useState(false)
 
   const charger = async () => {
     try {
-      setAgents(await api.listerMarketplace())
+      const [listings, mesInstallations] = await Promise.all([
+        api.listerMarketplace(),
+        api.listerInstallationsMarketplace(),
+      ])
+      setAgents(listings)
+      setInstallations(mesInstallations)
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
     } finally {
@@ -37,12 +51,15 @@ export default function Marketplace({ onNavigate }) {
   const confirmerAchat = async () => {
     setAction(true)
     try {
-      const resultat = await api.installerMarketplace(achat.id)
+      const resultat = await api.installerMarketplace(achat.id, { mode, duree_jours: duree })
       setAchat(null)
       await charger()
+      const prix = mode === 'location' ? `${dt(achat.prix_location)}/mois` : dt(achat.prix)
       setMessage({
         ton: 'succes',
-        texte: `« ${resultat.agent.nom} » est maintenant live et prêt dans votre Studio.`,
+        texte: mode === 'location'
+          ? `« ${resultat.agent.nom} » loué (${prix}) — prêt dans votre Studio, renouvelable à tout moment.`
+          : `« ${resultat.agent.nom} » est maintenant live et prêt dans votre Studio.`,
         studio: true,
       })
     } catch (erreur) {
@@ -50,6 +67,25 @@ export default function Marketplace({ onNavigate }) {
     } finally {
       setAction(false)
     }
+  }
+
+  const renouveler = async (installationId, jours) => {
+    setAction(true)
+    try {
+      await api.renouvelerInstallationMarketplace(installationId, { duree_jours: jours })
+      await charger()
+      setMessage({ ton: 'succes', texte: 'Location renouvelée, agent réactivé si besoin.' })
+    } catch (erreur) {
+      setMessage({ ton: 'erreur', texte: erreur.message })
+    } finally {
+      setAction(false)
+    }
+  }
+
+  const ouvrirAchat = (agent) => {
+    setMode('achat')
+    setDuree(30)
+    setAchat(agent)
   }
 
   if (chargement) return <p className="text-sm text-encre/50">Chargement de la Marketplace…</p>
@@ -102,6 +138,42 @@ export default function Marketplace({ onNavigate }) {
         </div>
       )}
 
+      {installations.some((i) => i.type_acquisition === 'location') && (
+        <section className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="border-b border-line px-4 py-3">
+            <h3 className="text-sm font-semibold">Agents loués par votre compagnie</h3>
+            <p className="text-xs text-encre/45">Abonnements actifs, renouvelables à tout moment.</p>
+          </div>
+          <div className="divide-y divide-line">
+            {installations
+              .filter((i) => i.type_acquisition === 'location')
+              .map((i) => (
+                <div key={i.installation_id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{i.listing_nom}</div>
+                    <div className="text-xs text-encre/45">
+                      par {i.editeur} · {i.renouvellements > 0 ? `renouvelé ${i.renouvellements}×` : 'première période'}
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    i.expiree ? 'bg-bad-tint text-bad' : 'bg-ok-tint text-ok'
+                  }`}>
+                    {i.expiree ? 'Expiré' : `${i.jours_restants} j restants`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => renouveler(i.installation_id, 30)}
+                    disabled={action}
+                    className="shrink-0 rounded-md border border-line px-3 py-1.5 text-xs font-semibold text-encre/70 transition hover:bg-surface-deep disabled:opacity-50"
+                  >
+                    Renouveler
+                  </button>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <label className="relative min-w-64 flex-1">
           <span className="pointer-events-none absolute left-3 top-2.5 text-sm text-encre/35">⌕</span>
@@ -136,7 +208,10 @@ export default function Marketplace({ onNavigate }) {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {resultats.map((agent) => {
-          const estAchete = agent.installe
+          const loc = agent.location
+          const estAchat = agent.installe && loc?.type_acquisition === 'achat'
+          const locationActive = agent.installe && loc?.type_acquisition === 'location' && !loc.expiree
+          const locationExpiree = agent.installe && loc?.type_acquisition === 'location' && loc.expiree
           return (
             <article key={agent.id} className="flex min-h-72 flex-col rounded-xl border border-line bg-surface p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="flex items-start gap-3">
@@ -162,22 +237,46 @@ export default function Marketplace({ onNavigate }) {
                 ))}
               </div>
 
+              {(locationActive || locationExpiree) && (
+                <div className={`mt-3 rounded-md px-3 py-2 text-xs font-medium ${
+                  locationExpiree ? 'bg-bad-tint text-bad' : 'bg-ok-tint text-ok'
+                }`}>
+                  {locationExpiree
+                    ? 'Location expirée — agent désactivé'
+                    : `Loué · ${loc.jours_restants} j restant${loc.jours_restants > 1 ? 's' : ''}`}
+                </div>
+              )}
+
               <div className="mt-auto flex items-end gap-3 border-t border-line pt-4">
                 <div>
-                  <div className="text-xs text-encre/40">★ {agent.note} · {agent.installations} installations</div>
-                  <div className="mt-1 font-semibold">{agent.prix ? dt(agent.prix) : 'Gratuit'}</div>
+                  <div className="text-xs text-encre/40">★ {agent.note} · {agent.installations} achats · {agent.locations_actives} locations</div>
+                  <div className="mt-1 font-semibold">
+                    {agent.prix ? dt(agent.prix) : 'Gratuit'}
+                    {agent.prix_location > 0 && (
+                      <span className="ml-1.5 text-xs font-normal text-encre/45">ou {dt(agent.prix_location)}/mois</span>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => !estAchete && setAchat(agent)}
-                  disabled={estAchete}
-                  className={`ml-auto rounded-md px-3 py-2 text-xs font-semibold transition ${
-                    estAchete
-                      ? 'cursor-default bg-ok-tint text-ok'
-                      : 'bg-encre text-creme hover:bg-encre/85'
-                  }`}
-                >
-                  {estAchete ? '✓ Dans mon Studio' : agent.prix ? 'Acheter' : 'Installer'}
-                </button>
+                {estAchat ? (
+                  <span className="ml-auto rounded-md bg-ok-tint px-3 py-2 text-xs font-semibold text-ok">
+                    ✓ Dans mon Studio
+                  </span>
+                ) : locationActive || locationExpiree ? (
+                  <button
+                    onClick={() => renouveler(loc.installation_id, 30)}
+                    disabled={action}
+                    className="ml-auto rounded-md bg-terracotta px-3 py-2 text-xs font-semibold text-white transition hover:bg-terracotta/90 disabled:opacity-50"
+                  >
+                    Renouveler
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => ouvrirAchat(agent)}
+                    className="ml-auto rounded-md bg-encre px-3 py-2 text-xs font-semibold text-creme transition hover:bg-encre/85"
+                  >
+                    {agent.prix ? 'Acheter / louer' : 'Installer'}
+                  </button>
+                )}
               </div>
             </article>
           )
@@ -197,13 +296,71 @@ export default function Marketplace({ onNavigate }) {
               {AGENT_ICONE[achat.categorie] ?? '✦'}
             </div>
             <div>
-              <h3 className="font-semibold">{achat.prix ? 'Confirmer l’achat' : 'Installer cet agent'}</h3>
+              <h3 className="font-semibold">{achat.prix ? 'Acheter ou louer cet agent' : 'Installer cet agent'}</h3>
               <p className="text-sm text-encre/50">{achat.nom}</p>
             </div>
           </div>
+
+          {achat.prix > 0 && achat.prix_location > 0 && (
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('achat')}
+                className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
+                  mode === 'achat' ? 'border-terracotta bg-terracotta/5' : 'border-line hover:bg-surface-deep'
+                }`}
+              >
+                <div className="font-semibold">Acheter</div>
+                <div className="text-encre/50">{dt(achat.prix)} · licence permanente</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('location')}
+                className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
+                  mode === 'location' ? 'border-terracotta bg-terracotta/5' : 'border-line hover:bg-surface-deep'
+                }`}
+              >
+                <div className="font-semibold">Louer</div>
+                <div className="text-encre/50">{dt(achat.prix_location)}/mois · renouvelable</div>
+              </button>
+            </div>
+          )}
+
+          {mode === 'location' && achat.prix_location > 0 && (
+            <div className="mt-3 flex gap-2">
+              {DUREES_LOCATION.map((d) => (
+                <button
+                  key={d.jours}
+                  type="button"
+                  onClick={() => setDuree(d.jours)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                    duree === d.jours ? 'bg-encre text-creme' : 'bg-surface-deep text-encre/55 hover:bg-surface-deep/70'
+                  }`}
+                >
+                  {d.libelle}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="mt-5 rounded-lg bg-surface-deep p-4 text-sm">
-            <div className="flex justify-between"><span>Licence d’utilisation</span><b>{achat.prix ? dt(achat.prix) : 'Gratuit'}</b></div>
+            <div className="flex justify-between">
+              <span>{mode === 'location' ? 'Location' : 'Licence d’utilisation'}</span>
+              <b>
+                {!achat.prix
+                  ? 'Gratuit'
+                  : mode === 'location'
+                    ? `${dt(achat.prix_location)}/mois × ${duree} j`
+                    : dt(achat.prix)}
+              </b>
+            </div>
             <div className="mt-2 flex justify-between text-encre/45"><span>Destination</span><span>Studio Norix</span></div>
+            {mode === 'location' && (
+              <div className="mt-2 flex justify-between text-encre/45">
+                <span>Fin de l’abonnement</span>
+                <span>Dans {duree} jours (renouvelable)</span>
+              </div>
+            )}
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setAchat(null)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>
@@ -212,7 +369,13 @@ export default function Marketplace({ onNavigate }) {
               disabled={action}
               className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {action ? 'Installation…' : achat.prix ? `Acheter et installer — ${dt(achat.prix)}` : 'Installer'}
+              {action
+                ? 'Installation…'
+                : !achat.prix
+                  ? 'Installer'
+                  : mode === 'location'
+                    ? `Louer et installer — ${dt(achat.prix_location)}/mois`
+                    : `Acheter et installer — ${dt(achat.prix)}`}
             </button>
           </div>
         </Modal>

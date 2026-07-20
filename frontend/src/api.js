@@ -49,7 +49,10 @@ export const api = {
   creerAgentPersonnalise: (corps) => post('/studio/agents-personnalises', corps),
   // Marketplace
   listerMarketplace: () => request('/marketplace/listings'),
-  installerMarketplace: (id) => post(`/marketplace/listings/${id}/installer`),
+  installerMarketplace: (id, corps) => post(`/marketplace/listings/${id}/installer`, corps),
+  renouvelerInstallationMarketplace: (installationId, corps) =>
+    post(`/marketplace/installations/${installationId}/renouveler`, corps),
+  listerInstallationsMarketplace: () => request('/marketplace/installations'),
   soumettreMarketplace: (corps) => post('/marketplace/listings', corps),
   validerMarketplace: (id) => post(`/marketplace/listings/${id}/valider`),
   listerMarketplaceEditeur: (editeur) =>
