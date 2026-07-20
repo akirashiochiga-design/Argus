@@ -101,7 +101,7 @@ export default function Integrations() {
       let texte
       if (identifiant === 'sharepoint_demo') {
         texte = resultat.dossiers_introuvables?.length
-          ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents d’Argus.`
+          ? `SharePoint prêt. ${resultat.dossiers_introuvables.length} dossier(s) encore absents d’Norix.`
           : `${resultat.documents_importes} document(s) importé(s), ${resultat.documents_ignores} déjà présent(s).`
       } else {
         texte = `${resultat.ecritures_envoyees} écriture(s) transmise(s) à l’ERP Finance.`
@@ -134,7 +134,7 @@ export default function Integrations() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
           <p className="mt-1 max-w-xl text-sm leading-6 text-encre/50">
-            Ouvrez le SI source, ajoutez un contrat ou un sinistre, puis synchronisez vers Argus.
+            Ouvrez le SI source, ajoutez un contrat ou un sinistre, puis synchronisez vers Norix.
           </p>
         </div>
         <button
@@ -142,7 +142,7 @@ export default function Integrations() {
           disabled={action !== null}
           className="rounded-md bg-encre px-4 py-2.5 text-sm font-semibold text-creme transition hover:bg-encre/85 disabled:opacity-50"
         >
-          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser Argus' : 'Connecter & synchroniser'}
+          {action === 'connexion' ? 'Synchronisation…' : connecte ? 'Synchroniser Norix' : 'Connecter & synchroniser'}
         </button>
       </header>
 
@@ -465,7 +465,7 @@ function PanneauCoreSinistre({ onFermer, onChange, onErreur, onSync, syncEnCours
       await charger()
       setMode('sinistre')
       setSinistreForm((s) => ({ ...s, police_numero: cree.numero }))
-      await onChange(`Contrat ${cree.numero} ajouté dans CoreSinistre. Synchronisez pour le voir dans Argus.`)
+      await onChange(`Contrat ${cree.numero} ajouté dans CoreSinistre. Synchronisez pour le voir dans Norix.`)
     } catch (erreur) {
       onErreur(erreur.message)
     } finally {
@@ -479,7 +479,7 @@ function PanneauCoreSinistre({ onFermer, onChange, onErreur, onSync, syncEnCours
     try {
       const cree = await api.creerSinistreSource(sinistreForm)
       await charger()
-      await onChange(`Sinistre ${cree.reference} déclaré dans CoreSinistre. Synchronisez pour l’importer dans Argus.`)
+      await onChange(`Sinistre ${cree.reference} déclaré dans CoreSinistre. Synchronisez pour l’importer dans Norix.`)
     } catch (erreur) {
       onErreur(erreur.message)
     } finally {
@@ -493,7 +493,7 @@ function PanneauCoreSinistre({ onFermer, onChange, onErreur, onSync, syncEnCours
   return (
     <Overlay
       titre="CoreSinistre"
-      sousTitre="Système source — ajoutez ici, puis synchronisez vers Argus"
+      sousTitre="Système source — ajoutez ici, puis synchronisez vers Norix"
       onFermer={onFermer}
       pied={(
         <div className="flex justify-end gap-2">
@@ -506,7 +506,7 @@ function PanneauCoreSinistre({ onFermer, onChange, onErreur, onSync, syncEnCours
             disabled={syncEnCours}
             className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
-            {syncEnCours ? 'Synchronisation…' : 'Synchroniser vers Argus'}
+            {syncEnCours ? 'Synchronisation…' : 'Synchroniser vers Norix'}
           </button>
         </div>
       )}
@@ -661,7 +661,7 @@ function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours, 
       const doc = await api.ajouterDocumentSharePoint(form)
       const maj = await api.listerDocumentsSharePoint()
       setDocs(maj.documents || [])
-      await onChange(`Document « ${doc.nom_source} » déposé pour ${doc.dossier_ref}. Synchronisez pour l’attacher au dossier Argus.`)
+      await onChange(`Document « ${doc.nom_source} » déposé pour ${doc.dossier_ref}. Synchronisez pour l’attacher au dossier Norix.`)
     } catch (erreur) {
       onErreur(erreur.message)
     } finally {
@@ -678,7 +678,7 @@ function PanneauSharePoint({ onFermer, onChange, onErreur, onSync, syncEnCours, 
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onFermer} className="rounded-md px-4 py-2 text-sm text-encre/60">Fermer</button>
           <button type="button" onClick={onSync} disabled={syncEnCours} className="rounded-md bg-terracotta px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-            {syncEnCours ? 'Synchronisation…' : 'Synchroniser vers Argus'}
+            {syncEnCours ? 'Synchronisation…' : 'Synchroniser vers Norix'}
           </button>
         </div>
       )}

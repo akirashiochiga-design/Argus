@@ -67,7 +67,7 @@ export default function Editeur() {
       })
       setMessage({
         ton: 'neutre',
-        texte: 'Contrôles automatiques réussis. Revue Argus en cours…',
+        texte: 'Contrôles automatiques réussis. Revue Norix en cours…',
       })
       await new Promise((resolve) => window.setTimeout(resolve, 700))
       await api.validerMarketplace(listing.id)
@@ -127,7 +127,7 @@ export default function Editeur() {
         <section className="overflow-hidden rounded-2xl bg-encre px-7 py-8 text-creme">
           <div className="max-w-2xl">
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-terracotta">
-              Argus for Creators
+              Norix for Creators
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Transformez votre expertise en agent métier</h1>
             <p className="mt-3 text-sm leading-6 text-creme/60">
@@ -170,7 +170,7 @@ export default function Editeur() {
               </span>
             </div>
             <div className="mt-5 grid grid-cols-4 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-encre/45">
-              {['Agent', 'Fiche de vente', 'Contrôles Argus', 'Marketplace'].map((etape, index) => (
+              {['Agent', 'Fiche de vente', 'Contrôles Norix', 'Marketplace'].map((etape, index) => (
                 <div key={etape} className="rounded bg-surface-deep px-1 py-2">
                   <span className="text-terracotta">{index + 1}</span> {etape}
                 </div>
@@ -204,7 +204,7 @@ export default function Editeur() {
                 </Champ>
               </div>
               <div className="rounded-lg bg-surface-deep p-3 text-xs leading-5 text-encre/55">
-                Argus vérifie l’absence de secrets et impose le garde-fou
+                Norix vérifie l’absence de secrets et impose le garde-fou
                 « aucune décision financière par le LLM » avant publication.
               </div>
               <button
@@ -212,7 +212,7 @@ export default function Editeur() {
                 disabled={publication}
                 className="justify-self-end rounded-md bg-terracotta px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
               >
-                {publication ? 'Contrôles et publication…' : 'Soumettre à Argus'}
+                {publication ? 'Contrôles et publication…' : 'Soumettre à Norix'}
               </button>
             </form>
           </section>

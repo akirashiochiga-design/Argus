@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Callable, Optional
 
 # Haiku 4.5 par défaut : le moins cher de l'API Anthropic (~1-2 cents/dossier,
-# vision comprise). Monter en gamme via ARGUS_MODEL=claude-sonnet-5 ou claude-opus-4-8.
-MODELE = os.environ.get("ARGUS_MODEL", "claude-haiku-4-5")
+# vision comprise). Monter en gamme via NORIX_MODEL=claude-sonnet-5 ou claude-opus-4-8.
+MODELE = os.environ.get("NORIX_MODEL", "claude-haiku-4-5")
 MODELE_GEMINI_DEFAUT = "gemini-2.5-flash"
 
 # Prix $/MTok (input, output) pour le coût affiché au dashboard

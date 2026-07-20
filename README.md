@@ -1,6 +1,6 @@
-# Argus — l'ERP de l'IA agentique pour l'assurance
+# Norix — l'ERP de l'IA agentique pour l'assurance
 
-Argus permet aux compagnies d'assurance de **créer, connecter, gouverner et
+Norix permet aux compagnies d'assurance de **créer, connecter, gouverner et
 superviser des agents d'IA** au sein de leurs opérations métier.
 
 Créer un agent prend quelques heures. Le connecter au système d'information,
@@ -8,7 +8,7 @@ l'encadrer par les règles de l'assureur, le déployer et prouver chacune de ses
 actions peut prendre plusieurs mois. **Le problème n'est pas l'IA : c'est son
 passage en production.**
 
-Argus apporte la couche opérationnelle entre les modèles d'IA, les systèmes de
+Norix apporte la couche opérationnelle entre les modèles d'IA, les systèmes de
 l'assureur et les gestionnaires responsables des décisions.
 
 ## Vision produit
@@ -24,7 +24,7 @@ La plateforme est conçue autour de cinq capacités :
 - **Distribuer** — à terme, une marketplace d'agents métier pour les assureurs,
   éditeurs et intégrateurs.
 
-Argus n'est pas limité à l'assurance automobile. Le produit cible l'ensemble des
+Norix n'est pas limité à l'assurance automobile. Le produit cible l'ensemble des
 branches et processus assurantiels : sinistres, souscription, conformité,
 service client et opérations internes.
 
@@ -51,7 +51,7 @@ Le dossier de référence **SIN-2026-001** aboutit à une proposition de
 
 ## Principes de gouvernance
 
-Argus sépare explicitement les responsabilités :
+Norix sépare explicitement les responsabilités :
 
 > **L'IA lit, extrait et explique. Les règles calculent. L'humain décide. Tout
 > est tracé.**
@@ -156,7 +156,7 @@ sous une URL unique.
 ## Documentation
 
 - [Cahier des charges](docs/cahier-des-charges.pdf)
-- [Brand book](docs/Argus-Brand-Book.html)
+- [Brand book](docs/Norix-Brand-Book.html)
 - [Script de présentation technique](docs/script-video-2-minutes.html)
 - [Guide de démonstration](docs/demo.md)
 - [Speech démo, marché et business model](docs/pitch-speech-6-7-demo.md)
@@ -167,6 +167,6 @@ sous une URL unique.
 - **Khalil** — stratégie et entrepreneuriat IA
 - **Rayen** — ingénierie et intelligence artificielle
 
-Argus part de la Tunisie comme terrain de preuve, avec l'ambition de devenir la
+Norix part de la Tunisie comme terrain de preuve, avec l'ambition de devenir la
 couche de déploiement et de gouvernance des agents d'IA pour l'assurance en
 Afrique du Nord, dans la zone CIMA et dans le Golfe.

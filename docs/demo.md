@@ -1,4 +1,4 @@
-# Script de démo — Argus (5-6 minutes)
+# Script de démo — Norix (5-6 minutes)
 
 > Objectif : le jury doit repartir avec 3 idées. **(1)** On crée un agent d'assurance
 > sans code en 30 secondes. **(2)** Jamais d'IA sur une décision d'argent : calcul
@@ -62,7 +62,7 @@ pas arrêter de traiter des sinistres à cause d'une API indisponible. »
 
 ### 0. Accroche (30 s) — écran Pipeline affiché
 > « Un sinistre auto en Tunisie, c'est en moyenne des semaines de traitement.
-> Argus le fait en 2 minutes, sans jamais laisser une IA décider d'un dinar.
+> Norix le fait en 2 minutes, sans jamais laisser une IA décider d'un dinar.
 > On vous montre un vrai dossier, de la déclaration au règlement. »
 
 ### 1. La déclaration (45 s) — Pipeline
@@ -82,7 +82,7 @@ pas arrêter de traiter des sinistres à cause d'une API indisponible. »
   - Indemnité : « 420 − 80 DT de franchise = **340 DT**.
     Ce calcul est du code, pas un LLM — il est rejouable et opposable. »
 - Le pipeline **s'arrête tout seul** sur la porte humaine :
-  > « Même à 340 dinars, sous le seuil, Argus ne règle rien sans un humain — ce
+  > « Même à 340 dinars, sous le seuil, Norix ne règle rien sans un humain — ce
   > n'est pas une option, c'est non désactivable. »
 - (Dossier de secours : **EXT-SIN-2026-1002**, formule **tiers** — la garantie
   collision n'y est pas souscrite → refus motivé clause par clause, Art. 4. Bon
@@ -117,12 +117,12 @@ pas arrêter de traiter des sinistres à cause d'une API indisponible. »
 - Filtrer le journal sur « humains » :
   > « Voici ce qu'un auditeur ou un régulateur verrait : qui a décidé quoi, quand,
   > sur quelle proposition. Append-only. C'est la condition pour mettre de l'IA
-  > dans l'assurance — et c'est le cœur d'Argus, pas une feature. »
+  > dans l'assurance — et c'est le cœur d'Norix, pas une feature. »
 
 ### 6. Fermeture (20 s)
 > « Aujourd'hui : la branche auto, 7 agents, un pilote possible immédiatement.
 > Demain : habitation, santé, la marketplace d'agents certifiés entre assureurs.
-> Argus, c'est l'usine à agents d'assurance — gouvernée by design. »
+> Norix, c'est l'usine à agents d'assurance — gouvernée by design. »
 
 ### Si le jury veut un rappel (2 min bonus)
 - Déclarer un sinistre en live : Pipeline → « + Déclarer un sinistre » →
@@ -142,7 +142,7 @@ pas arrêter de traiter des sinistres à cause d'une API indisponible. »
 | « Et si l'API Claude tombe pendant la prod ? » | Fallback dégradé automatique + file d'attente ; le calcul et la gouvernance sont locaux. Démontrable ici même en coupant le Wi-Fi. |
 | « Ça coûte combien ? » | ~2-4 cents d'IA par dossier (affiché au dashboard) contre ~2 h de gestionnaire. |
 | « RGPD / données sensibles ? » | Piste d'audit native, données locales dans ce POC ; roadmap : résidence des données, masquage des PII dans les prompts, modèle souverain. |
-| « Pourquoi pas un simple workflow BPM ? » | Le BPM ne lit ni une déclaration en darija, ni une facture photographiée, ni des photos de dégâts. Argus combine ça avec la rigueur du BPM. |
+| « Pourquoi pas un simple workflow BPM ? » | Le BPM ne lit ni une déclaration en darija, ni une facture photographiée, ni des photos de dégâts. Norix combine ça avec la rigueur du BPM. |
 
 ## Reset entre deux passages
 ```sh

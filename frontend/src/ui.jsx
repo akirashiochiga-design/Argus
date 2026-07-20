@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { assetUrl } from './api'
 
-// Composants et tokens partagés, alignés sur le brand book Argus.
+// Composants et tokens partagés, alignés sur le brand book Norix.
 // Encre / crème / terracotta ; états en teintes terreuses désaturées.
 
 // Le signe officiel du brand book : « huit yeux, un seul regard ».
@@ -24,11 +24,11 @@ export function Logo({ size = 28, className = '' }) {
   )
 }
 
-// Le wordmark : « argus. » bas de casse, point terracotta.
+// Le wordmark : « norix. » bas de casse, point terracotta.
 export function Wordmark({ className = '' }) {
   return (
     <span className={`font-semibold tracking-tight ${className}`}>
-      argus<span className="text-terracotta">.</span>
+      norix<span className="text-terracotta">.</span>
     </span>
   )
 }

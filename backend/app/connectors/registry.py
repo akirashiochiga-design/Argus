@@ -1,4 +1,4 @@
-"""Registre fermé des adaptateurs autorisés par Argus."""
+"""Registre fermé des adaptateurs autorisés par Norix."""
 from .base import Connecteur
 
 

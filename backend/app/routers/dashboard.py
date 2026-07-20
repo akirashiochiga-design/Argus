@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from ..db import get_session
 from ..models import Dossier, Run, Tache
 
-# Hypothèse pitch : ~2h de traitement manuel par dossier vs ~8 min avec Argus
+# Hypothèse pitch : ~2h de traitement manuel par dossier vs ~8 min avec Norix
 MINUTES_ECONOMISEES_PAR_DOSSIER = 110
 
 router = APIRouter(tags=["dashboard"])

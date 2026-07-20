@@ -198,7 +198,7 @@ def soumettre_listing(
             "prix": listing.prix,
             "statut": listing.statut,
         },
-        motif="Agent soumis à la revue Argus avant publication",
+        motif="Agent soumis à la revue Norix avant publication",
     )
     session.commit()
     session.refresh(listing)
@@ -210,7 +210,7 @@ def valider_listing(
     listing_id: int,
     session: Session = Depends(get_session),
 ) -> MarketplaceListing:
-    """Revue Argus : contrôles automatiques puis publication du template."""
+    """Revue Norix : contrôles automatiques puis publication du template."""
     listing = session.get(MarketplaceListing, listing_id)
     if not listing:
         raise HTTPException(404, "Agent soumis introuvable")
@@ -221,7 +221,7 @@ def valider_listing(
     session.add(listing)
     tracer(
         session,
-        acteur="humain:comite_argus",
+        acteur="humain:comite_norix",
         acteur_type="humain",
         type="validation_marketplace",
         objet=f"listing:{listing.id}",

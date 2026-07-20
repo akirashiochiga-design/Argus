@@ -1,4 +1,4 @@
-# Q&A — comprendre et expliquer la stack Argus
+# Q&A — comprendre et expliquer la stack Norix
 
 ## Réponse courte à dire au jury
 
@@ -10,7 +10,7 @@
 
 React sert à construire l'interface utilisateur sous forme de composants réutilisables.
 
-Dans Argus, il gère notamment :
+Dans Norix, il gère notamment :
 
 - la liste et le détail des dossiers ;
 - l'animation du pipeline ;
@@ -43,7 +43,7 @@ Phrase simple :
 
 Tailwind CSS sert à construire le design directement avec des classes utilitaires.
 
-Dans Argus, il gère :
+Dans Norix, il gère :
 
 - les couleurs et la typographie ;
 - les espacements et les grilles ;
@@ -58,7 +58,7 @@ Phrase simple :
 
 ### Python
 
-Python contient toute la logique métier d'Argus :
+Python contient toute la logique métier d'Norix :
 
 - orchestration du pipeline ;
 - moteur de garanties ;
@@ -139,7 +139,7 @@ Phrase simple :
 
 ### Base assurance externe
 
-Argus possède aussi un connecteur en lecture seule vers une base SQLite qui simule le core insurance d'un assureur.
+Norix possède aussi un connecteur en lecture seule vers une base SQLite qui simule le core insurance d'un assureur.
 
 Le connecteur :
 
@@ -150,7 +150,7 @@ Le connecteur :
 
 Phrase simple :
 
-« La base Argus stocke le traitement, tandis qu'un connecteur en lecture seule synchronise les données venant du système d'assurance. »
+« La base Norix stocke le traitement, tandis qu'un connecteur en lecture seule synchronise les données venant du système d'assurance. »
 
 ## Intelligence artificielle
 
@@ -197,7 +197,7 @@ Phrase simple :
 
 ### Machine à états maison
 
-Argus n'utilise pas LangChain, LangGraph ou CrewAI.
+Norix n'utilise pas LangChain, LangGraph ou CrewAI.
 
 Un workflow est une liste ordonnée d'étapes. Chaque appel exécute une seule étape, enregistre son résultat et fait avancer le dossier.
 

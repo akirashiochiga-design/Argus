@@ -1,4 +1,4 @@
-"""Connecteurs de données externes disponibles dans Argus."""
+"""Connecteurs de données externes disponibles dans Norix."""
 from .documents_local import ConnecteurDocumentsLocal
 from .erp_stub import ConnecteurERPDemo
 from .insurance_sqlite import ConnecteurAssuranceSQLite

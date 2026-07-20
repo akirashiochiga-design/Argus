@@ -1,4 +1,4 @@
-# HANDOFF — Argus (hackathon)
+# HANDOFF — Norix (hackathon)
 
 > Document de reprise pour continuer ce projet dans une **nouvelle session Claude**
 > (limite de tokens atteinte, changement de machine, etc.). Lis ce fichier en
@@ -11,7 +11,7 @@ Dernière mise à jour : 2026-07-18 (fin de session, tout committé, tout vert).
 
 ## 1. En une phrase
 
-Argus est une plateforme SaaS B2B qui permet à un assureur de **créer,
+Norix est une plateforme SaaS B2B qui permet à un assureur de **créer,
 déployer, exploiter et auditer des agents d'IA** pour la gestion des
 sinistres auto, avec un principe non négociable : **le LLM lit et explique,
 le code calcule, l'humain décide de l'argent, tout est tracé.**
@@ -88,7 +88,7 @@ backend/
       dashboard.py   GET /dashboard/kpi
       admin.py       POST /admin/reseed
   test_e2e.py          47 vérifications, rejouable avant chaque répétition
-  .env.example         ANTHROPIC_API_KEY + ARGUS_MODEL (voir §8)
+  .env.example         ANTHROPIC_API_KEY + NORIX_MODEL (voir §8)
 
 frontend/src/
   App.jsx              shell : gate de connexion, nav, reset démo, header
@@ -107,7 +107,7 @@ frontend/src/
 docs/
   demo.md                script de démo minuté, checklist, plan B, Q&A jury
   samples/                factures/devis/constat générés + croquis de dégâts
-  Argus-Brand-Book.pdf / .html   direction artistique (source de vérité DA)
+  Norix-Brand-Book.pdf / .html   direction artistique (source de vérité DA)
   cahier-des-charges.pdf / -condense.md   la VISION complète (pas le scope)
 ```
 
@@ -199,7 +199,7 @@ mise en scène.
 
 `llm.py` est l'unique point d'appel Anthropic. **Modèle par défaut :
 `claude-haiku-4-5`** (le moins cher de l'API, vision comprise, ~1-2 cents
-par dossier complet) — changeable via `ARGUS_MODEL` dans `.env`
+par dossier complet) — changeable via `NORIX_MODEL` dans `.env`
 (`claude-sonnet-5` ou `claude-opus-4-8` pour plus de qualité rédactionnelle).
 
 **Clé API branchée** : la clé est configurée dans `backend/.env`
@@ -227,8 +227,8 @@ Claude (vision) pour une analyse authentique.
 exactement ça, purement côté client (localStorage, aucun endpoint
 backend) :
 - Compte de démo affiché en clair sur l'écran de connexion :
-  `selma.gharbi@argus-demo.tn` / `argus2026` → identité soignée "Selma
-  Gharbi (superviseure)".
+  `zak.chammam@compagnie.tn` / `norix2026` → identité soignée "Zak
+  Chammam (responsable sinistres)".
 - **N'importe quel autre email/mot de passe est aussi accepté** (stub
   assumé) — le nom affiché est dérivé de l'email saisi
   (`ahmed.ben.salah@x.tn` → "Ahmed Ben Salah"). L'identité connectée est
@@ -242,9 +242,9 @@ backend) :
 Palette : **encre `#17150F`** (texte/fonds sombres), **crème `#F4F1EA`**
 (fond de page), **terracotta `#D97757`** (accent, **un seul par écran**,
 jamais deux). Typo **Space Grotesk** (Google Fonts, chargée dans
-`index.css`). Wordmark `argus.` bas de casse, point terracotta. Voix :
+`index.css`). Wordmark `norix.` bas de casse, point terracotta. Voix :
 phrases courtes, chiffres plutôt qu'adjectifs, jamais "révolutionnaire"/
-"disruptif"/"puissant" (voir `docs/Argus-Brand-Book.html` §04).
+"disruptif"/"puissant" (voir `docs/Norix-Brand-Book.html` §04).
 
 **Le signe** (« huit yeux, un seul regard ») a un tracé SVG exact — ne pas
 improviser une nouvelle géométrie. Il est défini dans `ui.jsx` :
@@ -254,8 +254,8 @@ PETALE = 'M120 107 Q101 66 120 25 Q139 66 120 107 Z'
 répété à `rotate(0,45,90,...,315)` autour de `(120,120)`, viewBox
 `0 0 240 240`, `stroke-width 8`, pupille `<circle r="13" fill="#D97757">`.
 Même géométrie dans `frontend/public/favicon.svg`. **Si le signe doit être
-retouché, extraire le tracé exact du brand book HTML (`docs/Argus-Brand-
-Book.html`, `<symbol id="argusmark">`), ne pas en redessiner un
+retouché, extraire le tracé exact du brand book HTML (`docs/Norix-Brand-
+Book.html`, `<symbol id="norixmark">`), ne pas en redessiner un
 approximatif** — erreur déjà commise une fois dans cette session, corrigée
 ensuite.
 

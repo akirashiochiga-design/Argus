@@ -1,4 +1,4 @@
-"""Test de bout en bout du pipeline Argus — rejouable avant chaque répétition.
+"""Test de bout en bout du pipeline Norix — rejouable avant chaque répétition.
 
 Usage :  .venv/Scripts/python test_e2e.py   (backend démarré sur :8001)
 Réinitialise la base, déroule les 3 dossiers seed + 1 déclaration live,
@@ -10,7 +10,7 @@ import os
 import sys
 import urllib.request
 
-BASE = os.getenv("ARGUS_TEST_URL", "http://localhost:8001")
+BASE = os.getenv("NORIX_TEST_URL", "http://localhost:8001")
 ECHECS = []
 
 

@@ -60,11 +60,11 @@ export default function Marketplace({ onNavigate }) {
         <div className="flex flex-wrap items-end gap-5">
           <div className="max-w-2xl">
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-terracotta">
-              Argus Marketplace
+              Norix Marketplace
             </div>
             <h2 className="text-2xl font-semibold">Des agents métier prêts à intégrer vos parcours</h2>
             <p className="mt-2 text-sm leading-6 text-creme/60">
-              Découvrez des modules spécialisés, évalués par la communauté assurance et compatibles avec le Studio Argus.
+              Découvrez des modules spécialisés, évalués par la communauté assurance et compatibles avec le Studio Norix.
             </p>
           </div>
           <a
@@ -201,7 +201,7 @@ export default function Marketplace({ onNavigate }) {
           </div>
           <div className="mt-5 rounded-lg bg-surface-deep p-4 text-sm">
             <div className="flex justify-between"><span>Licence d’utilisation</span><b>{achat.prix ? dt(achat.prix) : 'Gratuit'}</b></div>
-            <div className="mt-2 flex justify-between text-encre/45"><span>Destination</span><span>Studio Argus</span></div>
+            <div className="mt-2 flex justify-between text-encre/45"><span>Destination</span><span>Studio Norix</span></div>
           </div>
           <div className="mt-5 flex justify-end gap-2">
             <button onClick={() => setAchat(null)} className="rounded-md border border-line px-4 py-2 text-sm font-medium">Annuler</button>

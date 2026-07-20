@@ -131,7 +131,7 @@ def synchroniser_database(session: Session = Depends(get_session)) -> dict:
         )
     ).first()
     if not connexion:
-        raise HTTPException(409, "Connectez d'abord la base assurance à Argus")
+        raise HTTPException(409, "Connectez d'abord la base assurance à Norix")
     try:
         return synchroniser(session)
     except ConnexionAssuranceInvalide as e:
@@ -242,7 +242,7 @@ def connecter(
                 "direction": connecteur.direction,
                 "simulation": info.get("simulation", False),
             },
-            motif="Test réussi et adaptateur activé depuis le registre Argus",
+            motif="Test réussi et adaptateur activé depuis le registre Norix",
         )
         session.commit()
         session.refresh(connexion)
@@ -264,7 +264,7 @@ def synchroniser_connecteur(
         )
     ).first()
     if not connexion:
-        raise HTTPException(409, "Connectez d'abord cet adaptateur à Argus")
+        raise HTTPException(409, "Connectez d'abord cet adaptateur à Norix")
     try:
         return connecteur.synchroniser(session)
     except (FileNotFoundError, ValueError, ConnexionAssuranceInvalide) as e:

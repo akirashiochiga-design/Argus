@@ -1,12 +1,12 @@
 // Sessions locales (assureur / éditeur), persistées entre les rafraîchissements.
 
-const CLE = 'argus_session'
-const CLE_EDITEUR = 'argus_session_editeur'
+const CLE = 'norix_session'
+const CLE_EDITEUR = 'norix_session_editeur'
 
 // Identité par défaut du superviseur.
 export const COMPTE_SUPERVISEUR = {
   email: 'zak.chammam@compagnie.tn',
-  motDePasse: 'argus2026',
+  motDePasse: 'norix2026',
   nom: 'Zak Chammam',
   role: 'responsable sinistres',
 }
@@ -14,7 +14,7 @@ export const COMPTE_SUPERVISEUR = {
 // Compte éditeur (portail /#editeur).
 export const COMPTE_EDITEUR = {
   email: 'amine.benyoussef@independant.tn',
-  motDePasse: 'argus2026',
+  motDePasse: 'norix2026',
   nom: 'Amine Ben Youssef',
   role: 'éditeur indépendant',
 }
@@ -41,7 +41,7 @@ export function lireSession() {
     if (!brut) return null
     const session = JSON.parse(brut)
     if (
-      session.email === 'selma.gharbi@argus-demo.tn'
+      session.email === 'selma.gharbi@norix-demo.tn'
       || session.email === 'selma.gharbi@compagnie.tn'
     ) {
       session.email = COMPTE_SUPERVISEUR.email

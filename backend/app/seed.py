@@ -1,7 +1,7 @@
-"""Données de référence nécessaires au fonctionnement d'Argus.
+"""Données de référence nécessaires au fonctionnement d'Norix.
 
 Usage :  python -m app.seed   (depuis backend/)
-Réinitialise complètement argus.db — c'est le bouton "reset démo".
+Réinitialise complètement norix.db — c'est le bouton "reset démo".
 """
 from sqlmodel import SQLModel, Session
 

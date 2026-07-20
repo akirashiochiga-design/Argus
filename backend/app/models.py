@@ -1,4 +1,4 @@
-"""Modèle de données Argus — version hackathon (CLAUDE.md section 6 + table Police).
+"""Modèle de données Norix — version hackathon (CLAUDE.md section 6 + table Police).
 
 Noms d'entités alignés sur le cahier des charges (M8.3), réduits au strict
 nécessaire. Les champs structurés sont des colonnes JSON (SQLite les stocke

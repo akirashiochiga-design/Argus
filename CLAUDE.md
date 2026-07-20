@@ -1,4 +1,4 @@
-# CLAUDE.md — Argus (Hackathon build)
+# CLAUDE.md — Norix (Hackathon build)
 
 > Ce fichier est la source de vérité pour toute session de travail sur ce dépôt.
 > Lis-le en entier avant d'écrire du code. En cas de doute, le périmètre gelé
@@ -6,7 +6,7 @@
 
 ## 1. Contexte
 
-Argus est une plateforme SaaS B2B qui permet à une compagnie d'assurance de
+Norix est une plateforme SaaS B2B qui permet à une compagnie d'assurance de
 **créer, déployer, exploiter et auditer des agents d'IA** pour la gestion des
 sinistres — sans écrire de code, avec l'humain qui valide toute décision qui
 engage de l'argent, et une piste d'audit complète.
@@ -44,7 +44,7 @@ de scheduler en démo.
 
 ### Extension finale (lundi)
 
-Le jury ayant retenu Argus en finale, deux extensions démontrables sont ajoutées
+Le jury ayant retenu Norix en finale, deux extensions démontrables sont ajoutées
 au périmètre :
 
 - **Marketplace persistante** : un freelance soumet un template d'agent ; un

@@ -19,7 +19,7 @@ from .seed import build_marketplace, seed
 
 load_dotenv()
 
-app = FastAPI(title="Argus", version="0.1.0")
+app = FastAPI(title="Norix", version="0.1.0")
 
 # Le front Vite tourne sur :5173
 app.add_middleware(
@@ -62,7 +62,7 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict:
-    return {"statut": "ok", "service": "argus-backend"}
+    return {"statut": "ok", "service": "norix-backend"}
 
 
 # En production, FastAPI sert également l'application React compilée.

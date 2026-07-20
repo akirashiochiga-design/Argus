@@ -1,4 +1,4 @@
-# Cahier des charges Argus — référence condensée
+# Cahier des charges Norix — référence condensée
 
 > Version texte condensée pour lecture par Claude Code. Le PDF complet
 > (`cahier-des-charges.pdf`) fait foi ; ce fichier extrait ce qui sert au code

@@ -27,7 +27,7 @@ export default function LoginEditeur({ onConnecte }) {
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
           <Logo size={56} className="text-creme" />
           <Wordmark className="text-4xl text-creme" />
-          <p className="text-sm text-creme/50">Portail éditeurs · Argus for Creators</p>
+          <p className="text-sm text-creme/50">Portail éditeurs · Norix for Creators</p>
         </div>
 
         <form onSubmit={soumettre} className="rounded-xl border border-creme/15 bg-creme/[0.04] p-6">

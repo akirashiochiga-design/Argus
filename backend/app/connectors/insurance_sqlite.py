@@ -165,7 +165,7 @@ def _prochain_numero(connexion: sqlite3.Connection, table: str, colonne: str, pr
 
 
 def creer_police(donnees: dict) -> dict:
-    """Ajoute un contrat dans CoreSinistre (pas encore dans Argus)."""
+    """Ajoute un contrat dans CoreSinistre (pas encore dans Norix)."""
     nom = (donnees.get("assure_nom") or "").strip()
     marque = (donnees.get("marque") or "").strip()
     modele = (donnees.get("modele") or "").strip()
@@ -385,7 +385,7 @@ def synchroniser(session: Session) -> dict:
     info = tester_connexion()
     workflow = traitement_actif(session)
     if not workflow:
-        raise ConnexionAssuranceInvalide("Aucun parcours actif dans Argus")
+        raise ConnexionAssuranceInvalide("Aucun parcours actif dans Norix")
 
     compteurs = {
         "polices_creees": 0,
@@ -419,7 +419,7 @@ def synchroniser(session: Session) -> dict:
                 compteurs["polices_inchangees"] += 1
         session.flush()
 
-        polices_argus = {
+        polices_norix = {
             police.numero: police
             for police in session.exec(
                 select(Police).where(
@@ -444,7 +444,7 @@ def synchroniser(session: Session) -> dict:
                     session.add(existe)
                 compteurs["sinistres_ignores"] += 1
                 continue
-            police = polices_argus[source["police_numero"]]
+            police = polices_norix[source["police_numero"]]
             dossier = Dossier(
                 ref=source["reference"],
                 police_id=police.id,
@@ -478,7 +478,7 @@ def synchroniser(session: Session) -> dict:
 
 
 class ConnecteurAssuranceSQLite:
-    """Adaptateur du SI core assurance conforme au registre Argus."""
+    """Adaptateur du SI core assurance conforme au registre Norix."""
 
     identifiant = "insurance_core"
     nom = "CoreSinistre"

@@ -1,4 +1,4 @@
-"""Runtime commun des agents IA outillés Argus."""
+"""Runtime commun des agents IA outillés Norix."""
 from typing import Optional
 
 from sqlmodel import Session
@@ -10,7 +10,7 @@ from . import tools
 
 REGLES_SYSTEME = """
 
-Règles d'exécution Argus :
+Règles d'exécution Norix :
 - Utilise les outils autorisés pour consulter les faits métier avant de conclure.
 - Les outils sont en lecture seule.
 - Ne calcule, ne valide et ne modifie jamais un montant d'indemnisation.

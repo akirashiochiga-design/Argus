@@ -104,7 +104,7 @@ def _constat(chemin: Path) -> None:
 
     a = [
         "Nom : Ahmed Ben Salah",
-        "Assureur : Argus Assurances",
+        "Assureur : Norix Assurances",
         "Police : PA-2024-1183",
         "Véhicule : Volkswagen Golf 8",
         "Immatriculation : 225 TU 4817",
