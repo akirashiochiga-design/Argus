@@ -24,17 +24,32 @@ from .workflow_service import TraitementInvalide, valider_etapes
 # Champs de sortie d'agent que l'orchestrateur reporte sur le dossier
 CHAMPS_DOSSIER = (
     "donnees_fnol", "pieces", "montant_estime", "gravite",
-    "position_couverture", "montant_recommande", "courrier",
+    "position_couverture", "montant_recommande", "courrier", "signaux",
 )
 
 # Valeurs par défaut pour rejouer proprement l'état lors d'un retour arrière.
 # montant_valide en est ABSENT : c'est une donnée humaine, pas une sortie d'agent.
 CHAMPS_DEFAUT = {
     "donnees_fnol": {}, "gravite": None, "position_couverture": {},
-    "montant_estime": None, "montant_recommande": None, "courrier": {},
+    "montant_estime": None, "montant_recommande": None, "courrier": {}, "signaux": [],
 }
 
+# Champs qui s'ACCUMULENT au fil du pipeline plutôt que d'être remplacés : plusieurs
+# agents (cohérence, antériorité...) peuvent chacun ajouter leurs propres signaux, et
+# aucun ne doit écraser ceux détectés par une étape précédente.
+CHAMPS_CUMULATIFS = ("signaux",)
+
 ETATS_TERMINES = ("regle", "refuse", "cloture")
+
+
+def _appliquer_sorties(dossier: Dossier, sorties: dict) -> None:
+    for champ in CHAMPS_DOSSIER:
+        if champ not in sorties or sorties[champ] is None:
+            continue
+        if champ in CHAMPS_CUMULATIFS:
+            setattr(dossier, champ, [*getattr(dossier, champ), *sorties[champ]])
+        else:
+            setattr(dossier, champ, sorties[champ])
 
 
 class OrchestrationErreur(Exception):
@@ -103,9 +118,7 @@ def avancer(session: Session, dossier: Dossier) -> dict:
         raise OrchestrationErreur(500, f"Échec de l'agent '{agent.nom}' : {sorties.get('erreur')}")
 
     # ---- Application des sorties au dossier ----
-    for champ in CHAMPS_DOSSIER:
-        if champ in sorties and sorties[champ] is not None:
-            setattr(dossier, champ, sorties[champ])
+    _appliquer_sorties(dossier, sorties)
 
     apres_audit = {
         k: v for k, v in sorties.items()
@@ -231,9 +244,7 @@ def reculer(session: Session, dossier: Dossier) -> dict:
     for r in restants:
         if r.statut != "succes":
             continue
-        for champ in CHAMPS_DOSSIER:
-            if champ in r.sorties and r.sorties[champ] is not None:
-                setattr(dossier, champ, r.sorties[champ])
+        _appliquer_sorties(dossier, r.sorties)
 
     dossier.etape_courante = max(0, dossier.etape_courante - 1)
     dossier.etat = "recu" if dossier.etape_courante == 0 else "en_cours"

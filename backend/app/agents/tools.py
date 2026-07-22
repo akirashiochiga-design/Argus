@@ -75,6 +75,20 @@ DEFINITIONS = {
             "additionalProperties": False,
         },
     },
+    "consulter_extraction_documents": {
+        "name": "consulter_extraction_documents",
+        "description": (
+            "Consulter les champs déjà extraits des documents joints (montants, dates, "
+            "immatriculations, postes de réparation) afin de les croiser avec les photos "
+            "et la déclaration — pour repérer une incohérence de montant, de date ou de "
+            "véhicule entre les pièces."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+    },
 }
 
 OUTILS_PAR_CATEGORIE = {
@@ -83,6 +97,7 @@ OUTILS_PAR_CATEGORIE = {
         "consulter_vehicule_assure",
         "consulter_bien_assure",
         "consulter_circonstances",
+        "consulter_extraction_documents",
         "inventorier_pieces",
     ),
 }
@@ -156,5 +171,13 @@ def executer_outil(
             "type_sinistre": fnol.get("type_sinistre"),
             "circonstances": fnol.get("circonstances") or dossier.declaration_texte[:500],
             "declaration_originale": dossier.declaration_texte[:500],
+        }
+    if nom == "consulter_extraction_documents":
+        return {
+            "documents": [
+                {"type": piece.get("type"), "extraction": piece.get("extraction")}
+                for piece in dossier.pieces
+                if piece.get("extraction")
+            ]
         }
     raise OutilInterdit(f"Outil inconnu : {nom}")

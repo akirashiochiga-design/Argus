@@ -41,6 +41,7 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     montant = dossier.montant_recommande
     couvert = bool((dossier.position_couverture or {}).get("couvert"))
     recommandation = _derniere_recommandation(session, dossier.id)
+    signaux_alerte = [s for s in (dossier.signaux or []) if s.get("statut") == "incoherent"]
 
     if recommandation == "demande_piece":
         type_tache = "demande_piece"
@@ -52,17 +53,25 @@ def executer(agent: Agent, dossier: Dossier, session: Session) -> dict:
     else:
         type_tache, routage = "validation_reglement", f"montant {montant} DT < seuil {seuil} DT — règlement proposé"
 
+    if signaux_alerte:
+        # Un signal d'incohérence retire toujours la dossier de la file "sous seuil" :
+        # même un petit montant mérite un examen humain réel, jamais un rubber-stamp.
+        routage = f"⚠ {len(signaux_alerte)} signal(aux) d'incohérence à vérifier — {routage}"
+
     tache = Tache(
         dossier_id=dossier.id,
         type=type_tache,
         montant=float(montant or 0.0),
         proposition={
             "routage": routage,
-            "sous_seuil": bool(couvert and montant is not None and montant < seuil),
+            "sous_seuil": bool(
+                couvert and montant is not None and montant < seuil and not signaux_alerte
+            ),
             "gravite": dossier.gravite,
             "position_couverture": dossier.position_couverture,
             "detail_calcul": _dernier_detail_calcul(session, dossier.id),
             "fnol": dossier.donnees_fnol,
+            "signaux": dossier.signaux or [],
         },
     )
     session.add(tache)

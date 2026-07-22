@@ -54,7 +54,8 @@ export const api = {
     post(`/marketplace/installations/${installationId}/renouveler`, corps),
   listerInstallationsMarketplace: () => request('/marketplace/installations'),
   soumettreMarketplace: (corps) => post('/marketplace/listings', corps),
-  validerMarketplace: (id) => post(`/marketplace/listings/${id}/valider`),
+  modifierMarketplace: (id, corps) =>
+    request(`/marketplace/listings/${id}`, { method: 'PATCH', body: JSON.stringify(corps) }),
   listerMarketplaceEditeur: (editeur) =>
     request(`/marketplace/editeurs/${encodeURIComponent(editeur)}/listings`),
   // Pipeline

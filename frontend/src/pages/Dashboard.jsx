@@ -11,7 +11,8 @@ const EVENEMENTS = {
   connexion_systeme: 'Connexion au SI',
   installation_marketplace: 'Installation Marketplace',
   soumission_marketplace: 'Soumission Marketplace',
-  validation_marketplace: 'Validation Marketplace',
+  modification_marketplace: 'Correction Marketplace',
+  controle_automatique_marketplace: 'Tests automatiques Marketplace',
   synchronisation_documents: 'Synchronisation documentaire',
   extraction_dossiers_sharepoint: 'Extraction dossiers SharePoint',
   depot_retour_sharepoint: 'Dépôt retour SharePoint',
@@ -44,6 +45,12 @@ export default function Dashboard() {
   const total = kpi.dossiers_total || 1
   const repartition = Object.entries(kpi.dossiers_par_etat)
 
+  const quota = kpi.requetes_llm_quota_jour || 1
+  const ratioQuota = kpi.requetes_llm_aujourdhui / quota
+  const tonQuota = ratioQuota >= 0.9 ? 'bad' : ratioQuota >= 0.6 ? 'warn' : 'ok'
+  const historiqueRequetes = kpi.requetes_llm_par_jour ?? []
+  const maxRequetesJour = Math.max(1, ...historiqueRequetes.map((j) => j.requetes))
+
   return (
     <div className="grid gap-6">
       <div className="flex items-center gap-3">
@@ -53,7 +60,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
         <Tuile nom="Dossiers traités" valeur={kpi.dossiers_traites} sous={`sur ${kpi.dossiers_total} dossiers`} />
         <Tuile nom="Décisions gestionnaires" valeur={kpi.decisions_humaines} sous="validations enregistrées" />
         <Tuile nom="Taux d'approbation"
@@ -64,6 +71,34 @@ export default function Dashboard() {
         <Tuile nom="Temps de gestion évité"
           valeur={`${Math.floor(kpi.temps_economise_min / 60)} h ${kpi.temps_economise_min % 60} min`}
           sous="sur les dossiers traités" />
+        <Tuile nom="Requêtes LLM aujourd'hui"
+          valeur={`${kpi.requetes_llm_aujourdhui} / ${quota}`}
+          sous="appels réussis · quota gratuit indicatif"
+          ton={tonQuota} />
+      </div>
+
+      <div className="rounded-lg border border-line bg-surface p-4">
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-encre/40">
+          Requêtes LLM par jour
+        </h3>
+        {historiqueRequetes.length === 0 ? (
+          <p className="text-sm text-encre/40">Aucune requête LLM enregistrée pour l'instant.</p>
+        ) : (
+          <div className="grid gap-1.5">
+            {historiqueRequetes.map((j) => (
+              <div key={j.date} className="flex items-center gap-3 text-sm">
+                <span className="w-24 shrink-0 font-mono text-xs text-encre/50">{j.date}</span>
+                <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-deep">
+                  <div
+                    className={`h-full rounded-full ${j.requetes / quota >= 0.9 ? 'bg-bad' : j.requetes / quota >= 0.6 ? 'bg-warn' : 'bg-ok'}`}
+                    style={{ width: `${Math.min(100, (j.requetes / maxRequetesJour) * 100)}%` }}
+                  />
+                </div>
+                <span className="w-10 shrink-0 text-right tabular-nums text-encre/60">{j.requetes}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-line bg-surface p-4">
@@ -135,10 +170,14 @@ export default function Dashboard() {
   )
 }
 
-const Tuile = ({ nom, valeur, sous, accent }) => (
+const TON_STYLE = { bad: 'text-bad', warn: 'text-warn', ok: 'text-ok' }
+
+const Tuile = ({ nom, valeur, sous, accent, ton }) => (
   <div className="rounded-lg border border-line bg-surface p-4">
     <div className="text-xs font-medium uppercase tracking-wide text-encre/40">{nom}</div>
-    <div className={`mt-1 text-2xl font-bold tabular-nums ${accent ? 'text-terracotta-deep' : ''}`}>{valeur}</div>
+    <div className={`mt-1 text-2xl font-bold tabular-nums ${
+      TON_STYLE[ton] ?? (accent ? 'text-terracotta-deep' : '')
+    }`}>{valeur}</div>
     <div className="mt-0.5 text-xs text-encre/40">{sous}</div>
   </div>
 )

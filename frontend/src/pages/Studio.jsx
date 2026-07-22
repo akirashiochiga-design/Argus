@@ -23,14 +23,19 @@ const libelleGardeFou = (cle) =>
 
 const OUTILS_PAR_CATEGORIE = {
   fnol: ['consulter_police', 'inventorier_pieces'],
-  vision: ['consulter_vehicule_assure', 'consulter_circonstances', 'inventorier_pieces'],
+  vision: [
+    'consulter_vehicule_assure', 'consulter_bien_assure', 'consulter_circonstances',
+    'consulter_extraction_documents', 'inventorier_pieces',
+  ],
 }
 
 const LIBELLES_OUTILS = {
   consulter_police: 'Police',
   inventorier_pieces: 'Pièces',
   consulter_vehicule_assure: 'Véhicule assuré',
+  consulter_bien_assure: 'Bien assuré',
   consulter_circonstances: 'Circonstances',
+  consulter_extraction_documents: 'Documents extraits',
 }
 
 export default function Studio() {

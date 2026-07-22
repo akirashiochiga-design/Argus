@@ -497,6 +497,8 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
   if (categorie === 'vision' && s.analyse_coherence) {
     const c = s.analyse_coherence
     const indeterminable = c.coherence_declaration == null
+    const signaux = s.signaux ?? c.signaux ?? []
+    const signauxIncoherents = signaux.filter((sig) => sig.statut === 'incoherent')
     return (
       <div className="text-sm">
         <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
@@ -521,6 +523,48 @@ function CorpsSortie({ categorie, s, pieces = [] }) {
               </div>
             )}
           </>
+        )}
+        {signauxIncoherents.length > 0 && (
+          <div className="mt-2 rounded-md border border-bad/40 bg-bad-tint px-3 py-2 text-xs text-bad">
+            <p className="font-semibold">
+              ⚠ {signauxIncoherents.length} signal{signauxIncoherents.length > 1 ? 'aux' : ''} d'incohérence
+            </p>
+            <ul className="mt-1 list-disc pl-4">
+              {signauxIncoherents.map((sig, i) => (
+                <li key={i}><span className="italic text-bad/70">{sig.type}</span> — {sig.motif}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    )
+  }
+  if (categorie === 'vision' && s.analyse_anteriorite) {
+    const a = s.analyse_anteriorite
+    const indisponible = a.analyse_disponible === false
+    const zones = a.zones_anciennes ?? []
+    return (
+      <div className="text-sm">
+        <GaleriePieces pieces={pieces} photosSeulement hauteur="h-28" className="mb-3" />
+        <span className={`rounded-full px-2.5 py-0.5 font-semibold ${
+          indisponible ? 'bg-surface-deep text-encre/60'
+          : zones.length > 0 ? 'bg-warn-tint text-warn' : 'bg-ok-tint text-ok'
+        }`}>
+          {indisponible
+            ? 'contrôle non réalisé'
+            : zones.length > 0
+              ? `⚠ ${zones.length} zone(s) avec indice de dommage antérieur`
+              : '✓ dégâts cohérents avec un sinistre récent'}
+        </span>
+        <p className="mt-1 text-encre/50">{a.commentaire}</p>
+        {zones.length > 0 && (
+          <div className="mt-2 rounded-md border border-warn/40 bg-warn-tint px-3 py-2 text-xs text-warn">
+            <ul className="list-disc pl-4">
+              {zones.map((zone, i) => (
+                <li key={i}><b>{zone.zone}</b> — {zone.indices?.join(', ')}</li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     )

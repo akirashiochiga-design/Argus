@@ -21,12 +21,19 @@ const TEMPLATE_DEMO = {
   tag: 'Expertise',
 }
 
+const STATUT_STYLE = {
+  publie: { classe: 'bg-ok-tint text-ok', libelle: 'Publié' },
+  en_attente: { classe: 'bg-warn-tint text-warn', libelle: 'En attente de revue' },
+  refuse: { classe: 'bg-bad-tint text-bad', libelle: 'Refusé' },
+}
+
 export default function Editeur() {
   const [session, setSession] = useState(() => lireSessionEditeur())
   const [listings, setListings] = useState([])
   const [chargement, setChargement] = useState(true)
   const [publication, setPublication] = useState(false)
   const [message, setMessage] = useState(null)
+  const [edition, setEdition] = useState(null) // null = nouvelle annonce, sinon l'annonce en cours de correction
 
   const charger = async () => {
     if (!session) return
@@ -64,28 +71,28 @@ export default function Editeur() {
     setPublication(true)
     setMessage(null)
     const donnees = new FormData(event.currentTarget)
+    const payload = {
+      nom: donnees.get('nom'),
+      description: donnees.get('description'),
+      instructions: donnees.get('instructions'),
+      prix: Number(donnees.get('prix')),
+      prix_location: Number(donnees.get('prix_location') || 0),
+      tags: [donnees.get('tag')].filter(Boolean),
+    }
     try {
-      const listing = await api.soumettreMarketplace({
-        nom: donnees.get('nom'),
-        editeur: session.nom,
-        description: donnees.get('description'),
-        categorie: donnees.get('categorie'),
-        prix: Number(donnees.get('prix')),
-        prix_location: Number(donnees.get('prix_location') || 0),
-        tags: [donnees.get('tag')].filter(Boolean),
-        instructions: donnees.get('instructions'),
-      })
+      const listing = edition
+        ? await api.modifierMarketplace(edition.id, payload)
+        : await api.soumettreMarketplace({ ...payload, editeur: session.nom, categorie: donnees.get('categorie') })
+      const publie = listing.statut === 'publie'
       setMessage({
-        ton: 'neutre',
-        texte: 'Contrôles automatiques réussis. Revue Norix en cours…',
+        ton: publie ? 'succes' : 'erreur',
+        texte: publie
+          ? `✓ « ${listing.nom} » a passé les tests automatiques Norix et est publié.`
+          : `« ${listing.nom} » a échoué aux tests automatiques Norix — voir le détail ci-dessous et corriger.`,
       })
-      await new Promise((resolve) => window.setTimeout(resolve, 700))
-      await api.validerMarketplace(listing.id)
+      setEdition(null)
+      event.currentTarget.reset()
       await charger()
-      setMessage({
-        ton: 'succes',
-        texte: `« ${listing.nom} » est publié et visible dans la Marketplace assureur.`,
-      })
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
     } finally {
@@ -93,9 +100,26 @@ export default function Editeur() {
     }
   }
 
+  const modifier = (listing) => {
+    setEdition(listing)
+    setMessage(null)
+  }
+
   if (!session) {
     return <LoginEditeur onConnecte={setSession} />
   }
+
+  const valeurs = edition
+    ? {
+        nom: edition.nom,
+        categorie: edition.categorie,
+        description: edition.description,
+        instructions: edition.instructions,
+        prix: edition.prix,
+        prixLocation: edition.prix_location,
+        tag: edition.tags?.[0] ?? '',
+      }
+    : TEMPLATE_DEMO
 
   return (
     <div className="min-h-screen bg-creme text-encre">
@@ -171,9 +195,13 @@ export default function Editeur() {
           <section className="rounded-xl border border-line bg-surface p-6 shadow-sm">
             <div className="flex items-start gap-3">
               <div>
-                <h2 className="text-lg font-semibold">Publier un agent</h2>
+                <h2 className="text-lg font-semibold">
+                  {edition ? 'Corriger une annonce' : 'Publier un agent'}
+                </h2>
                 <p className="mt-1 text-sm text-encre/50">
-                  L’assureur l’achètera préconfiguré et prêt à l’emploi dans son Studio.
+                  {edition
+                    ? 'La correction repart en revue Norix avant republication.'
+                    : "L'assureur l'achètera préconfiguré et prêt à l'emploi dans son Studio."}
                 </p>
               </div>
               <span className="ml-auto rounded-full bg-ok-tint px-2.5 py-1 text-[10px] font-semibold text-ok">
@@ -187,19 +215,19 @@ export default function Editeur() {
                 </div>
               ))}
             </div>
-            <form className="mt-5 grid gap-4" onSubmit={publier}>
+            <form key={edition?.id ?? 'nouveau'} className="mt-5 grid gap-4" onSubmit={publier}>
               <Champ libelle="Nom de l’agent">
-                <input name="nom" required defaultValue={TEMPLATE_DEMO.nom} className={inputClass} />
+                <input name="nom" required defaultValue={valeurs.nom} className={inputClass} />
               </Champ>
               <Champ libelle="Description commerciale">
-                <textarea name="description" required rows="3" defaultValue={TEMPLATE_DEMO.description} className={textareaClass} />
+                <textarea name="description" required rows="3" defaultValue={valeurs.description} className={textareaClass} />
               </Champ>
               <Champ libelle="Instructions métier livrées à l’assureur">
-                <textarea name="instructions" required rows="5" defaultValue={TEMPLATE_DEMO.instructions} className={textareaClass} />
+                <textarea name="instructions" required rows="5" defaultValue={valeurs.instructions} className={textareaClass} />
               </Champ>
               <div className="grid gap-3 sm:grid-cols-4">
                 <Champ libelle="Catégorie">
-                  <select name="categorie" defaultValue={TEMPLATE_DEMO.categorie} className={inputClass}>
+                  <select name="categorie" defaultValue={valeurs.categorie} disabled={!!edition} className={`${inputClass} disabled:opacity-60`}>
                     <option value="fnol">Qualification FNOL</option>
                     <option value="extraction">Documents</option>
                     <option value="vision">Vision</option>
@@ -208,29 +236,46 @@ export default function Editeur() {
                   </select>
                 </Champ>
                 <Champ libelle="Prix d’achat (DT)">
-                  <input name="prix" type="number" min="0" defaultValue={TEMPLATE_DEMO.prix} className={inputClass} />
+                  <input name="prix" type="number" min="0" defaultValue={valeurs.prix} className={inputClass} />
                 </Champ>
                 <Champ libelle="Prix de location (DT/mois)">
-                  <input name="prix_location" type="number" min="0" defaultValue={TEMPLATE_DEMO.prixLocation} className={inputClass} />
+                  <input name="prix_location" type="number" min="0" defaultValue={valeurs.prixLocation} className={inputClass} />
                 </Champ>
                 <Champ libelle="Tag">
-                  <input name="tag" defaultValue={TEMPLATE_DEMO.tag} className={inputClass} />
+                  <input name="tag" defaultValue={valeurs.tag} className={inputClass} />
                 </Champ>
               </div>
+              {edition && (
+                <p className="-mt-1 text-xs text-encre/40">La catégorie ne peut pas être changée après soumission.</p>
+              )}
               <p className="-mt-1 text-xs text-encre/40">
                 Laissez la location à 0 pour proposer votre agent uniquement à l’achat.
               </p>
               <div className="rounded-lg bg-surface-deep p-3 text-xs leading-5 text-encre/55">
-                Norix vérifie l’absence de secrets et impose le garde-fou
-                « aucune décision financière par le LLM » avant publication.
+                Publication décidée uniquement par Norix, via une suite de tests
+                automatiques (secrets, garde-fous financiers, exécution réelle sur un
+                dossier de test) — jamais par la compagnie, résultat immédiat.
               </div>
-              <button
-                type="submit"
-                disabled={publication}
-                className="justify-self-end rounded-md bg-terracotta px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
-              >
-                {publication ? 'Contrôles et publication…' : 'Soumettre à Norix'}
-              </button>
+              <div className="flex justify-end gap-2">
+                {edition && (
+                  <button
+                    type="button"
+                    onClick={() => setEdition(null)}
+                    className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-encre/60 transition hover:bg-surface-deep"
+                  >
+                    Annuler
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={publication}
+                  className="rounded-md bg-terracotta px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-terracotta-deep disabled:opacity-50"
+                >
+                  {publication
+                    ? (edition ? 'Mise à jour…' : 'Soumission…')
+                    : (edition ? 'Mettre à jour et resoumettre' : 'Soumettre à Norix')}
+                </button>
+              </div>
             </form>
           </section>
 
@@ -252,31 +297,50 @@ export default function Editeur() {
               </div>
             ) : (
               <div className="mt-5 grid gap-3">
-                {listings.map((listing) => (
-                  <article key={listing.id} className="rounded-lg border border-line p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-deep text-lg">
-                        {AGENT_ICONE[listing.categorie] ?? '✦'}
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-semibold">{listing.nom}</h3>
-                        <div className="mt-1 text-xs text-encre/45">
-                          {dt(listing.prix)} · {listing.installations} achat(s)
-                          {listing.prix_location > 0 && (
-                            <> · {dt(listing.prix_location)}/mois · {listing.locations_actives ?? 0} location(s) active(s)</>
-                          )}
+                {listings.map((listing) => {
+                  const style = STATUT_STYLE[listing.statut] ?? STATUT_STYLE.en_attente
+                  return (
+                    <article key={listing.id} className="rounded-lg border border-line p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-deep text-lg">
+                          {AGENT_ICONE[listing.categorie] ?? '✦'}
                         </div>
+                        <div>
+                          <h3 className="text-sm font-semibold">{listing.nom}</h3>
+                          <div className="mt-1 text-xs text-encre/45">
+                            {dt(listing.prix)} · {listing.installations} achat(s)
+                            {listing.prix_location > 0 && (
+                              <> · {dt(listing.prix_location)}/mois · {listing.locations_actives ?? 0} location(s) active(s)</>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`ml-auto shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${style.classe}`}>
+                          {style.libelle}
+                        </span>
                       </div>
-                      <span className={`ml-auto rounded-full px-2 py-1 text-[10px] font-semibold ${
-                        listing.statut === 'publie'
-                          ? 'bg-ok-tint text-ok'
-                          : 'bg-warn-tint text-warn'
-                      }`}>
-                        {listing.statut === 'publie' ? 'Publié' : 'En revue'}
-                      </span>
-                    </div>
-                  </article>
-                ))}
+                      {listing.statut === 'refuse' && (listing.derniere_revue?.tests?.length > 0) && (
+                        <div className="mt-2 rounded-md bg-bad-tint px-2.5 py-1.5 text-xs text-bad">
+                          <p className="font-semibold">Tests automatiques Norix échoués :</p>
+                          <ul className="mt-1 list-disc pl-4">
+                            {listing.derniere_revue.tests
+                              .filter((t) => t.statut === 'echec')
+                              .map((t, i) => (
+                                <li key={i}><span className="italic">{t.nom}</span> — {t.detail}</li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                      {listing.statut !== 'publie' && (
+                        <button
+                          onClick={() => modifier(listing)}
+                          className="mt-2 text-xs font-semibold text-terracotta-deep underline"
+                        >
+                          ✎ Corriger et resoumettre
+                        </button>
+                      )}
+                    </article>
+                  )
+                })}
               </div>
             )}
           </section>

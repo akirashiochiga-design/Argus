@@ -80,6 +80,9 @@ class Dossier(SQLModel, table=True):
     courrier: dict = Field(default_factory=dict, sa_column=Column(JSON))
     # [{"type": "constat", "chemin": "docs/samples/constat.jpg", "extraction": {...}}]
     pieces: list = Field(default_factory=list, sa_column=Column(JSON))
+    # [{"type": "plaque"|"doublon_photo"|"vehicule"|..., "source": "deterministe"|"llm",
+    #   "statut": "coherent"|"incoherent"|"indeterminable", "gravite": "info"|"critique", "motif": ...}]
+    signaux: list = Field(default_factory=list, sa_column=Column(JSON))
     cree_le: datetime = Field(default_factory=now)
 
 
@@ -152,6 +155,10 @@ class MarketplaceListing(SQLModel, table=True):
     tags: list = Field(default_factory=list, sa_column=Column(JSON))
     verifie: bool = False
     statut: str = "en_attente"  # en_attente | publie | refuse
+    motif_refus: Optional[str] = None
+    # Rapport de la dernière suite de tests automatiques (marketplace_qa.executer) :
+    # {"resultat": "valide"|"refuse", "tests": [{"nom", "statut", "detail"}, ...]}
+    derniere_revue: dict = Field(default_factory=dict, sa_column=Column(JSON))
     instructions: str
     seuils: dict = Field(default_factory=dict, sa_column=Column(JSON))
     garde_fous: dict = Field(default_factory=dict, sa_column=Column(JSON))

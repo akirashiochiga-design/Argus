@@ -156,6 +156,7 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
   const demandePiece = t.type === 'demande_piece'
   const pieceRecue = demandePiece && t.piece_chiffree_recue
   const relances = t.relances ?? []
+  const signauxAlerte = (p.signaux ?? []).filter((s) => s.statut === 'incoherent')
 
   const lancer = async (decision, m, mo) => {
     setEnvoi(true)
@@ -180,7 +181,8 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
 
   return (
     <div className={`rounded-lg border-2 bg-surface p-5 ${
-      refus ? 'border-bad/30' : demandePiece ? 'border-encre/25' : 'border-warn/40'
+      signauxAlerte.length > 0 ? 'border-bad/50'
+      : refus ? 'border-bad/30' : demandePiece ? 'border-encre/25' : 'border-warn/40'
     }`}>
       <div className="flex flex-wrap items-center gap-3">
         <span className="font-mono text-lg font-bold">{t.dossier_ref}</span>
@@ -201,6 +203,16 @@ function CarteTache({ tache: t, onDecision, onRelancer }) {
         </div>
       </div>
       <p className="mt-1 text-xs text-encre/50">🛡️ {p.routage}</p>
+      {signauxAlerte.length > 0 && (
+        <div className="mt-2 rounded-md border border-bad/40 bg-bad-tint px-3 py-2 text-xs text-bad">
+          <p className="font-semibold">
+            ⚠ {signauxAlerte.length} signal{signauxAlerte.length > 1 ? 'aux' : ''} d'incohérence à vérifier
+          </p>
+          <ul className="mt-1 list-disc pl-4">
+            {signauxAlerte.map((s, i) => <li key={i}>{s.motif}</li>)}
+          </ul>
+        </div>
+      )}
       <GaleriePieces pieces={t.pieces} className="mt-3" hauteur="h-28" />
       {demandePiece && (
         <div className="mt-2 rounded-md bg-surface-deep px-3 py-2 text-xs text-encre/70">

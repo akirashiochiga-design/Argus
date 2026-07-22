@@ -1,12 +1,13 @@
 """Marketplace : publication de templates, achat ou location dans le Studio."""
-import re
 from datetime import datetime, timedelta
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
+from .. import marketplace_qa
 from ..agents.tools import noms_pour
 from ..audit import tracer
 from ..db import get_session
@@ -16,10 +17,6 @@ from ..models import Agent, MarketplaceInstallation, MarketplaceListing
 router = APIRouter(prefix="/marketplace", tags=["marketplace"])
 
 CATEGORIES_AUTORISEES = {"fnol", "extraction", "vision", "courrier", "assistant"}
-MOTIFS_SECRET = re.compile(
-    r"(api[_ -]?key|mot[_ -]?de[_ -]?passe|password|secret|sk-[a-z0-9_-]{8,})",
-    re.IGNORECASE,
-)
 DUREE_LOCATION_DEFAUT = 30
 
 
@@ -38,6 +35,16 @@ class SoumissionTemplate(BaseModel):
 class DemandeInstallation(BaseModel):
     mode: str = Field(default="achat", pattern="^(achat|location)$")
     duree_jours: int = Field(default=DUREE_LOCATION_DEFAUT, ge=1, le=365)
+
+
+class ModificationListing(BaseModel):
+    nom: Optional[str] = Field(default=None, min_length=3, max_length=100)
+    description: Optional[str] = Field(default=None, min_length=20, max_length=600)
+    prix: Optional[float] = Field(default=None, ge=0)
+    prix_location: Optional[float] = Field(default=None, ge=0)
+    tags: Optional[list[str]] = None
+    instructions: Optional[str] = Field(default=None, min_length=30, max_length=4000)
+    seuils: Optional[dict] = None
 
 
 def _installation(
@@ -358,6 +365,47 @@ def renouveler_installation(
     return _renouveler_installation(session, installation, corps.duree_jours)
 
 
+def _resume_echecs(rapport: dict) -> str:
+    echecs = [t["detail"] for t in rapport["tests"] if t["statut"] == "echec"]
+    return " · ".join(echecs)
+
+
+def _appliquer_verdict_qa(session: Session, listing: MarketplaceListing) -> dict:
+    """Fait passer la suite de tests Norix et fixe seule le statut — jamais un humain,
+    ni côté éditeur ni côté compagnie (cette décision est celle de Norix, cf. CLAUDE.md §3)."""
+    rapport = marketplace_qa.executer(
+        session,
+        nom=listing.nom,
+        description=listing.description,
+        instructions=listing.instructions,
+        categorie=listing.categorie,
+        garde_fous=listing.garde_fous,
+    )
+    listing.derniere_revue = rapport
+    if rapport["resultat"] == "valide":
+        listing.statut = "publie"
+        listing.verifie = True
+        listing.motif_refus = None
+    else:
+        listing.statut = "refuse"
+        listing.verifie = False
+        listing.motif_refus = _resume_echecs(rapport)
+    tracer(
+        session,
+        acteur="systeme:qa_marketplace",
+        acteur_type="agent",
+        type="controle_automatique_marketplace",
+        objet=f"listing:{listing.id}",
+        apres={"statut": listing.statut, "tests": rapport["tests"]},
+        motif=(
+            "Tous les tests automatiques Norix ont réussi — agent publié"
+            if rapport["resultat"] == "valide"
+            else f"Tests automatiques échoués : {listing.motif_refus}"
+        ),
+    )
+    return rapport
+
+
 @router.post("/listings", status_code=201)
 def soumettre_listing(
     corps: SoumissionTemplate,
@@ -365,8 +413,6 @@ def soumettre_listing(
 ) -> MarketplaceListing:
     if corps.categorie not in CATEGORIES_AUTORISEES:
         raise HTTPException(422, "Catégorie d'agent non autorisée")
-    if MOTIFS_SECRET.search(corps.instructions):
-        raise HTTPException(422, "Retirez les clés, mots de passe ou secrets des instructions")
     doublon = session.exec(
         select(MarketplaceListing).where(
             MarketplaceListing.nom == corps.nom.strip(),
@@ -402,43 +448,78 @@ def soumettre_listing(
         acteur_type="humain",
         type="soumission_marketplace",
         objet=f"listing:{listing.id}",
-        apres={
-            "nom": listing.nom,
-            "categorie": listing.categorie,
-            "prix": listing.prix,
-            "statut": listing.statut,
-        },
-        motif="Agent soumis à la revue Norix avant publication",
+        apres={"nom": listing.nom, "categorie": listing.categorie, "prix": listing.prix},
+        motif="Agent soumis aux tests automatiques Norix",
     )
+    _appliquer_verdict_qa(session, listing)
+    session.add(listing)
     session.commit()
     session.refresh(listing)
     return listing
 
 
-@router.post("/listings/{listing_id}/valider")
-def valider_listing(
+@router.patch("/listings/{listing_id}")
+def modifier_listing(
     listing_id: int,
+    corps: ModificationListing,
     session: Session = Depends(get_session),
 ) -> MarketplaceListing:
-    """Revue Norix : contrôles automatiques puis publication du template."""
+    """Un éditeur corrige son annonce avant publication, ou après un refus.
+
+    Impossible une fois publié : des compagnies ont pu déjà l'installer telle
+    quelle, une modification silencieuse romprait la trace de ce qu'elles ont
+    réellement acheté. Une évolution post-publication est une nouvelle annonce.
+    Toute modification refait passer l'annonce par les tests automatiques Norix.
+    """
     listing = session.get(MarketplaceListing, listing_id)
     if not listing:
         raise HTTPException(404, "Agent soumis introuvable")
-    if listing.statut != "en_attente":
-        raise HTTPException(409, "Cet agent a déjà été revu")
-    listing.statut = "publie"
-    listing.verifie = True
+    if listing.statut == "publie":
+        raise HTTPException(
+            409,
+            "Cet agent est déjà publié — des compagnies l'ont peut-être installé tel "
+            "quel. Soumettez une nouvelle annonce pour une évolution.",
+        )
+
+    avant = {"nom": listing.nom, "prix": listing.prix, "statut": listing.statut}
+    if corps.nom is not None:
+        nouveau_nom = corps.nom.strip()
+        doublon = session.exec(
+            select(MarketplaceListing).where(
+                MarketplaceListing.nom == nouveau_nom,
+                MarketplaceListing.editeur == listing.editeur,
+                MarketplaceListing.id != listing.id,
+            )
+        ).first()
+        if doublon:
+            raise HTTPException(409, "Cet éditeur a déjà soumis un agent portant ce nom")
+        listing.nom = nouveau_nom
+    if corps.description is not None:
+        listing.description = corps.description.strip()
+    if corps.prix is not None:
+        listing.prix = corps.prix
+    if corps.prix_location is not None:
+        listing.prix_location = corps.prix_location
+    if corps.tags is not None:
+        listing.tags = corps.tags[:6]
+    if corps.instructions is not None:
+        listing.instructions = corps.instructions.strip()
+    if corps.seuils is not None:
+        listing.seuils = corps.seuils
+
     session.add(listing)
     tracer(
         session,
-        acteur="humain:comite_norix",
+        acteur=f"humain:editeur_{listing.editeur.lower().replace(' ', '_')}",
         acteur_type="humain",
-        type="validation_marketplace",
+        type="modification_marketplace",
         objet=f"listing:{listing.id}",
-        avant={"statut": "en_attente"},
-        apres={"statut": "publie", "verifie": True},
-        motif="Contrôles automatiques réussis — agent approuvé et publié",
+        avant=avant,
+        apres={"nom": listing.nom, "prix": listing.prix},
+        motif="Annonce corrigée, resoumise aux tests automatiques Norix",
     )
+    _appliquer_verdict_qa(session, listing)
+    session.add(listing)
     session.commit()
     session.refresh(listing)
     return listing

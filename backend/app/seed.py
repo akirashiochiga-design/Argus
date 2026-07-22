@@ -42,6 +42,7 @@ def build_templates() -> list[Template]:
         ),
         garde_fous_defaut={
             "pas_de_decision_argent": True,
+            "mission": "anteriorite",
             "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
             "max_iterations_agent": 4,
         },
@@ -111,6 +112,36 @@ def build_marketplace() -> list[MarketplaceListing]:
             ),
             garde_fous={
                 **commun,
+                "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
+            },
+        ),
+        MarketplaceListing(
+            nom="Détection de dommages antérieurs",
+            categorie="vision",
+            editeur="Amine Ben Youssef",
+            description=(
+                "Distingue les dégâts récents des traces d'usure ou de réparations "
+                "déjà effectuées — un signal anti-fraude de plus dans la file "
+                "d'approbation, jamais un rejet automatique."
+            ),
+            prix=280,
+            prix_location=55,
+            note=4.7,
+            installations=41,
+            locations_actives=12,
+            tags=["Auto", "Vision", "Anti-fraude"],
+            verifie=True,
+            statut="publie",
+            instructions=(
+                "Analyse les photos de dégâts pour repérer des indices de dommage "
+                "antérieur ou de réparation déjà effectuée (rouille, peinture "
+                "différente, pièce déjà remplacée) distincts des dégâts récents. "
+                "Signale chaque zone suspecte avec les indices observés, sans "
+                "jamais estimer ni recommander un montant."
+            ),
+            garde_fous={
+                **commun,
+                "mission": "anteriorite",
                 "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
             },
         ),
@@ -387,9 +418,11 @@ def build_agents(templates: list[Template]) -> list[Agent]:
             nom="Cohérence photo",
             categorie="vision",
             instructions=(
-                "Compare les photos de dégâts avec les circonstances déclarées. "
-                "Signale toute incohérence de zone, de type de dommage ou de véhicule, "
-                "avec les éléments visuels observés et un niveau de confiance."
+                "Compare les photos de dégâts, le croquis du constat et les documents "
+                "chiffrés avec les circonstances déclarées. Signale toute incohérence de "
+                "zone, de type de dommage, de véhicule, de chronologie ou de montant, "
+                "avec les éléments observés et un niveau de confiance. Ne bloque jamais "
+                "un règlement seul : chaque signal est transmis au gestionnaire."
             ),
             garde_fous={
                 "pas_de_decision_argent": True,
@@ -397,6 +430,7 @@ def build_agents(templates: list[Template]) -> list[Agent]:
                 "outils_autorises": [
                     "consulter_vehicule_assure",
                     "consulter_circonstances",
+                    "consulter_extraction_documents",
                     "inventorier_pieces",
                 ],
                 "max_iterations_agent": 4,
@@ -483,6 +517,7 @@ def build_agents_complementaires() -> list[Agent]:
             ),
             garde_fous={
                 **commun,
+                "mission": "anteriorite",
                 "outils_autorises": ["consulter_vehicule_assure", "inventorier_pieces"],
             },
             statut="live",

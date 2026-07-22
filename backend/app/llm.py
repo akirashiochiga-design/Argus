@@ -33,6 +33,10 @@ _prix = next((p for m, p in PRIX_PAR_MODELE.items() if MODELE.startswith(m)), (5
 PRIX_INPUT = _prix[0] / 1_000_000
 PRIX_OUTPUT = _prix[1] / 1_000_000
 
+# Repère indicatif pour le dashboard (quota gratuit Gemini Flash-Lite ≈ 1500 req/jour) —
+# purement informatif, Norix ne bloque jamais un traitement sur cette base.
+QUOTA_REQUETES_JOUR = int(os.environ.get("LLM_QUOTA_REQUETES_JOUR", "1500"))
+
 # Racine du repo pour résoudre les chemins de pièces ("docs/samples/...")
 RACINE = Path(__file__).resolve().parent.parent.parent
 
