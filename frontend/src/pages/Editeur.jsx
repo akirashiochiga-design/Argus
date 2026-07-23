@@ -70,7 +70,9 @@ export default function Editeur() {
     if (!session) return
     setPublication(true)
     setMessage(null)
-    const donnees = new FormData(event.currentTarget)
+    // Garder une ref au form avant les await : React nullifie event.currentTarget ensuite.
+    const form = event.currentTarget
+    const donnees = new FormData(form)
     const payload = {
       nom: donnees.get('nom'),
       description: donnees.get('description'),
@@ -91,7 +93,7 @@ export default function Editeur() {
           : `« ${listing.nom} » a échoué aux tests automatiques Norix — voir le détail ci-dessous et corriger.`,
       })
       setEdition(null)
-      event.currentTarget.reset()
+      form.reset()
       await charger()
     } catch (erreur) {
       setMessage({ ton: 'erreur', texte: erreur.message })
